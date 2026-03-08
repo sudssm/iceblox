@@ -179,7 +179,8 @@ def main():
 
     print(f"\n=== Per-Image Summary ===")
     print(f"  Total test images: {total_images}")
-    print(f"  Images with detections: {images_with_detections} ({images_with_detections/total_images*100:.1f}%)")
+    pct = (images_with_detections / total_images * 100) if total_images > 0 else 0.0
+    print(f"  Images with detections: {images_with_detections} ({pct:.1f}%)")
     print(f"  Total detections: {total_detections}")
     print(f"  Avg confidence: {avg_conf:.3f}")
 

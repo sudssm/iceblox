@@ -47,8 +47,15 @@ func clientHMAC(plate string, pepper []byte) string {
 	plate = strings.ToUpper(plate)
 	plate = strings.ReplaceAll(plate, " ", "")
 	plate = strings.ReplaceAll(plate, "-", "")
+	// Filter to ASCII alphanumeric only (matches overview spec normalization)
+	var filtered []byte
+	for _, r := range []byte(plate) {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			filtered = append(filtered, r)
+		}
+	}
 	mac := hmac.New(sha256.New, pepper)
-	mac.Write([]byte(plate))
+	mac.Write(filtered)
 	return hex.EncodeToString(mac.Sum(nil))
 }
 

@@ -6,30 +6,51 @@ You are finishing a feature branch and shipping it to main. Follow these steps e
 
 Run `git diff main...HEAD` and `git log main..HEAD --oneline` to understand all changes on this branch compared to main.
 
-## Step 2: Verify docs are up to date
+## Step 2: Run review skills
 
-Read `docs/todo.md` and compare it against the actual code changes from step 1. Ensure:
-- Every completed item in todo.md that corresponds to code on this branch is checked off (`[x]`).
-- No items are checked off that don't have corresponding code.
-- If any updates are needed, edit `docs/todo.md` to reflect reality.
+Launch TWO subagents in parallel using the Agent tool:
 
-Also check if any spec files in `docs/specs/` need updates based on the code changes (e.g., if the implementation deviated from the spec in a meaningful way). Only update specs if there's a real deviation — don't make cosmetic changes.
+1. **PR Review agent** — use subagent_type `general-purpose` with this prompt:
+   ```
+   Run the /review-pr skill on this repository. The working directory is <cwd>. Review all changes on the current branch vs main, fix any issues you find, and report what you reviewed and fixed.
+   ```
 
-## Step 3: Commit code changes
+2. **Spec Review agent** — use subagent_type `general-purpose` with this prompt:
+   ```
+   Run the /review-spec skill on this repository. The working directory is <cwd>. Check all changes on the current branch vs main against the specs in docs/specs/, fix any divergences, update docs/todo.md, and report what you reviewed and fixed.
+   ```
 
-Stage and commit all code changes (non-docs) with a descriptive commit message summarizing the feature. Do NOT commit .code-workspace files.
+Wait for both agents to complete. Review their reports. If either agent made commits, incorporate them — do NOT undo their work.
 
-## Step 4: Commit doc changes
+If either agent reports unfixable issues (e.g., a spec ambiguity that needs human input), STOP and report the issue to the user. Do not proceed until resolved.
 
-If there were any doc updates in step 2, stage and commit them separately with a message like "Update docs to reflect <feature> implementation".
+## Step 3: Run all tests
 
-If docs were already up to date, skip this step.
+Run these test suites and verify they pass:
 
-## Step 5: Push and create PR
+- **Go server**: `cd server && go test ./...`
+- **iOS**: `cd ios && xcodebuild test -project CamerasApp.xcodeproj -scheme CamerasApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
+- **Android**: `cd android && ./gradlew test --quiet 2>&1 | tail -20`
+
+Run all three in parallel. If any test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.
+
+## Step 4: Commit remaining code changes
+
+Stage and commit any remaining code changes (non-docs) with a descriptive commit message summarizing the feature. Do NOT commit .code-workspace files.
+
+If the review agents already committed everything, skip this step.
+
+## Step 5: Commit doc changes
+
+If there are any remaining doc updates not already committed by the spec review agent, stage and commit them separately with a message like "Update docs to reflect <feature> implementation".
+
+If docs are already up to date, skip this step.
+
+## Step 6: Push and create PR
 
 Push the branch to origin and create a pull request targeting `main` using `gh pr create`. The PR title should be concise. The body should summarize what was implemented and what spec requirements were addressed.
 
-## Step 6: Merge the PR
+## Step 7: Merge the PR
 
 After the PR is created, merge it using `gh pr merge --squash --delete-branch`. If merge fails (e.g., due to checks), report the error and stop.
 

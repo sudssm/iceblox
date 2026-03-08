@@ -6,6 +6,7 @@ struct PlateSubmission: Codable {
     let plate_hash: String
     let latitude: Double?
     let longitude: Double?
+    let timestamp: String?
 }
 
 struct PlateResponse: Codable {
@@ -71,10 +72,12 @@ final class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
 
+            let formatter = ISO8601DateFormatter()
             let submission = PlateSubmission(
                 plate_hash: entry.plateHash,
                 latitude: entry.latitude,
-                longitude: entry.longitude
+                longitude: entry.longitude,
+                timestamp: formatter.string(from: entry.timestamp)
             )
 
             guard let body = try? JSONEncoder().encode(submission) else { continue }
