@@ -56,13 +56,24 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             val bitmap = if (rotationDegrees != 0) {
                 rotationMatrix.reset()
                 rotationMatrix.postRotate(rotationDegrees.toFloat())
-                val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, rotationMatrix, true)
+                val rotated = Bitmap.createBitmap(
+                    rawBitmap,
+                    0,
+                    0,
+                    rawBitmap.width,
+                    rawBitmap.height,
+                    rotationMatrix,
+                    true
+                )
                 rawBitmap.recycle()
                 rotated
             } else {
                 rawBitmap
             }
-            DebugLog.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}, rotation=$rotationDegrees")
+            DebugLog.d(
+                TAG,
+                "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}, rotation=$rotationDegrees"
+            )
             val detections = detector.detect(bitmap)
             DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
 
