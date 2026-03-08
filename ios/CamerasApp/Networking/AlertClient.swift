@@ -5,19 +5,37 @@ import UIKit
 struct SubscribeRequest: Codable {
     let latitude: Double
     let longitude: Double
-    let radius_miles: Double
+    let radiusMiles: Double
+
+    enum CodingKeys: String, CodingKey {
+        case latitude
+        case longitude
+        case radiusMiles = "radius_miles"
+    }
 }
 
 struct RecentSighting: Codable {
     let plate: String
     let latitude: Double
     let longitude: Double
-    let seen_at: String
+    let seenAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case plate
+        case latitude
+        case longitude
+        case seenAt = "seen_at"
+    }
 }
 
 struct SubscribeResponse: Codable {
     let status: String
-    let recent_sightings: [RecentSighting]?
+    let recentSightings: [RecentSighting]?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case recentSightings = "recent_sightings"
+    }
 }
 
 final class AlertClient: ObservableObject {
@@ -72,7 +90,7 @@ final class AlertClient: ObservableObject {
         let body = SubscribeRequest(
             latitude: truncatedLat,
             longitude: truncatedLng,
-            radius_miles: AppConfig.defaultRadiusMiles
+            radiusMiles: AppConfig.defaultRadiusMiles
         )
         guard let httpBody = try? JSONEncoder().encode(body) else {
             DebugLog.shared.e("AlertClient", "Failed to encode subscribe request")
@@ -97,9 +115,9 @@ final class AlertClient: ObservableObject {
 
             do {
                 let subscribeResponse = try JSONDecoder().decode(SubscribeResponse.self, from: data)
-                if let sightings = subscribeResponse.recent_sightings {
+                if let sightings = subscribeResponse.recentSightings {
                     for sighting in sightings {
-                        DebugLog.shared.d("AlertClient", "Nearby: \(sighting.plate) at (\(sighting.latitude), \(sighting.longitude)) seen \(sighting.seen_at)")
+                        DebugLog.shared.d("AlertClient", "Nearby sighting at (\(sighting.latitude), \(sighting.longitude)) seen \(sighting.seenAt)")
                     }
                     DispatchQueue.main.async {
                         self?.nearbySightings += sightings.count
@@ -112,7 +130,7 @@ final class AlertClient: ObservableObject {
     }
 
     static func truncateCoordinate(_ value: Double) -> Double {
-        return floor(value * 100) / 100
+        floor(value * 100) / 100
     }
 
     deinit {

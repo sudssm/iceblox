@@ -13,29 +13,29 @@ func TestDistanceMiles_KnownDistances(t *testing.T) {
 		tolerance              float64
 	}{
 		{
-			name:      "New York to Los Angeles",
-			lat1:      40.7128, lng1: -74.0060,
+			name: "New York to Los Angeles",
+			lat1: 40.7128, lng1: -74.0060,
 			lat2: 34.0522, lng2: -118.2437,
 			wantMiles: 2451,
 			tolerance: 10,
 		},
 		{
-			name:      "same point",
-			lat1:      36.1627, lng1: -86.7816,
+			name: "same point",
+			lat1: 36.1627, lng1: -86.7816,
 			lat2: 36.1627, lng2: -86.7816,
 			wantMiles: 0,
 			tolerance: 0.001,
 		},
 		{
-			name:      "Nashville to Memphis",
-			lat1:      36.1627, lng1: -86.7816,
+			name: "Nashville to Memphis",
+			lat1: 36.1627, lng1: -86.7816,
 			lat2: 35.1495, lng2: -90.0490,
 			wantMiles: 200,
 			tolerance: 15,
 		},
 		{
-			name:      "short distance within a city",
-			lat1:      36.16, lng1: -86.78,
+			name: "short distance within a city",
+			lat1: 36.16, lng1: -86.78,
 			lat2: 36.17, lng2: -86.79,
 			wantMiles: 0.9,
 			tolerance: 0.2,

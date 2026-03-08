@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	fcmTokenURL     = "https://oauth2.googleapis.com/token"
+	// #nosec G101 -- OAuth token endpoint URL, not a hardcoded credential.
+	fcmTokenURL      = "https://oauth2.googleapis.com/token"
 	fcmTokenLifetime = 55 * time.Minute
 )
 

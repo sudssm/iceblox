@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cameras/server/internal/db"
+	"cameras/server/internal/subscribers"
 )
 
 type mockTokenStore struct {
@@ -35,6 +36,14 @@ func (m *mockTokenStore) DeleteDeviceToken(_ context.Context, id int64) error {
 	return nil
 }
 
+type mockSubscriberStore struct {
+	subs map[string]subscribers.Subscriber
+}
+
+func (m *mockSubscriberStore) All() map[string]subscribers.Subscriber {
+	return m.subs
+}
+
 func TestNotifier_DispatchesToBothPlatforms(t *testing.T) {
 	var apnsCalls, fcmCalls int
 	var mu sync.Mutex
@@ -49,10 +58,12 @@ func TestNotifier_DispatchesToBothPlatforms(t *testing.T) {
 
 	fcmTokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "tok",
 			"expires_in":   3600,
-		})
+		}); err != nil {
+			t.Errorf("encode token response: %v", err)
+		}
 	}))
 	defer fcmTokenServer.Close()
 
@@ -61,7 +72,9 @@ func TestNotifier_DispatchesToBothPlatforms(t *testing.T) {
 		fcmCalls++
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{}`))
+		if _, err := w.Write([]byte(`{}`)); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}))
 	defer fcmSendServer.Close()
 
@@ -75,8 +88,15 @@ func TestNotifier_DispatchesToBothPlatforms(t *testing.T) {
 		},
 	}
 
-	notifier := NewNotifier(apnsClient, fcmClient, store)
-	notifier.dispatch(100)
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw1": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+			"hw2": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(apnsClient, fcmClient, store, subs)
+	notifier.dispatch(100, 36.16, -86.78)
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -102,8 +122,14 @@ func TestNotifier_CleansUpExpiredAPNsToken(t *testing.T) {
 		},
 	}
 
-	notifier := NewNotifier(apnsClient, nil, store)
-	notifier.dispatch(200)
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw1": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(apnsClient, nil, store, subs)
+	notifier.dispatch(200, 36.16, -86.78)
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -115,16 +141,20 @@ func TestNotifier_CleansUpExpiredAPNsToken(t *testing.T) {
 func TestNotifier_CleansUpUnregisteredFCMToken(t *testing.T) {
 	fcmTokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "tok",
 			"expires_in":   3600,
-		})
+		}); err != nil {
+			t.Errorf("encode token response: %v", err)
+		}
 	}))
 	defer fcmTokenServer.Close()
 
 	fcmSendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error":{"details":[{"errorCode":"UNREGISTERED"}]}}`))
+		if _, err := w.Write([]byte(`{"error":{"details":[{"errorCode":"UNREGISTERED"}]}}`)); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}))
 	defer fcmSendServer.Close()
 
@@ -136,8 +166,14 @@ func TestNotifier_CleansUpUnregisteredFCMToken(t *testing.T) {
 		},
 	}
 
-	notifier := NewNotifier(nil, fcmClient, store)
-	notifier.dispatch(300)
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw2": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(nil, fcmClient, store, subs)
+	notifier.dispatch(300, 36.16, -86.78)
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -154,8 +190,15 @@ func TestNotifier_SkipsNilClients(t *testing.T) {
 		},
 	}
 
-	notifier := NewNotifier(nil, nil, store)
-	notifier.dispatch(400)
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw1": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+			"hw2": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(nil, nil, store, subs)
+	notifier.dispatch(400, 36.16, -86.78)
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -166,17 +209,17 @@ func TestNotifier_SkipsNilClients(t *testing.T) {
 
 func TestNotifier_EmptyTokenList(t *testing.T) {
 	store := &mockTokenStore{tokens: []db.DeviceToken{}}
-	notifier := NewNotifier(nil, nil, store)
-	notifier.dispatch(500)
+	notifier := NewNotifier(nil, nil, store, &mockSubscriberStore{})
+	notifier.dispatch(500, 36.16, -86.78)
 }
 
 func TestNotifier_NotifyAsyncDoesNotBlock(t *testing.T) {
 	store := &mockTokenStore{tokens: []db.DeviceToken{}}
-	notifier := NewNotifier(nil, nil, store)
+	notifier := NewNotifier(nil, nil, store, &mockSubscriberStore{})
 
 	done := make(chan struct{})
 	go func() {
-		notifier.NotifyAsync(600)
+		notifier.NotifyAsync(600, 36.16, -86.78)
 		close(done)
 	}()
 
@@ -187,11 +230,47 @@ func TestNotifier_NotifyAsyncDoesNotBlock(t *testing.T) {
 	}
 }
 
+func TestNotifier_FiltersBySubscriberDistance(t *testing.T) {
+	var apnsCalls int
+
+	apnsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apnsCalls++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apnsServer.Close()
+
+	apnsClient := newTestAPNsClient(t, apnsServer)
+
+	store := &mockTokenStore{
+		tokens: []db.DeviceToken{
+			{ID: 1, HardwareID: "nearby", Token: "nearby-ios", Platform: "ios"},
+			{ID: 2, HardwareID: "far-away", Token: "far-ios", Platform: "ios"},
+			{ID: 3, HardwareID: "no-sub", Token: "nosub-ios", Platform: "ios"},
+		},
+	}
+
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"nearby":   {Lat: 36.16, Lng: -86.78, RadiusMiles: 25},
+			"far-away": {Lat: 40.71, Lng: -74.00, RadiusMiles: 10},
+		},
+	}
+
+	notifier := NewNotifier(apnsClient, nil, store, subs)
+	notifier.dispatch(700, 36.20, -86.80)
+
+	if apnsCalls != 1 {
+		t.Fatalf("expected 1 APNs call for the nearby subscriber, got %d", apnsCalls)
+	}
+}
+
 func newTestAPNsClient(t *testing.T, server *httptest.Server) *APNsClient {
 	t.Helper()
 	_, pemData := generateTestP8Key(t)
 	keyFile := t.TempDir() + "/key.p8"
-	writeFile(keyFile, pemData)
+	if err := writeFile(keyFile, pemData); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
 
 	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
 	if err != nil {

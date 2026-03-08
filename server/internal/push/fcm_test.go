@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func generateTestRSAKey(t *testing.T) (*rsa.PrivateKey, string) {
@@ -34,7 +35,10 @@ func writeServiceAccount(t *testing.T, projectID, email, keyPEM string) string {
 		"client_email": email,
 		"private_key":  keyPEM,
 	}
-	data, _ := json.Marshal(sa)
+	data, err := json.Marshal(sa)
+	if err != nil {
+		t.Fatalf("marshal service account: %v", err)
+	}
 	path := filepath.Join(t.TempDir(), "sa.json")
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatalf("write service account: %v", err)
@@ -65,7 +69,9 @@ func TestNewFCMClient_MissingFile(t *testing.T) {
 func TestNewFCMClient_MissingFields(t *testing.T) {
 	data := `{"project_id":"","client_email":"","private_key":""}`
 	path := filepath.Join(t.TempDir(), "sa.json")
-	os.WriteFile(path, []byte(data), 0600)
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+		t.Fatalf("write service account: %v", err)
+	}
 
 	_, err := NewFCMClient(path)
 	if err == nil {
@@ -81,10 +87,12 @@ func TestFCMTokenExchange(t *testing.T) {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "test-access-token",
 			"expires_in":   3600,
-		})
+		}); err != nil {
+			t.Errorf("encode token response: %v", err)
+		}
 	}))
 	defer tokenServer.Close()
 
@@ -111,10 +119,12 @@ func TestFCMTokenCaching(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "cached-token",
 			"expires_in":   3600,
-		})
+		}); err != nil {
+			t.Errorf("encode token response: %v", err)
+		}
 	}))
 	defer tokenServer.Close()
 
@@ -125,8 +135,12 @@ func TestFCMTokenCaching(t *testing.T) {
 	}
 	client.tokenURL = tokenServer.URL
 
-	client.getAccessToken()
-	client.getAccessToken()
+	if _, err := client.getAccessToken(); err != nil {
+		t.Fatalf("first getAccessToken: %v", err)
+	}
+	if _, err := client.getAccessToken(); err != nil {
+		t.Fatalf("second getAccessToken: %v", err)
+	}
 
 	if callCount != 1 {
 		t.Errorf("expected 1 token exchange call (cached), got %d", callCount)
@@ -138,18 +152,24 @@ func TestFCMSend_Success(t *testing.T) {
 
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "access-tok",
 			"expires_in":   3600,
-		})
+		}); err != nil {
+			t.Errorf("encode token response: %v", err)
+		}
 	}))
 	defer tokenServer.Close()
 
 	var sentPayload map[string]interface{}
 	fcmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&sentPayload)
+		if err := json.NewDecoder(r.Body).Decode(&sentPayload); err != nil {
+			t.Errorf("decode send payload: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{}`))
+		if _, err := w.Write([]byte(`{}`)); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}))
 	defer fcmServer.Close()
 
@@ -191,16 +211,20 @@ func TestFCMSend_UnregisteredError(t *testing.T) {
 
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "tok",
 			"expires_in":   3600,
-		})
+		}); err != nil {
+			t.Errorf("encode token response: %v", err)
+		}
 	}))
 	defer tokenServer.Close()
 
 	fcmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error":{"details":[{"errorCode":"UNREGISTERED"}]}}`))
+		if _, err := w.Write([]byte(`{"error":{"details":[{"errorCode":"UNREGISTERED"}]}}`)); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}))
 	defer fcmServer.Close()
 
@@ -264,7 +288,7 @@ func TestRS256JWTClaims(t *testing.T) {
 		"scope": "https://www.googleapis.com/auth/firebase.messaging",
 		"aud":   "https://oauth2.googleapis.com/token",
 		"iat":   fixedTime.Unix(),
-		"exp":   fixedTime.Add(1 * 3600 * 1e9).Unix(),
+		"exp":   fixedTime.Add(time.Hour).Unix(),
 	}
 
 	token, err := signRS256JWT(key, claims)

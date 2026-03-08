@@ -37,6 +37,14 @@ type mockTargets struct {
 	hashes map[string]int64
 }
 
+type mockNotifier struct {
+	mu         sync.Mutex
+	sightingID int64
+	lat        float64
+	lng        float64
+	calls      int
+}
+
 func (m *mockTargets) Contains(hash string) bool {
 	_, ok := m.hashes[hash]
 	return ok
@@ -49,6 +57,15 @@ func (m *mockTargets) PlateID(hash string) (int64, bool) {
 
 func (m *mockTargets) Count() int {
 	return len(m.hashes)
+}
+
+func (m *mockNotifier) NotifyAsync(sightingID int64, lat, lng float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sightingID = sightingID
+	m.lat = lat
+	m.lng = lng
+	m.calls++
 }
 
 var validHash = "a3f8b2c1d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5061728394a5b6c7d8e9"
@@ -88,7 +105,8 @@ func TestPlatesHandler_ValidRequest(t *testing.T) {
 func TestPlatesHandler_MatchedTarget(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
-	h := PlatesHandler(recorder, targets, nil)
+	notifier := &mockNotifier{}
+	h := PlatesHandler(recorder, targets, notifier)
 
 	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"timestamp":"2026-03-08T14:30:00Z"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -125,6 +143,15 @@ func TestPlatesHandler_MatchedTarget(t *testing.T) {
 	expected := time.Date(2026, 3, 8, 14, 30, 0, 0, time.UTC)
 	if !s.SeenAt.Equal(expected) {
 		t.Errorf("expected seen_at %v, got %v", expected, s.SeenAt)
+	}
+	if notifier.calls != 1 {
+		t.Fatalf("expected notifier to be called once, got %d", notifier.calls)
+	}
+	if notifier.sightingID != 1 {
+		t.Errorf("expected notifier sighting_id 1, got %d", notifier.sightingID)
+	}
+	if notifier.lat != 31.7619 || notifier.lng != -106.485 {
+		t.Errorf("expected notifier coordinates (31.7619, -106.485), got (%f, %f)", notifier.lat, notifier.lng)
 	}
 }
 

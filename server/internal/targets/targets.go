@@ -61,18 +61,6 @@ func (s *Store) Records() []Record {
 	return out
 }
 
-// PlateText returns the plaintext plate for a given hash, if it exists.
-func (s *Store) PlateText(hash string) (string, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	for _, r := range s.records {
-		if r.Hash == hash {
-			return r.Plate, true
-		}
-	}
-	return "", false
-}
-
 func (s *Store) SetPlateIDs(mapping map[string]int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

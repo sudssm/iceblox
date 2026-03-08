@@ -101,14 +101,18 @@ func TestAPNsSendNotification_Success(t *testing.T) {
 
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHeaders = r.Header
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		if err := json.NewDecoder(r.Body).Decode(&receivedBody); err != nil {
+			t.Errorf("decode request body: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
 	_, pemData := generateTestP8Key(t)
 	keyFile := t.TempDir() + "/key.p8"
-	writeFile(keyFile, pemData)
+	if err := writeFile(keyFile, pemData); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
 
 	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
 	if err != nil {
@@ -158,7 +162,9 @@ func TestAPNsSendNotification_GoneReturnsExpiredError(t *testing.T) {
 
 	_, pemData := generateTestP8Key(t)
 	keyFile := t.TempDir() + "/key.p8"
-	writeFile(keyFile, pemData)
+	if err := writeFile(keyFile, pemData); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
 
 	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
 	if err != nil {

@@ -96,9 +96,10 @@ class AlertClient(
                 if (sightings != null && sightings.length() > 0) {
                     for (i in 0 until sightings.length()) {
                         val sighting = sightings.getJSONObject(i)
-                        val sightingId = sighting.optString("sighting_id", "unknown")
-                        val timestamp = sighting.optString("timestamp", "")
-                        DebugLog.d(TAG, "Nearby sighting: id=$sightingId ts=$timestamp")
+                        val latitude = sighting.optDouble("latitude")
+                        val longitude = sighting.optDouble("longitude")
+                        val seenAt = sighting.optString("seen_at", "")
+                        DebugLog.d(TAG, "Nearby sighting at ($latitude, $longitude) seen $seenAt")
                     }
                     nearbySightings += sightings.length()
                     DebugLog.d(TAG, "Total nearby sightings: $nearbySightings")
@@ -112,8 +113,6 @@ class AlertClient(
     companion object {
         private const val TAG = "AlertClient"
 
-        fun truncateGps(value: Double): Double {
-            return floor(value * 100) / 100
-        }
+        fun truncateGps(value: Double): Double = floor(value * 100) / 100
     }
 }

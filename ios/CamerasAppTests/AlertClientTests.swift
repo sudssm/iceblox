@@ -32,9 +32,9 @@ final class AlertClientTests: XCTestCase {
     // MARK: - Subscribe Request Encoding
 
     func testSubscribeRequestEncoding() throws {
-        let request = SubscribeRequest(latitude: 34.05, longitude: -118.24, radius_miles: 100)
+        let request = SubscribeRequest(latitude: 34.05, longitude: -118.24, radiusMiles: 100)
         let data = try JSONEncoder().encode(request)
-        let decoded = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let decoded = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
         XCTAssertEqual(decoded["latitude"] as? Double, 34.05)
         XCTAssertEqual(decoded["longitude"] as? Double, -118.24)
@@ -56,33 +56,33 @@ final class AlertClientTests: XCTestCase {
                 }
             ]
         }
-        """.data(using: .utf8)!
+        """
+        let response = try JSONDecoder().decode(SubscribeResponse.self, from: Data(json.utf8))
 
-        let response = try JSONDecoder().decode(SubscribeResponse.self, from: json)
         XCTAssertEqual(response.status, "ok")
-        XCTAssertEqual(response.recent_sightings?.count, 1)
-        XCTAssertEqual(response.recent_sightings?.first?.plate, "ABC1234")
-        XCTAssertEqual(response.recent_sightings?.first?.latitude, 34.05)
-        XCTAssertEqual(response.recent_sightings?.first?.longitude, -118.24)
+        XCTAssertEqual(response.recentSightings?.count, 1)
+        XCTAssertEqual(response.recentSightings?.first?.plate, "ABC1234")
+        XCTAssertEqual(response.recentSightings?.first?.latitude, 34.05)
+        XCTAssertEqual(response.recentSightings?.first?.longitude, -118.24)
     }
 
     func testSubscribeResponseWithoutSightings() throws {
         let json = """
         {"status": "ok"}
-        """.data(using: .utf8)!
+        """
+        let response = try JSONDecoder().decode(SubscribeResponse.self, from: Data(json.utf8))
 
-        let response = try JSONDecoder().decode(SubscribeResponse.self, from: json)
         XCTAssertEqual(response.status, "ok")
-        XCTAssertNil(response.recent_sightings)
+        XCTAssertNil(response.recentSightings)
     }
 
     func testSubscribeResponseEmptySightings() throws {
         let json = """
         {"status": "ok", "recent_sightings": []}
-        """.data(using: .utf8)!
+        """
+        let response = try JSONDecoder().decode(SubscribeResponse.self, from: Data(json.utf8))
 
-        let response = try JSONDecoder().decode(SubscribeResponse.self, from: json)
-        XCTAssertEqual(response.recent_sightings?.count, 0)
+        XCTAssertEqual(response.recentSightings?.count, 0)
     }
 
     // MARK: - AlertClient Initial State

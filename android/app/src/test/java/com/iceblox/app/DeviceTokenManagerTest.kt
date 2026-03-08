@@ -39,8 +39,9 @@ class DeviceTokenManagerTest {
     fun requestIncludesDeviceIdHeader() {
         val request = manager.buildRegistrationRequest("test-token", "android")
 
-        assertNotNull(request.header("X-Device-ID"))
-        assertTrue(request.header("X-Device-ID")!!.isNotEmpty())
+        val deviceId = request.header("X-Device-ID")
+        assertNotNull(deviceId)
+        assertTrue(deviceId?.isNotEmpty() == true)
     }
 
     @Test
@@ -68,7 +69,8 @@ class DeviceTokenManagerTest {
     fun requestBodyContainsTokenAndPlatform() {
         val request = manager.buildRegistrationRequest("fcm-token-123", "android")
         val buffer = okio.Buffer()
-        request.body!!.writeTo(buffer)
+        val requestBody = request.body ?: fail("expected non-null request body")
+        requestBody.writeTo(buffer)
         val body = buffer.readUtf8()
 
         assertTrue(body.contains("fcm-token-123"))

@@ -95,7 +95,7 @@ func main() {
 
 	var notifier handler.PushNotifier
 	if apnsClient != nil || fcmClient != nil {
-		notifier = push.NewNotifier(apnsClient, fcmClient, database)
+		notifier = push.NewNotifier(apnsClient, fcmClient, database, subStore)
 		log.Println("push notifier initialized")
 	}
 
