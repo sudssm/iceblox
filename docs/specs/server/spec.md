@@ -171,3 +171,57 @@ The server MUST expose a `GET /healthz` endpoint returning `200 OK` with:
 
 - [ ] Should the match log file be rotated (e.g., daily, by size)?
 - [ ] Should the server require an API key or shared secret from devices (beyond device_id)?
+
+---
+
+## Implementation Plan
+
+### Project Structure
+
+```
+server/
+├── cmd/
+│   └── server/
+│       └── main.go              # Entrypoint, flag parsing, signal handling
+├── internal/
+│   ├── config/
+│   │   └── config.go            # CLI flags, env vars, config struct
+│   ├── targets/
+│   │   └── targets.go           # Seed file loader, SIGHUP reload, hash lookup
+│   ├── matcher/
+│   │   └── matcher.go           # Constant-time hash comparison logic
+│   ├── ratelimit/
+│   │   └── ratelimit.go         # Per-device token bucket rate limiter
+│   ├── logger/
+│   │   └── logger.go            # JSONL file writer for matches, stdout summaries
+│   └── handler/
+│       ├── plates.go            # POST /api/v1/plates handler
+│       └── health.go            # GET /healthz handler
+├── targets.json                 # Example seed file
+├── go.mod
+└── go.sum
+```
+
+### Implementation Order
+
+Each step is independently testable. Later steps depend on earlier ones.
+
+| Step | Component | Spec Requirements | Description |
+|---|---|---|---|
+| 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
+| 2 | Config | — | Parse CLI flags: `--port`, `--targets-file`, `--log-file`; env var overrides |
+| 3 | Target loader | REQ-S-5 | Load seed JSON at startup, parse into in-memory hash set, SIGHUP reload |
+| 4 | Matcher | REQ-S-2 | Constant-time comparison against target set, return matched label or nil |
+| 5 | JSONL logger | REQ-S-3 | Append match entries to file; periodic non-match count to stdout |
+| 6 | Rate limiter | REQ-S-6 | Token bucket per device_id, 429 response with Retry-After |
+| 7 | Plates handler | REQ-S-1, REQ-S-4 | Parse batch request, validate fields, call matcher per plate, build response |
+| 8 | Health handler | REQ-S-7 | Return status + targets_loaded count |
+| 9 | Integration | All | Wire handlers into `http.ServeMux`, TLS config, graceful shutdown |
+| 10 | Tests | All | Unit tests per package, integration test with seed file + HTTP requests |
+
+### Key Technical Notes
+
+- **No external dependencies** for v1. Standard library only (`net/http`, `encoding/json`, `crypto/subtle`, `crypto/hmac`, `os/signal`).
+- **Seed file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → swaps the in-memory hash map atomically (`sync.RWMutex`).
+- **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
+- **Graceful shutdown**: `SIGTERM`/`SIGINT` → stop accepting new connections → flush pending log writes → exit.

@@ -344,3 +344,149 @@ None — all questions resolved. See `Resolved Decisions` above.
 
 - [`license_plate_detection.md`](./license_plate_detection.md) — Phase 1 model training data, pipeline, and validation criteria
 - [`../../future/yolo_model_improvements.md`](../../future/yolo_model_improvements.md) — Phase 2 (expanded data) and Phase 3 (custom collection) plans
+
+---
+
+## Implementation Plan — iOS
+
+### Architecture
+
+Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a background queue. Processing pipeline uses a serial `DispatchQueue` to avoid frame contention. Offline queue is backed by a lightweight SQLite store (via SwiftData or raw SQLite — no Core Data overhead needed for this simple schema).
+
+### Project Structure
+
+```
+ios/CamerasApp/
+├── CamerasApp.swift                    # App entry point, landscape lock
+├── Views/
+│   ├── CameraView.swift                # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
+│   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
+│   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS
+├── Camera/
+│   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
+│   └── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+├── Detection/
+│   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
+│   └── PlateOCR.swift                  # Vision VNRecognizeTextRequest on cropped regions
+├── Processing/
+│   ├── PlateNormalizer.swift           # Uppercase, strip, validate length
+│   ├── PlateHasher.swift              # HMAC-SHA256 via CryptoKit, pepper obfuscation
+│   └── DeduplicationCache.swift        # Time-windowed set of recently seen normalized plates
+├── Networking/
+│   ├── APIClient.swift                 # URLSession POST to server, batch construction
+│   ├── RetryManager.swift              # Exponential backoff, 429 handling
+│   └── ConnectivityMonitor.swift       # NWPathMonitor wrapper, triggers queue flush
+├── Persistence/
+│   ├── OfflineQueue.swift              # SQLite-backed FIFO queue (hash, timestamp, lat, lng)
+│   └── OfflineQueueEntry.swift         # Data model
+├── Location/
+│   └── LocationManager.swift           # CLLocationManager, permission handling, GPS warning
+├── Config/
+│   └── AppConfig.swift                 # Confidence thresholds, batch size, dedup window, server URL
+├── Models/
+│   └── plate_detector.mlmodel          # YOLOv8-nano Core ML model (bundled)
+└── Info.plist                          # Camera, location usage descriptions
+```
+
+### Implementation Order
+
+| Step | Component | Spec Requirements | Description |
+|---|---|---|---|
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Landscape lock, Info.plist permissions (camera, location), min iOS 16 |
+| 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
+| 3 | UI shell | UI spec | Full-screen camera preview + status bar with placeholder values |
+| 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
+| 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | Vision text recognition on cropped plate regions, normalization, validation |
+| 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper obfuscation, immediate plaintext discard |
+| 7 | Deduplication | REQ-M-8 | Time-windowed cache keyed by normalized text |
+| 8 | Frame processor | REQ-M-30 | Wire pipeline: frame → detect → OCR → normalize → dedup → hash → queue |
+| 9 | Offline queue | REQ-M-15 | SQLite persistence, max 1000 entries, oldest eviction |
+| 10 | Location | REQ-M-16 | CLLocationManager, attach GPS to each queue entry, "No GPS" warning |
+| 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-17, REQ-M-17a | Batch POST, match response parsing, exponential backoff, 429 handling |
+| 12 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, targets count |
+| 13 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
+| 14 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
+| 15 | Background/crash | REQ-M-50, REQ-M-51 | Stop capture on background, flush queue, resume on foreground |
+| 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
+
+### Key Technical Notes
+
+- **Frame processing**: Use `AVCaptureVideoDataOutputSampleBufferDelegate`. Process every Nth frame (skip frames to hit 10-15 fps detection) rather than every frame.
+- **Core ML threading**: Run inference on a dedicated `DispatchQueue` to keep the camera preview smooth.
+- **Memory**: Reuse `CVPixelBuffer` and avoid UIImage conversions in the hot path.
+- **Pepper obfuscation**: Store as two `[UInt8]` arrays XOR'd together. Reconstruct at runtime: `zip(a, b).map(^)`.
+
+---
+
+## Implementation Plan — Android
+
+### Architecture
+
+Single-activity Jetpack Compose app. CameraX provides the preview and frame analysis. TFLite runs on a background thread via `ImageAnalysis.Analyzer`. Room database for the offline queue. MVVM with a `MainViewModel` coordinating the pipeline.
+
+### Project Structure
+
+```
+android/app/src/main/java/com/cameras/app/
+├── MainActivity.kt                      # Activity, landscape lock, permission requests
+├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
+├── ui/
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar
+│   ├── StatusBar.kt                     # Online/offline, last detected, counts
+│   └── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS
+├── camera/
+│   ├── CameraSetup.kt                   # CameraX initialization, preview + analysis use cases
+│   └── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+├── detection/
+│   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
+│   └── PlateOCR.kt                      # ML Kit Text Recognition on cropped bitmaps
+├── processing/
+│   ├── PlateNormalizer.kt               # Uppercase, strip, validate
+│   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper obfuscation
+│   └── DeduplicationCache.kt            # Time-windowed set
+├── network/
+│   ├── ApiClient.kt                     # OkHttp/Retrofit, POST /api/v1/plates
+│   ├── RetryManager.kt                  # Exponential backoff, 429 handling
+│   └── ConnectivityMonitor.kt           # ConnectivityManager.NetworkCallback
+├── persistence/
+│   ├── OfflineQueueDatabase.kt          # Room database definition
+│   ├── OfflineQueueDao.kt               # Insert, query oldest, delete, count
+│   └── OfflineQueueEntry.kt             # Entity: hash, timestamp, latitude, longitude
+├── location/
+│   └── LocationProvider.kt              # FusedLocationProviderClient, permission handling
+├── config/
+│   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL
+└── assets/
+    └── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
+
+android/app/src/main/
+├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET
+```
+
+### Implementation Order
+
+| Step | Component | Spec Requirements | Description |
+|---|---|---|---|
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Landscape lock in manifest, permissions, min API 31 |
+| 2 | Camera capture | REQ-M-1, REQ-M-2 | CameraX preview + ImageAnalysis, 1080p resolution |
+| 3 | UI shell | UI spec | Compose: full-screen preview + status bar placeholders |
+| 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
+| 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ML Kit on cropped bitmaps, normalization, validation |
+| 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper obfuscation, plaintext discard |
+| 7 | Deduplication | REQ-M-8 | Time-windowed cache |
+| 8 | Frame analyzer | REQ-M-30 | Wire pipeline in ImageAnalysis.Analyzer callback |
+| 9 | Offline queue | REQ-M-15 | Room database, max 1000 entries, oldest eviction |
+| 10 | Location | REQ-M-16 | FusedLocationProviderClient, permission flow, GPS warning |
+| 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-17, REQ-M-17a | OkHttp POST, batch, match parsing, backoff, 429 |
+| 12 | Status bar | UI spec | Wire ViewModel state to Compose UI |
+| 13 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
+| 14 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
+| 15 | Background/crash | REQ-M-50, REQ-M-51 | Lifecycle-aware: stop analysis on STOPPED, flush queue, resume on STARTED |
+| 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
+
+### Key Technical Notes
+
+- **TFLite NMS**: YOLOv8 TFLite export may not include NMS. Implement post-processing: filter by confidence → non-max suppression on bounding boxes.
+- **CameraX frame skipping**: Use `ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)` — automatically drops frames when the analyzer is busy.
+- **Room threading**: Use `suspend` DAO functions with coroutines. Queue insert on the analyzer thread; batch reads on the network thread.
+- **Pepper obfuscation**: Same XOR approach as iOS. Store as two `ByteArray` constants, reconstruct at runtime.
