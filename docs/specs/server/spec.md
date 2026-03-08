@@ -235,6 +235,8 @@ server/
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
 ├── Makefile                     # setup, extract, db, run-server targets
+├── Dockerfile                   # Multi-stage build for Railway deployment
+├── railway.toml                 # Railway deployment config
 ├── go.mod
 └── go.sum
 ```
@@ -246,7 +248,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`; env var overrides |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`) |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -265,3 +267,12 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
 - **Graceful shutdown**: `SIGTERM`/`SIGINT` → stop accepting new connections → close DB connection pool → exit.
 - **Docker dev setup**: `make db` starts PostgreSQL 16 Alpine container. Default DSN: `postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable`.
+
+### Deployment
+
+The server deploys to [Railway](https://railway.com) via Docker.
+
+- **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
+- **Railway config** (`server/railway.toml`): Configures the build to use the Dockerfile, with a `/healthz` healthcheck and ON_FAILURE restart policy.
+- **CI** (`.github/workflows/deploy.yml`): On push to `main`, deploys to Railway using `railwayapp/deploy@v1` with the `RAILWAY_TOKEN` secret.
+- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. These override the CLI flag defaults.
