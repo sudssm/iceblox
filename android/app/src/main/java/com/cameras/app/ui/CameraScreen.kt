@@ -58,8 +58,8 @@ fun CameraScreen(
     val detectionFeed by viewModel.detectionFeed.collectAsState()
     val logEntries by DebugLog.entries.collectAsState()
 
-    val testBitmap = viewModel.testFrameFeeder?.currentBitmap?.collectAsState()
-    val testStatus = viewModel.testFrameFeeder?.status?.collectAsState()
+    val testBitmap by viewModel.testBitmap.collectAsState()
+    val testStatus by viewModel.testStatus.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
 
@@ -104,8 +104,8 @@ fun CameraScreen(
     Box(modifier = modifier.fillMaxSize().then(tripleTapModifier)) {
         if (isTestMode) {
             TestImagePreview(
-                bitmap = testBitmap?.value,
-                status = testStatus?.value ?: "",
+                bitmap = testBitmap,
+                status = testStatus,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
@@ -117,7 +117,7 @@ fun CameraScreen(
 
         if (isTestMode) {
             Text(
-                text = "TEST MODE ${testStatus?.value ?: ""}",
+                text = "TEST MODE $testStatus",
                 color = Color.Yellow,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
