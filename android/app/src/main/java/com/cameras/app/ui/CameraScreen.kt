@@ -46,6 +46,8 @@ fun CameraScreen(
     val queueDepth by viewModel.queueDepth.collectAsState()
     val fps by viewModel.frameAnalyzer.fps.collectAsState()
     val debugDetections by viewModel.frameAnalyzer.debugDetections.collectAsState()
+    val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
+    val detectionFeed by viewModel.detectionFeed.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
 
@@ -96,6 +98,8 @@ fun CameraScreen(
         if (BuildConfig.DEBUG && debugMode) {
             DebugOverlay(
                 detections = debugDetections,
+                rawDetections = rawDetections,
+                feedEntries = detectionFeed,
                 fps = fps,
                 queueDepth = queueDepth,
                 isConnected = isConnected

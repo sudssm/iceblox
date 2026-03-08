@@ -23,7 +23,8 @@ class ApiClient(
     context: Context,
     private val queueDao: OfflineQueueDao,
     private val retryManager: RetryManager,
-    private val onTargetMatched: () -> Unit
+    private val onTargetMatched: () -> Unit,
+    private val onPlateSent: (hash: String, matched: Boolean) -> Unit = { _, _ -> }
 ) {
     private val client = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -94,9 +95,11 @@ class ApiClient(
                             response.body?.string()?.let { body ->
                                 try {
                                     val responseJson = JSONObject(body)
-                                    if (responseJson.optBoolean("matched", false)) {
+                                    val matched = responseJson.optBoolean("matched", false)
+                                    if (matched) {
                                         onTargetMatched()
                                     }
+                                    onPlateSent(entry.plateHash, matched)
                                 } catch (_: Exception) {}
                             }
                         }

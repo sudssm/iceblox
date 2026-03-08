@@ -1,7 +1,7 @@
 package com.cameras.app.config
 
 object AppConfig {
-    const val SERVER_BASE_URL = "http://10.0.2.2:8080"
+    const val SERVER_BASE_URL = "http://127.0.0.1:8080"
     const val PLATES_ENDPOINT = "/api/v1/plates"
 
     const val DETECTION_CONFIDENCE_THRESHOLD = 0.7f
@@ -10,7 +10,7 @@ object AppConfig {
     const val MIN_PLATE_LENGTH = 2
     const val MAX_PLATE_LENGTH = 8
 
-    const val BATCH_SIZE = 10
+    const val BATCH_SIZE = 1
     const val BATCH_INTERVAL_MS = 30_000L
     const val MAX_QUEUE_SIZE = 1000
 

@@ -62,8 +62,8 @@ class PlateDetector(context: Context) {
             inputBuffer.putFloat((pixel and 0xFF) / 255.0f)
         }
 
-        // YOLOv8 output: [1, 5, 8400] for single class (4 bbox + 1 class confidence)
-        val outputArray = Array(1) { Array(NUM_OUTPUTS_PER_DETECTION) { FloatArray(NUM_DETECTIONS) } }
+        // YOLOv8 output: [1, NUM_CHANNELS, 8400] where NUM_CHANNELS = 4 bbox + num_classes
+        val outputArray = Array(1) { Array(NUM_CHANNELS) { FloatArray(NUM_DETECTIONS) } }
         interpreter.run(inputBuffer, outputArray)
 
         val rawDetections = parseDetections(
@@ -85,7 +85,11 @@ class PlateDetector(context: Context) {
         val scaleY = originalHeight / inputSize
 
         for (i in 0 until NUM_DETECTIONS) {
-            val confidence = output[4][i]
+            // Find max class confidence across all class channels (4..NUM_CHANNELS-1)
+            var confidence = 0f
+            for (c in 4 until NUM_CHANNELS) {
+                if (output[c][i] > confidence) confidence = output[c][i]
+            }
             if (confidence < confidenceThreshold) continue
 
             val cx = output[0][i]
@@ -116,7 +120,7 @@ class PlateDetector(context: Context) {
     companion object {
         private const val TAG = "PlateDetector"
         private const val NUM_DETECTIONS = 8400
-        private const val NUM_OUTPUTS_PER_DETECTION = 5 // 4 bbox + 1 class confidence
+        private const val NUM_CHANNELS = 84 // 4 bbox + 80 class scores (YOLOv8)
 
         fun nms(detections: List<DetectedPlate>, iouThreshold: Float = 0.45f): List<DetectedPlate> {
             if (detections.isEmpty()) return emptyList()
