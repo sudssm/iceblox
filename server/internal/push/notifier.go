@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"cameras/server/internal/db"
-	"cameras/server/internal/geo"
-	"cameras/server/internal/subscribers"
+	"iceblox/server/internal/db"
+	"iceblox/server/internal/geo"
+	"iceblox/server/internal/subscribers"
 )
 
 // TokenStore provides access to device tokens for push notifications.

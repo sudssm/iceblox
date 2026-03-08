@@ -1,5 +1,5 @@
 import XCTest
-@testable import CamerasApp
+@testable import IceBloxApp
 
 final class PushNotificationTests: XCTestCase {
 

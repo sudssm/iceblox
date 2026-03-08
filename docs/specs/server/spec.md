@@ -180,7 +180,7 @@ CREATE TABLE device_tokens (
 3. When a submitted hash matches, a sighting is inserted with the plate's ID, timestamp, GPS, and device ID
 4. Non-matching hashes are never written to the database
 
-**Connection:** Configured via `--db-dsn` flag. Default: `postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable`. Migrations run automatically on startup using `CREATE TABLE IF NOT EXISTS`.
+**Connection:** Configured via `--db-dsn` flag. Default: `postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable`. Migrations run automatically on startup using `CREATE TABLE IF NOT EXISTS`.
 
 ### REQ-S-9: Device Token Registration
 
@@ -465,7 +465,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
 - **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
 - **Graceful shutdown**: `SIGTERM`/`SIGINT` → stop accepting new connections → close DB connection pool → exit.
-- **Docker dev setup**: `make db` starts PostgreSQL 16 Alpine container. Default DSN: `postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable`.
+- **Docker dev setup**: `make db` starts PostgreSQL 16 Alpine container. Default DSN: `postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable`.
 - **APNs HTTP/2**: Go `net/http` automatically negotiates HTTP/2 over TLS via ALPN. Apple requires long-lived connections — use a single shared `http.Client` instance.
 - **APNs JWT**: ES256 (ECDSA P-256) signed with `.p8` key. Cache token for ~50 minutes. All signing uses Go stdlib (`crypto/ecdsa`, `crypto/sha256`, `encoding/pem`).
 - **FCM OAuth2**: RS256 JWT exchanged for access token at Google's token endpoint. Cache token until near expiry (~55 minutes). All signing uses Go stdlib (`crypto/rsa`, `crypto/sha256`).
@@ -481,5 +481,4 @@ The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
 - **Railway config** (`server/railway.toml`): Configures the build to use the Dockerfile, with a `/healthz` healthcheck and ON_FAILURE restart policy.
-- **CI** (`.github/workflows/deploy.yml`): On push to `main`, deploys to Railway using `railwayapp/deploy@v1` with the `RAILWAY_TOKEN` secret.
 - **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. These override the CLI flag defaults.

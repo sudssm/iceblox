@@ -3,8 +3,8 @@ PLATES_FILE := $(DATA_DIR)/plates.txt
 ZIP_FILE := $(DATA_DIR)/plates.zip
 TRACKER_URL := https://www.stopice.net/platetracker
 
-DB_DSN ?= postgres://$(USER)@localhost:5432/cameras?sslmode=disable
-TEST_DB ?= cameras_test
+DB_DSN ?= postgres://$(USER)@localhost:5432/iceblox?sslmode=disable
+TEST_DB ?= iceblox_test
 
 .PHONY: setup extract run-server run-test-server db db-stop test test-db lint clean
 
@@ -55,11 +55,11 @@ test-db:
 
 ## db: Start PostgreSQL in Docker for development
 db:
-	docker run --name cameras-postgres -e POSTGRES_DB=cameras -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=cameras -p 5432:5432 -d postgres:16-alpine || docker start cameras-postgres
+	docker run --name iceblox-postgres -e POSTGRES_DB=iceblox -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=iceblox -p 5432:5432 -d postgres:16-alpine || docker start iceblox-postgres
 
 ## db-stop: Stop PostgreSQL container
 db-stop:
-	docker stop cameras-postgres
+	docker stop iceblox-postgres
 
 ## clean: Remove downloaded data
 clean:

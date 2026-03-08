@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"cameras/server/internal/geo"
+	"iceblox/server/internal/geo"
 )
 
 type subscribeRequest struct {

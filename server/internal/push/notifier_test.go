@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"cameras/server/internal/db"
-	"cameras/server/internal/subscribers"
+	"iceblox/server/internal/db"
+	"iceblox/server/internal/subscribers"
 )
 
 type mockTokenStore struct {

@@ -45,7 +45,7 @@ Skip linters for areas with no code changes. If a linter fails, fix the issues a
 Look at the files changed in the diff from step 1 and run ONLY the test suites for areas that were modified. Run whichever apply in parallel:
 
 - If any `server/**` files changed: `cd server && go test ./...`
-- If any `ios/**` files changed: `cd ios && xcodebuild test -project CamerasApp.xcodeproj -scheme CamerasApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
+- If any `ios/**` files changed: `cd ios && xcodebuild test -project IceBloxApp.xcodeproj -scheme IceBloxApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
 - If any `android/**` files changed: `cd android && ./gradlew test --quiet 2>&1 | tail -20`
 
 Skip test suites for areas with no code changes. If a test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.
@@ -70,8 +70,8 @@ Push the branch to origin and create a pull request targeting `main` using `gh p
 
 After the PR is created, merge it using `gh pr merge --squash --delete-branch`. If merge fails (e.g., due to checks), report the error and stop.
 
-## Step 8: Update local main after merge
+## Step 9: Fast-forward local main after merge
 
-Run `git fetch origin main` and update the local main branch to match (same approach as Step 0). This ensures future branches and diffs start from the latest main.
+Run `git fetch origin main` and fast-forward local `main` to the merge commit (same approach as Step 0). This keeps future branches and diffs based on the latest `main`, and ensures the local repo state matches the merged PR. If this workspace cannot check out `main` because it is checked out in another worktree, update `main` in that worktree and then fast-forward the current branch to `origin/main` so this workspace also reflects the merged repo state.
 
 Report the merged PR URL when done.

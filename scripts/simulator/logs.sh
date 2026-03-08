@@ -28,11 +28,11 @@ if [ "$PLATFORM" = "android" ]; then
 elif [ "$PLATFORM" = "ios" ]; then
     if [ "$MODE" = "stream" ]; then
         xcrun simctl spawn booted log stream \
-            --predicate 'subsystem == "com.cameras.app" OR process == "CamerasApp"' \
+            --predicate 'subsystem == "com.iceblox.app" OR process == "IceBloxApp"' \
             --level info
     else
         xcrun simctl spawn booted log show \
-            --predicate 'subsystem == "com.cameras.app" OR process == "CamerasApp"' \
+            --predicate 'subsystem == "com.iceblox.app" OR process == "IceBloxApp"' \
             --last 1m \
             --style compact
     fi

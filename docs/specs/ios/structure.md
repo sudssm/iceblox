@@ -8,10 +8,10 @@ The iOS app is built with **SwiftUI** targeting **iOS 17+**, using the standard 
 
 ```
 ios/
-├── CamerasApp.xcodeproj/          # Xcode project file
+├── IceBloxApp.xcodeproj/          # Xcode project file
 │   └── project.pbxproj
-├── CamerasApp/
-│   ├── CamerasApp.swift           # App entry point (@main), landscape lock, splash→camera flow
+├── IceBloxApp/
+│   ├── IceBloxApp.swift           # App entry point (@main), landscape lock, splash→camera flow
 │   ├── ContentView.swift          # Root view, wires all managers
 │   ├── SplashScreenView.swift     # Splash screen with app name and Start Camera button
 │   ├── Assets.xcassets/           # Asset catalog (icons, colors)
@@ -51,8 +51,8 @@ ios/
 │   │   └── DebugLog.swift             # Singleton logger: ring buffer + @Published entries for UI
 │   └── Models/
 │       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
-└── CamerasAppTests/
-    ├── CamerasAppTests.swift          # Unit tests
+└── IceBloxAppTests/
+    ├── IceBloxAppTests.swift          # Unit tests
     ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
     └── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
 ```
@@ -81,17 +81,17 @@ ios/
 
 ```bash
 # Open in Xcode
-open ios/CamerasApp.xcodeproj
+open ios/IceBloxApp.xcodeproj
 
 # Build from command line
-xcodebuild -project ios/CamerasApp.xcodeproj \
-  -scheme CamerasApp \
+xcodebuild -project ios/IceBloxApp.xcodeproj \
+  -scheme IceBloxApp \
   -destination 'platform=iOS Simulator,name=iPhone 16' \
   build
 
 # Run tests
-xcodebuild -project ios/CamerasApp.xcodeproj \
-  -scheme CamerasApp \
+xcodebuild -project ios/IceBloxApp.xcodeproj \
+  -scheme IceBloxApp \
   -destination 'platform=iOS Simulator,name=iPhone 16' \
   test
 ```
