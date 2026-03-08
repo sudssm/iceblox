@@ -17,7 +17,7 @@ Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_p
 - [x] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
 - [x] Copy model artifacts to iOS and Android asset directories
 - [x] Create `models/Makefile` with build/export/deploy targets
-- [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
+- [x] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
 ---
 
