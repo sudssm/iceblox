@@ -12,11 +12,17 @@ import (
 	"sync"
 )
 
+type Record struct {
+	Plate string
+	Hash  string
+}
+
 type Store struct {
-	mu     sync.RWMutex
-	hashes map[string]bool
-	path   string
-	pepper []byte
+	mu      sync.RWMutex
+	hashes  map[string]int64 // hash → plate_id (0 until DB sync)
+	records []Record
+	path    string
+	pepper  []byte
 }
 
 func New(path string, pepper []byte) (*Store, error) {
@@ -30,13 +36,39 @@ func New(path string, pepper []byte) (*Store, error) {
 func (s *Store) Contains(hash string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.hashes[hash]
+	_, ok := s.hashes[hash]
+	return ok
+}
+
+func (s *Store) PlateID(hash string) (int64, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	id, ok := s.hashes[hash]
+	return id, ok
 }
 
 func (s *Store) Count() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.hashes)
+}
+
+func (s *Store) Records() []Record {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Record, len(s.records))
+	copy(out, s.records)
+	return out
+}
+
+func (s *Store) SetPlateIDs(mapping map[string]int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for hash, id := range mapping {
+		if _, ok := s.hashes[hash]; ok {
+			s.hashes[hash] = id
+		}
+	}
 }
 
 func (s *Store) Reload() error {
@@ -50,7 +82,8 @@ func (s *Store) load() error {
 	}
 	defer f.Close()
 
-	hashes := make(map[string]bool)
+	hashes := make(map[string]int64)
+	var records []Record
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		plate := normalize(scanner.Text())
@@ -58,7 +91,8 @@ func (s *Store) load() error {
 			continue
 		}
 		h := computeHMAC(plate, s.pepper)
-		hashes[h] = true
+		hashes[h] = 0
+		records = append(records, Record{Plate: plate, Hash: h})
 	}
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("read plates file: %w", err)
@@ -66,6 +100,7 @@ func (s *Store) load() error {
 
 	s.mu.Lock()
 	s.hashes = hashes
+	s.records = records
 	s.mu.Unlock()
 
 	log.Printf("loaded %d target plates from %s", len(hashes), s.path)

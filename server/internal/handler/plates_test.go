@@ -1,32 +1,50 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
-type memoryLogger struct {
-	mu      sync.Mutex
-	entries []PlateLogEntry
+type mockRecorder struct {
+	mu        sync.Mutex
+	sightings []mockSighting
 }
 
-func (m *memoryLogger) WriteEntry(entry PlateLogEntry) error {
+type mockSighting struct {
+	PlateID    int64
+	SeenAt     time.Time
+	Lat, Lng   float64
+	HardwareID string
+}
+
+func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.entries = append(m.entries, entry)
+	m.sightings = append(m.sightings, mockSighting{
+		PlateID: plateID, SeenAt: seenAt,
+		Lat: lat, Lng: lng, HardwareID: hardwareID,
+	})
 	return nil
 }
 
 type mockTargets struct {
-	hashes map[string]bool
+	hashes map[string]int64
 }
 
 func (m *mockTargets) Contains(hash string) bool {
-	return m.hashes[hash]
+	_, ok := m.hashes[hash]
+	return ok
+}
+
+func (m *mockTargets) PlateID(hash string) (int64, bool) {
+	id, ok := m.hashes[hash]
+	return id, ok
 }
 
 func (m *mockTargets) Count() int {
@@ -36,9 +54,9 @@ func (m *mockTargets) Count() int {
 var validHash = "a3f8b2c1d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5061728394a5b6c7d8e9"
 
 func TestPlatesHandler_ValidRequest(t *testing.T) {
-	logger := &memoryLogger{}
-	targets := &mockTargets{hashes: map[string]bool{}}
-	h := PlatesHandler(logger, targets)
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	h := PlatesHandler(recorder, targets)
 
 	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -60,24 +78,19 @@ func TestPlatesHandler_ValidRequest(t *testing.T) {
 		t.Fatalf("expected matched false for non-target hash")
 	}
 
-	if len(logger.entries) != 1 {
-		t.Fatalf("expected 1 log entry, got %d", len(logger.entries))
-	}
-	if logger.entries[0].PlateHash != validHash {
-		t.Errorf("logged hash mismatch")
-	}
-	if logger.entries[0].Latitude != 31.7619 {
-		t.Errorf("logged latitude mismatch")
+	if len(recorder.sightings) != 0 {
+		t.Fatalf("expected 0 sightings for non-match, got %d", len(recorder.sightings))
 	}
 }
 
 func TestPlatesHandler_MatchedTarget(t *testing.T) {
-	logger := &memoryLogger{}
-	targets := &mockTargets{hashes: map[string]bool{validHash: true}}
-	h := PlatesHandler(logger, targets)
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
+	h := PlatesHandler(recorder, targets)
 
-	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`
+	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"timestamp":"2026-03-08T14:30:00Z"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	req.Header.Set("X-Device-ID", "test-device-123")
 	w := httptest.NewRecorder()
 
 	h(w, req)
@@ -92,15 +105,52 @@ func TestPlatesHandler_MatchedTarget(t *testing.T) {
 		t.Fatalf("expected matched true for target hash")
 	}
 
-	if !logger.entries[0].Matched {
-		t.Errorf("expected logged entry to have matched=true")
+	if len(recorder.sightings) != 1 {
+		t.Fatalf("expected 1 sighting, got %d", len(recorder.sightings))
+	}
+	s := recorder.sightings[0]
+	if s.PlateID != 42 {
+		t.Errorf("expected plate_id 42, got %d", s.PlateID)
+	}
+	if s.Lat != 31.7619 {
+		t.Errorf("expected lat 31.7619, got %f", s.Lat)
+	}
+	if s.HardwareID != "test-device-123" {
+		t.Errorf("expected hardware_id test-device-123, got %s", s.HardwareID)
+	}
+	expected := time.Date(2026, 3, 8, 14, 30, 0, 0, time.UTC)
+	if !s.SeenAt.Equal(expected) {
+		t.Errorf("expected seen_at %v, got %v", expected, s.SeenAt)
+	}
+}
+
+func TestPlatesHandler_MatchedTarget_DefaultTimestamp(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{validHash: 1}}
+	h := PlatesHandler(recorder, targets)
+
+	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	before := time.Now().UTC()
+	h(w, req)
+
+	if len(recorder.sightings) != 1 {
+		t.Fatalf("expected 1 sighting, got %d", len(recorder.sightings))
+	}
+	if recorder.sightings[0].SeenAt.Before(before) {
+		t.Error("expected default timestamp to be current server time")
+	}
+	if recorder.sightings[0].HardwareID != "unknown" {
+		t.Errorf("expected default hardware_id 'unknown', got %s", recorder.sightings[0].HardwareID)
 	}
 }
 
 func TestPlatesHandler_MethodNotAllowed(t *testing.T) {
-	logger := &memoryLogger{}
-	targets := &mockTargets{hashes: map[string]bool{}}
-	h := PlatesHandler(logger, targets)
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	h := PlatesHandler(recorder, targets)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/plates", nil)
 	w := httptest.NewRecorder()
@@ -112,9 +162,9 @@ func TestPlatesHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestPlatesHandler_InvalidJSON(t *testing.T) {
-	logger := &memoryLogger{}
-	targets := &mockTargets{hashes: map[string]bool{}}
-	h := PlatesHandler(logger, targets)
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	h := PlatesHandler(recorder, targets)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader("not json"))
 	w := httptest.NewRecorder()
@@ -137,9 +187,9 @@ func TestPlatesHandler_InvalidHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := &memoryLogger{}
-			targets := &mockTargets{hashes: map[string]bool{}}
-			h := PlatesHandler(logger, targets)
+			recorder := &mockRecorder{}
+			targets := &mockTargets{hashes: map[string]int64{}}
+			h := PlatesHandler(recorder, targets)
 
 			body := `{"plate_hash":"` + tt.hash + `","latitude":31.0,"longitude":-106.0}`
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -167,9 +217,9 @@ func TestPlatesHandler_InvalidCoordinates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := &memoryLogger{}
-			targets := &mockTargets{hashes: map[string]bool{}}
-			h := PlatesHandler(logger, targets)
+			recorder := &mockRecorder{}
+			targets := &mockTargets{hashes: map[string]int64{}}
+			h := PlatesHandler(recorder, targets)
 
 			body, _ := json.Marshal(PlateRequest{
 				PlateHash: validHash,
@@ -200,9 +250,9 @@ func TestPlatesHandler_BoundaryCoordinates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := &memoryLogger{}
-			targets := &mockTargets{hashes: map[string]bool{}}
-			h := PlatesHandler(logger, targets)
+			recorder := &mockRecorder{}
+			targets := &mockTargets{hashes: map[string]int64{}}
+			h := PlatesHandler(recorder, targets)
 
 			body, _ := json.Marshal(PlateRequest{
 				PlateHash: validHash,

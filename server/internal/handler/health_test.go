@@ -8,7 +8,7 @@ import (
 )
 
 func TestHealthHandler_ReturnsOK(t *testing.T) {
-	targets := &mockTargets{hashes: map[string]bool{"a": true, "b": true}}
+	targets := &mockTargets{hashes: map[string]int64{"a": 1, "b": 2}}
 	h := HealthHandler(targets)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -30,7 +30,7 @@ func TestHealthHandler_ReturnsOK(t *testing.T) {
 }
 
 func TestHealthHandler_MethodNotAllowed(t *testing.T) {
-	targets := &mockTargets{hashes: map[string]bool{}}
+	targets := &mockTargets{hashes: map[string]int64{}}
 	h := HealthHandler(targets)
 
 	req := httptest.NewRequest(http.MethodPost, "/healthz", nil)
