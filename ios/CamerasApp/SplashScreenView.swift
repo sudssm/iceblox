@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SplashScreenView: View {
-    var onStartCamera: () -> Void
+    let onStartCamera: () -> Void
 
     var body: some View {
         ZStack {
