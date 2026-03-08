@@ -60,6 +60,33 @@ State transitions are driven by a callback from `APIClient` to `FrameProcessor`.
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+### DBG-4: Debug Log Panel
+
+The debug overlay MUST display a translucent log panel at the bottom of the screen showing recent device logs when debug mode is active.
+
+- Panel: `frame(maxHeight: 140)`, `background(.black.opacity(0.75))`, rounded top corners
+- Entries: 9pt monospace, `lineLimit(2)`, color-coded by level
+  - DEBUG: gray
+  - WARNING: yellow
+  - ERROR: red
+- Each entry formatted as: `HH:mm:ss D/Tag: message`
+- Auto-scrolls to show newest entries via `ScrollViewReader` + `onChange(of: entries.count)`
+- Backed by a `DebugLog` singleton (`final class DebugLog: ObservableObject`) with a 50-entry ring buffer
+- Thread safety: `NSLock` + main thread dispatch for `@Published` updates
+- `DebugLog.shared.d/w/e(tag, message)` methods print to console (in DEBUG) and append to ring buffer
+- All key pipeline events logged: model load, detection counts, upload results, connectivity changes
+
+#### Files
+
+- `ios/CamerasApp/Debug/DebugLog.swift` — Singleton with `LogEntry` model, `LogLevel` enum, ring buffer
+- `ios/CamerasApp/Views/DebugLogPanel.swift` — SwiftUI view with `ScrollViewReader` + `LazyVStack`
+- `ios/CamerasApp/Views/DebugOverlayView.swift` — Hosts `DebugLogPanel` in `VStack { Spacer(); panel }` at bottom
+- `ios/CamerasApp/ContentView.swift` — Passes `debugLog.entries` to overlay
+
+#### Build Notes
+
+- New Swift files must be added to `project.pbxproj` (PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase) for Xcode to compile them. The `xcodeproj` Ruby gem can automate this; without it, manual pbxproj editing is required — use UUIDs matching the existing format in the project file.
+
 ## Implementation Plan
 
 ### Step 1: Add raw detections and detection feed to FrameProcessor

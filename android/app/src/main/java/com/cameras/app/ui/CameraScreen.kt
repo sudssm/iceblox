@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cameras.app.BuildConfig
 import com.cameras.app.MainViewModel
 import com.cameras.app.camera.CameraPreview
+import com.cameras.app.debug.DebugLog
 
 @Composable
 fun CameraScreen(
@@ -48,6 +49,7 @@ fun CameraScreen(
     val debugDetections by viewModel.frameAnalyzer.debugDetections.collectAsState()
     val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
     val detectionFeed by viewModel.detectionFeed.collectAsState()
+    val logEntries by DebugLog.entries.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
 
@@ -102,7 +104,8 @@ fun CameraScreen(
                 feedEntries = detectionFeed,
                 fps = fps,
                 queueDepth = queueDepth,
-                isConnected = isConnected
+                isConnected = isConnected,
+                logEntries = logEntries
             )
         }
 

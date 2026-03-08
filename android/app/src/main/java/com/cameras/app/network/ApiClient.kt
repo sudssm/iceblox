@@ -2,7 +2,7 @@ package com.cameras.app.network
 
 import android.content.Context
 import android.provider.Settings
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import com.cameras.app.config.AppConfig
 import com.cameras.app.persistence.OfflineQueueDao
 import kotlinx.coroutines.CoroutineScope
@@ -108,7 +108,7 @@ class ApiClient(
                                     }
                                     onPlateSent(entry.plateHash, matched)
                                 } catch (e: Exception) {
-                                    Log.w(TAG, "Failed to parse response: ${e.message}")
+                                    DebugLog.w(TAG, "Failed to parse response: ${e.message}")
                                 }
                             }
                         }
@@ -125,7 +125,7 @@ class ApiClient(
                     }
                 }
             } catch (e: IOException) {
-                Log.w(TAG, "Upload failed: ${e.message}")
+                DebugLog.w(TAG, "Upload failed: ${e.message}")
                 val delayMs = retryManager.handleFailure() ?: return
                 delay(delayMs)
                 return

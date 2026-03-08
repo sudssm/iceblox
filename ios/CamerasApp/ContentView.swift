@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var frameProcessor: FrameProcessor?
     @State private var apiClient: APIClient?
     @State private var debugMode = false
+    @ObservedObject private var debugLog = DebugLog.shared
     @State private var lastStatusUpdate = Date()
 
     let statusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -48,7 +49,8 @@ struct ContentView: View {
                     feedEntries: fp.detectionFeed,
                     fps: fp.fps,
                     queueDepth: offlineQueue.count,
-                    isConnected: connectivityMonitor.isConnected
+                    isConnected: connectivityMonitor.isConnected,
+                    logEntries: debugLog.entries
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -72,6 +74,7 @@ struct ContentView: View {
             lastStatusUpdate = Date()
         }
         .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
             setupPipeline()
             cameraManager.checkPermissionAndStart()
             locationManager.requestPermission()

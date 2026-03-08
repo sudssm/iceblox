@@ -2,13 +2,19 @@ IMPORTANT: This skill must ONLY be invoked when the user has EXPLICITLY asked to
 
 You are finishing a feature branch and shipping it to main. Follow these steps exactly:
 
+## Step 0: Update local main
+
+Run `git fetch origin main` to get the latest remote main. Then update the local main branch: if main is checked out elsewhere (worktree), run `cd <main-worktree-path> && git pull origin main`; otherwise run `git branch -f main origin/main`. This ensures `git diff main...HEAD` only shows changes from this branch, not stale main drift.
+
 ## Step 1: Understand the changes
 
 Run `git diff main...HEAD` and `git log main..HEAD --oneline` to understand all changes on this branch compared to main.
 
 ## Step 2: Run review skills
 
-Launch TWO subagents in parallel using the Agent tool:
+First, count the diff size: `git diff main...HEAD | wc -l`. If the diff is **50 lines or fewer**, skip the review agents entirely — the change is small enough to review by eye. Proceed directly to Step 3.
+
+Otherwise, launch TWO subagents in parallel using the Agent tool:
 
 1. **PR Review agent** — use subagent_type `general-purpose` with this prompt:
    ```
@@ -53,5 +59,9 @@ Push the branch to origin and create a pull request targeting `main` using `gh p
 ## Step 7: Merge the PR
 
 After the PR is created, merge it using `gh pr merge --squash --delete-branch`. If merge fails (e.g., due to checks), report the error and stop.
+
+## Step 8: Update local main after merge
+
+Run `git fetch origin main` and update the local main branch to match (same approach as Step 0). This ensures future branches and diffs start from the latest main.
 
 Report the merged PR URL when done.

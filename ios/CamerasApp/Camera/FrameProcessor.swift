@@ -62,6 +62,7 @@ final class FrameProcessor: ObservableObject {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let detections = detector.detect(pixelBuffer: pixelBuffer)
+        DebugLog.shared.d("FrameProcessor", "\(detections.count) raw detections")
 
         let imageWidth = CVPixelBufferGetWidth(pixelBuffer)
         let imageHeight = CVPixelBufferGetHeight(pixelBuffer)
@@ -88,6 +89,7 @@ final class FrameProcessor: ObservableObject {
             if dedupCache.isDuplicate(normalized) { continue }
 
             let hash = PlateHasher.hash(normalizedPlate: normalized)
+            DebugLog.shared.d("FrameProcessor", "Plate: \(normalized) hash=\(String(hash.prefix(8)))")
 
             // Immediately discard normalized text from further use (privacy: REQ-M-13)
             let entry = OfflineQueueEntry(

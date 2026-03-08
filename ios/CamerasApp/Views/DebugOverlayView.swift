@@ -7,6 +7,7 @@ struct DebugOverlayView: View {
     let fps: Double
     let queueDepth: Int
     let isConnected: Bool
+    let logEntries: [LogEntry]
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -118,9 +119,10 @@ struct DebugOverlayView: View {
                 }
             }
 
-            // Debug mode label
             VStack {
                 Spacer()
+                DebugLogPanel(entries: logEntries)
+                    .padding(.horizontal, 8)
                 HStack {
                     Text("[DEBUG MODE]")
                         .font(.system(.caption, design: .monospaced))

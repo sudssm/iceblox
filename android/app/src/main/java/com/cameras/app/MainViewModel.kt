@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.os.PowerManager
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cameras.app.camera.FrameAnalyzer
@@ -140,14 +140,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun processTestImage() {
         val testFile = File(getApplication<Application>().filesDir, "test_plate.png")
         if (!testFile.exists()) return
-        if (BuildConfig.DEBUG) Log.d(TAG, "Found test image at ${testFile.absolutePath}")
+        DebugLog.d(TAG, "Found test image at ${testFile.absolutePath}")
         viewModelScope.launch(Dispatchers.IO) {
             val bitmap = BitmapFactory.decodeFile(testFile.absolutePath)
             if (bitmap != null) {
-                if (BuildConfig.DEBUG) Log.d(TAG, "Loaded test image: ${bitmap.width}x${bitmap.height}")
+                DebugLog.d(TAG, "Loaded test image: ${bitmap.width}x${bitmap.height}")
                 frameAnalyzer.analyzeBitmap(bitmap)
             } else {
-                Log.w(TAG, "Failed to decode test image")
+                DebugLog.w(TAG, "Failed to decode test image")
             }
         }
     }

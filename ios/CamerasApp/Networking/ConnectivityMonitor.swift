@@ -15,6 +15,7 @@ final class ConnectivityMonitor: ObservableObject {
             DispatchQueue.main.async {
                 let wasDisconnected = !(self?.isConnected ?? true)
                 self?.isConnected = nowConnected
+                DebugLog.shared.d("Connectivity", "Network: \(nowConnected ? "connected" : "disconnected")")
                 if wasDisconnected && nowConnected {
                     self?.onReconnect?()
                 }

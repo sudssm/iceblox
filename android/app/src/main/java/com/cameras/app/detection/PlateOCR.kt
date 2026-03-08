@@ -2,7 +2,7 @@ package com.cameras.app.detection
 
 import android.graphics.Bitmap
 import android.graphics.RectF
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -43,7 +43,7 @@ class PlateOCR {
                 } else null
             } else null
         } catch (e: Exception) {
-            Log.w(TAG, "OCR failed: ${e.message}")
+            DebugLog.w(TAG, "OCR failed: ${e.message}")
             null
         }
     }
