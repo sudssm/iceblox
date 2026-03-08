@@ -51,13 +51,14 @@ class PlateDetector(context: Context) {
 
     private fun loadModelFile(context: Context, filename: String): MappedByteBuffer {
         val fileDescriptor = context.assets.openFd(filename)
-        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
-        val fileChannel = inputStream.channel
-        return fileChannel.map(
-            FileChannel.MapMode.READ_ONLY,
-            fileDescriptor.startOffset,
-            fileDescriptor.declaredLength
-        )
+        return FileInputStream(fileDescriptor.fileDescriptor).use { inputStream ->
+            val fileChannel = inputStream.channel
+            fileChannel.map(
+                FileChannel.MapMode.READ_ONLY,
+                fileDescriptor.startOffset,
+                fileDescriptor.declaredLength
+            )
+        }
     }
 
     @Synchronized

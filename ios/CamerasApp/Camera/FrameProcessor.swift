@@ -43,6 +43,7 @@ final class FrameProcessor: ObservableObject {
     @Published var fps: Double = 0
 
     private var frameCount = 0
+    private var fpsFrameCount = 0
     private var fpsTimer: Date = Date()
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient) {
@@ -156,13 +157,15 @@ final class FrameProcessor: ObservableObject {
     }
 
     private func updateFPS() {
+        fpsFrameCount += 1
         let now = Date()
         let elapsed = now.timeIntervalSince(fpsTimer)
         if elapsed >= 1.0 {
+            let count = fpsFrameCount
             DispatchQueue.main.async { [weak self] in
-                self?.fps = Double(self?.frameCount ?? 0) / elapsed
+                self?.fps = Double(count) / elapsed
             }
-            frameCount = 0
+            fpsFrameCount = 0
             fpsTimer = now
         }
     }
