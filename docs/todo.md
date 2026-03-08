@@ -14,8 +14,8 @@ Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_p
 - [ ] Download license plate dataset (HuggingFace, 8,823 images)
 - [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
 - [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [ ] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
-- [ ] Copy trained model artifacts to iOS and Android asset directories (currently COCO placeholder)
+- [x] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
+- [x] Copy trained model artifacts to iOS and Android asset directories
 - [x] Create `models/Makefile` with build/export/deploy targets
 - [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
