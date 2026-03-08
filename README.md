@@ -17,6 +17,10 @@ The system is designed so that neither party learns what it shouldn't: the app n
 ```
 ├── android/          # Android app (Kotlin, Jetpack Compose)
 ├── ios/              # iOS app (Swift, SwiftUI)
+├── models/           # YOLO model training and export
+│   ├── Makefile      # setup, train, export, deploy
+│   ├── training/     # Scripts, venv, dataset (gitignored)
+│   └── exports/      # Exported .mlpackage / .tflite (gitignored)
 ├── server/           # Go server (plate matching, logging)
 │   ├── Makefile      # setup, extract, run-server
 │   └── data/         # Downloaded plate data (gitignored)
@@ -41,6 +45,36 @@ The system is designed so that neither party learns what it shouldn't: the app n
 | Build System | Gradle (Kotlin DSL) | Xcode / Swift Package Manager |
 
 ## Quick Start
+
+### Model Training
+
+**Prerequisites:** Python 3.11+
+
+The detection model is YOLOv8-nano fine-tuned on ~8,800 license plate images. All model commands run from the `models/` directory:
+
+```bash
+cd models
+
+# Full pipeline: setup → download dataset → train → export → deploy to apps
+make all
+
+# Or run steps individually:
+make setup            # Create Python venv, install dependencies
+make download         # Download HuggingFace dataset (8,823 images)
+make train            # Fine-tune YOLOv8-nano (~100 epochs, early stopping)
+make validate         # Check quality gates (mAP≥0.80, P≥0.80, R≥0.75)
+make export           # Export to Core ML (.mlpackage) and TFLite (.tflite)
+make deploy           # Copy models to ios/ and android/ app directories
+
+# Other useful targets:
+make train-resume     # Resume training from last checkpoint
+make evaluate         # Full evaluation with per-image stats and visuals
+make detect IMAGES=path/to/image.jpg   # Run detection on images
+make clean            # Remove training artifacts (keeps venv)
+make help             # Show all targets
+```
+
+Training uses MPS (Apple Silicon GPU) automatically when available, falling back to CUDA or CPU. The model typically converges within 20-30 epochs with early stopping (patience=20).
 
 ### iOS
 

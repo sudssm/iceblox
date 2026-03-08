@@ -32,3 +32,26 @@ server/data/
 *.swp
 *~
 .DS_Store
+
+# Model training
+__pycache__/
+models/training/.venv/
+models/training/dataset/
+models/training/runs/
+models/training/evaluation_results/
+models/training/evaluation_report.json
+models/training/detection_results/
+models/training/*.onnx
+models/training/*_saved_model/
+models/training/calibration_image_sample_data_*
+models/exports/
+models/CHANGELOG.md
+*.pt
+
+# Model files (large binaries — keep out of git except app bundles)
+*.tflite
+*.mlmodel
+*.mlpackage
+# Allow model files bundled in app directories
+!ios/CamerasApp/Models/**
+!android/app/src/main/assets/*.tflite
