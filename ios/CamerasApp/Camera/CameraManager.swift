@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 
 final class CameraManager: NSObject, ObservableObject {
     let session = AVCaptureSession()
@@ -8,6 +9,18 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var isRunning = false
     @Published var permissionGranted = false
     @Published var permissionDenied = false
+    @Published var isThrottled = false
+
+    var frameProcessor: FrameProcessor?
+
+    var currentFrameSkip: Int {
+        isThrottled ? AppConfig.throttledFrameSkipCount : AppConfig.frameSkipCount
+    }
+
+    override init() {
+        super.init()
+        observeThermalState()
+    }
 
     func checkPermissionAndStart() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -72,10 +85,21 @@ final class CameraManager: NSObject, ObservableObject {
 
         session.commitConfiguration()
     }
+
+    private func observeThermalState() {
+        NotificationCenter.default.addObserver(
+            forName: ProcessInfo.thermalStateDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            let state = ProcessInfo.processInfo.thermalState
+            self?.isThrottled = state == .serious || state == .critical
+        }
+    }
 }
 
 extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Frame captured — detection pipeline will be wired here in a future phase
+        frameProcessor?.processFrame(sampleBuffer, skipCount: currentFrameSkip)
     }
 }

@@ -2,7 +2,17 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var cameraManager = CameraManager()
+    @StateObject private var locationManager = LocationManager()
+    @StateObject private var connectivityMonitor = ConnectivityMonitor()
     @Environment(\.scenePhase) private var scenePhase
+
+    @State private var offlineQueue = OfflineQueue()
+    @State private var frameProcessor: FrameProcessor?
+    @State private var apiClient: APIClient?
+    @State private var debugMode = false
+    @State private var lastStatusUpdate = Date()
+
+    let statusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -29,10 +39,40 @@ struct ContentView: View {
                         .foregroundStyle(.white)
                     }
             }
-            StatusBarView()
+
+            #if DEBUG
+            if debugMode, let fp = frameProcessor {
+                DebugOverlayView(
+                    detections: fp.currentDetections,
+                    fps: fp.fps,
+                    queueDepth: offlineQueue.count,
+                    isConnected: connectivityMonitor.isConnected
+                )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
+            #endif
+
+            StatusBarView(
+                isConnected: connectivityMonitor.isConnected,
+                lastDetection: frameProcessor?.lastDetectionTime,
+                plateCount: frameProcessor?.totalPlates ?? 0,
+                targetCount: apiClient?.totalTargets ?? 0,
+                hasGPS: locationManager.hasPermission
+            )
+        }
+        #if DEBUG
+        .onTapGesture(count: 3) {
+            debugMode.toggle()
+        }
+        #endif
+        .onReceive(statusTimer) { _ in
+            lastStatusUpdate = Date()
         }
         .onAppear {
+            setupPipeline()
             cameraManager.checkPermissionAndStart()
+            locationManager.requestPermission()
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
@@ -40,11 +80,33 @@ struct ContentView: View {
                 if cameraManager.permissionGranted {
                     cameraManager.start()
                 }
+                apiClient?.startBatchTimer()
             case .background:
                 cameraManager.stop()
+                apiClient?.flushQueue()
+                apiClient?.stopBatchTimer()
             default:
                 break
             }
         }
+    }
+
+    private func setupPipeline() {
+        let client = APIClient(offlineQueue: offlineQueue)
+        let processor = FrameProcessor(
+            offlineQueue: offlineQueue,
+            locationManager: locationManager,
+            apiClient: client
+        )
+
+        connectivityMonitor.onReconnect = { [weak client] in
+            client?.flushQueue()
+        }
+
+        cameraManager.frameProcessor = processor
+        self.frameProcessor = processor
+        self.apiClient = client
+
+        client.startBatchTimer()
     }
 }
