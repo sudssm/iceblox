@@ -11,8 +11,9 @@ ios/
 ├── CamerasApp.xcodeproj/          # Xcode project file
 │   └── project.pbxproj
 ├── CamerasApp/
-│   ├── CamerasApp.swift           # App entry point (@main), orientation support
+│   ├── CamerasApp.swift           # App entry point (@main), landscape lock, splash→camera flow
 │   ├── ContentView.swift          # Root view, wires all managers
+│   ├── SplashScreenView.swift     # Splash screen with app name and Start Camera button
 │   ├── Assets.xcassets/           # Asset catalog (icons, colors)
 │   │   ├── AppIcon.appiconset/    # 1024×1024 app icon
 │   │   ├── AccentColor.colorset/
