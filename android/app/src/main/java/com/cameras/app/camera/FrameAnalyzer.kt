@@ -6,6 +6,7 @@ import android.graphics.RectF
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import com.cameras.app.BuildConfig
 import com.cameras.app.config.AppConfig
 import com.cameras.app.detection.PlateDetector
 import com.cameras.app.detection.PlateOCR
@@ -112,15 +113,15 @@ class FrameAnalyzer(
     fun analyzeBitmap(bitmap: Bitmap) {
         try {
             val detections = detector.detect(bitmap)
-            Log.d(TAG, "Test image: ${detections.size} detections")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Test image: ${detections.size} detections")
 
             val plates = detections.mapNotNull { detection ->
                 val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
                     ?: return@mapNotNull null
-                Log.d(TAG, "OCR result: ${ocrResult.text} (conf=${ocrResult.confidence})")
+                if (BuildConfig.DEBUG) Log.d(TAG, "OCR result: ${ocrResult.text} (conf=${ocrResult.confidence})")
                 val normalized = PlateNormalizer.normalize(ocrResult.text)
                     ?: return@mapNotNull null
-                Log.d(TAG, "Normalized: $normalized")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Normalized: $normalized")
 
                 ProcessedPlate(
                     normalizedText = normalized,
@@ -130,7 +131,7 @@ class FrameAnalyzer(
             }
 
             if (plates.isNotEmpty()) {
-                Log.d(TAG, "Test image produced ${plates.size} plates")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Test image produced ${plates.size} plates")
                 onPlatesDetected(plates)
             } else {
                 Log.w(TAG, "Test image: no plates extracted, injecting fallback")

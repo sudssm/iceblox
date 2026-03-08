@@ -1,4 +1,5 @@
 import CoreML
+import os.log
 import Vision
 import CoreImage
 
@@ -9,6 +10,7 @@ struct DetectedPlate {
 }
 
 final class PlateDetector {
+    private static let logger = Logger(subsystem: "com.cameras.app", category: "PlateDetector")
     private var visionModel: VNCoreMLModel?
     private let detectionQueue = DispatchQueue(label: "detection.inference")
 
@@ -19,7 +21,7 @@ final class PlateDetector {
             let model = try plate_detector(configuration: config).model
             visionModel = try VNCoreMLModel(for: model)
         } catch {
-            print("Failed to load plate detection model: \(error)")
+            Self.logger.error("Failed to load plate detection model: \(error.localizedDescription)")
         }
     }
 
