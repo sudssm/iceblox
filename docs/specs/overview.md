@@ -82,7 +82,7 @@ The data is published as a nightly-compiled ZIP archive containing XML with plat
 
 - **iOS**: Swift, AVFoundation, Vision framework, Core ML (YOLOv8-nano)
 - **Android**: Kotlin, CameraX, ML Kit, TFLite (YOLOv8-nano)
-- **Server**: Go (`net/http`), target plates from StopICE data (see `server/Makefile`)
+- **Server**: Go (`net/http`), PostgreSQL (via `pgx`), target plates from StopICE data (see `server/Makefile`)
 
 ## Future Components
 

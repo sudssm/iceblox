@@ -26,15 +26,16 @@ Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_p
 Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [x] **Project scaffold** — `go mod init`, directory structure, `main.go` with flag parsing
-- [x] **Config** — CLI flags (`--port`, `--log-file`)
-- [x] **Target loader** — Load `plates.txt` at startup, HMAC hash into in-memory set, SIGHUP reload (REQ-S-5)
+- [x] **Config** — CLI flags (`--port`, `--plates-file`, `--pepper`, `--db-dsn`)
+- [x] **Database** — PostgreSQL schema (`plates`, `sightings` tables), migrations, pgx driver (REQ-S-8)
+- [x] **Target loader** — Load `plates.txt`, compute HMAC hashes, seed DB, build in-memory hash→plate_id map, SIGHUP reload with DB re-seed (REQ-S-5)
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2)
-- [x] **JSONL logger** — Append plate submissions to file (REQ-S-3)
+- [x] **Sighting persistence** — Record matched plates to `sightings` table with plate_id, timestamp, GPS, hardware_id (REQ-S-3)
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6)
-- [x] **POST /api/v1/plates** — Parse single plate, validate, log, return ok (REQ-S-1)
+- [x] **POST /api/v1/plates** — Parse plate with timestamp and X-Device-ID header, validate, match, record sighting, return matched boolean (REQ-S-1, REQ-S-4)
 - [x] **GET /healthz** — Status endpoint (REQ-S-7)
-- [x] **Integration** — Wire handlers, graceful shutdown
-- [x] **Tests** — Unit tests for handler, logger, health; end-to-end smoke test
+- [x] **Integration** — Wire handlers, DB init, graceful shutdown
+- [x] **Tests** — Unit tests for handler, health; integration tests with mock recorder; DB integration tests for persistence
 - [x] **Example seed file** — `testdata/test_plates.txt` with known plates for E2E testing
 
 ---
