@@ -1,6 +1,7 @@
 package com.cameras.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,9 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +29,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cameras.app.BuildConfig
 import com.cameras.app.MainViewModel
 import com.cameras.app.camera.CameraPreview
 
@@ -37,6 +43,11 @@ fun CameraScreen(
     val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
     val isConnected by viewModel.connectivityMonitor.isConnected.collectAsState()
     val hasGps by viewModel.locationProvider.hasPermission.collectAsState()
+    val queueDepth by viewModel.queueDepth.collectAsState()
+    val fps by viewModel.frameAnalyzer.fps.collectAsState()
+    val debugDetections by viewModel.frameAnalyzer.debugDetections.collectAsState()
+
+    var debugMode by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -53,11 +64,43 @@ fun CameraScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    // Triple-tap detection for debug mode toggle (debug builds only)
+    val tripleTapModifier = if (BuildConfig.DEBUG) {
+        Modifier.pointerInput(Unit) {
+            var tapCount = 0
+            var lastTapTime = 0L
+            detectTapGestures {
+                val now = System.currentTimeMillis()
+                if (now - lastTapTime < 500) {
+                    tapCount++
+                } else {
+                    tapCount = 1
+                }
+                lastTapTime = now
+                if (tapCount >= 3) {
+                    debugMode = !debugMode
+                    tapCount = 0
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
+
+    Box(modifier = modifier.fillMaxSize().then(tripleTapModifier)) {
         CameraPreview(
             modifier = Modifier.fillMaxSize(),
             analyzer = viewModel.frameAnalyzer
         )
+
+        if (BuildConfig.DEBUG && debugMode) {
+            DebugOverlay(
+                detections = debugDetections,
+                fps = fps,
+                queueDepth = queueDepth,
+                isConnected = isConnected
+            )
+        }
 
         StatusBar(
             isConnected = isConnected,
