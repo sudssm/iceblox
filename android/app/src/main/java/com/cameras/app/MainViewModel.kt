@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cameras.app.camera.FrameAnalyzer
 import com.cameras.app.camera.ProcessedPlate
+import com.cameras.app.camera.TestFrameFeeder
 import com.cameras.app.config.AppConfig
 import com.cameras.app.debug.DebugLog
 import com.cameras.app.location.LocationProvider
@@ -57,6 +58,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onTargetMatched = { _targetCount.update { it + 1 } },
         onPlateSent = { hash, matched -> onPlateSent(hash, matched) }
     )
+
+    var testFrameFeeder: TestFrameFeeder? = null
+        private set
 
     val frameAnalyzer = FrameAnalyzer(application) { plates ->
         onPlatesDetected(plates)
@@ -132,10 +136,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _detectionFeed.value = current
     }
 
-    fun startPipeline() {
+    fun startPipeline(isTestMode: Boolean = false) {
         locationProvider.startUpdates()
         apiClient.startBatchTimer()
-        processTestImage()
+        if (isTestMode) {
+            startTestMode()
+        } else {
+            processTestImage()
+        }
+    }
+
+    private fun startTestMode() {
+        val app = getApplication<Application>()
+        val feeder = TestFrameFeeder(app, frameAnalyzer)
+        testFrameFeeder = feeder
+        if (feeder.loadImages()) {
+            DebugLog.d(TAG, "Test mode: ${feeder.imageCount} images loaded, starting feed")
+            feeder.start(viewModelScope)
+        } else {
+            DebugLog.w(TAG, "Test mode: no test images found")
+        }
     }
 
     private fun processTestImage() {
@@ -154,6 +174,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopPipeline() {
+        testFrameFeeder?.stop()
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()
         apiClient.flushQueue()
@@ -172,6 +193,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        testFrameFeeder?.stop()
         powerManager.removeThermalStatusListener(thermalListener)
         frameAnalyzer.close()
         locationProvider.stopUpdates()

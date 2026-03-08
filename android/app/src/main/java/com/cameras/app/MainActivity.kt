@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.cameras.app.config.AppConfig
+import com.cameras.app.debug.DebugLog
 import com.cameras.app.ui.CameraScreen
 import com.cameras.app.ui.SplashScreen
 import com.cameras.app.ui.theme.CamerasAppTheme
@@ -55,6 +57,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        val isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
+        if (isTestMode) {
+            DebugLog.d("MainActivity", "TEST MODE enabled via intent extra")
+            showCamera = true
+        }
+
         hasCameraPermission = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
@@ -68,8 +76,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             CamerasAppTheme {
                 if (showCamera) {
-                    if (hasCameraPermission) {
-                        CameraScreen()
+                    if (hasCameraPermission || isTestMode) {
+                        CameraScreen(isTestMode = isTestMode)
                     } else {
                         PermissionDeniedScreen(
                             onRequestPermission = {
