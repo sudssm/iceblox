@@ -2,6 +2,7 @@ package com.cameras.app.camera
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.RectF
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -49,8 +50,15 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
             updateFps()
 
-            val bitmap = imageProxy.toBitmap()
-            DebugLog.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}")
+            val rawBitmap = imageProxy.toBitmap()
+            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+            val bitmap = if (rotationDegrees != 0) {
+                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+            } else {
+                rawBitmap
+            }
+            DebugLog.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}, rotation=$rotationDegrees")
             val detections = detector.detect(bitmap)
             DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
 

@@ -1,10 +1,12 @@
 import AVFoundation
 import Combine
+import UIKit
 
 final class CameraManager: NSObject, ObservableObject {
     let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "camera.session")
     private let frameQueue = DispatchQueue(label: "camera.frames")
+    private var videoOutput: AVCaptureVideoDataOutput?
 
     @Published var isRunning = false
     @Published var permissionGranted = false
@@ -20,6 +22,7 @@ final class CameraManager: NSObject, ObservableObject {
     override init() {
         super.init()
         observeThermalState()
+        observeDeviceOrientation()
     }
 
     func checkPermissionAndStart() {
@@ -81,9 +84,48 @@ final class CameraManager: NSObject, ObservableObject {
 
         if session.canAddOutput(output) {
             session.addOutput(output)
+            videoOutput = output
+            updateVideoOrientation()
         }
 
         session.commitConfiguration()
+    }
+
+    private func updateVideoOrientation() {
+        guard let connection = videoOutput?.connection(with: .video) else { return }
+        let orientation = UIDevice.current.orientation
+        if #available(iOS 17.0, *) {
+            guard connection.isVideoRotationAngleSupported(0) else { return }
+            switch orientation {
+            case .portrait: connection.videoRotationAngle = 90
+            case .portraitUpsideDown: connection.videoRotationAngle = 270
+            case .landscapeLeft: connection.videoRotationAngle = 0
+            case .landscapeRight: connection.videoRotationAngle = 180
+            default: connection.videoRotationAngle = 0
+            }
+        } else {
+            guard connection.isVideoOrientationSupported else { return }
+            switch orientation {
+            case .portrait: connection.videoOrientation = .portrait
+            case .portraitUpsideDown: connection.videoOrientation = .portraitUpsideDown
+            case .landscapeLeft: connection.videoOrientation = .landscapeRight
+            case .landscapeRight: connection.videoOrientation = .landscapeLeft
+            default: connection.videoOrientation = .landscapeRight
+            }
+        }
+    }
+
+    private func observeDeviceOrientation() {
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.sessionQueue.async {
+                self?.updateVideoOrientation()
+            }
+        }
     }
 
     private func observeThermalState() {
