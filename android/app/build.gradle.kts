@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties().apply {
@@ -13,11 +14,11 @@ val localProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.cameras.app"
+    namespace = "com.iceblox.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cameras.app"
+        applicationId = "com.iceblox.app"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
@@ -88,6 +89,8 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
     implementation(libs.play.services.tasks)
     implementation(libs.play.services.location)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

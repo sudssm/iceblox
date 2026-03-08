@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "768114300078",
+    "project_id": "iceblox-d5cb0",
+    "storage_bucket": "iceblox-d5cb0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:768114300078:android:ba22823f06d215be85093f",
+        "android_client_info": {
+          "package_name": "com.iceblox.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0jDq2TnzR6hnu3p649zL6r11CHszqbgU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
