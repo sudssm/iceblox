@@ -18,6 +18,17 @@ type PlateRecord struct {
 	Hash  string
 }
 
+// Sighting represents a plate sighting joined with its plate text.
+type Sighting struct {
+	ID         int64
+	PlateID    int64
+	Plate      string
+	SeenAt     time.Time
+	Latitude   float64
+	Longitude  float64
+	HardwareID string
+}
+
 func Connect(dsn string) (*DB, error) {
 	pool, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -93,6 +104,35 @@ func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time
 	return err
 }
 
+// RecentSightings returns sightings within a bounding box since the given time,
+// joined with plate text. The bounding box is defined by min/max lat/lng for
+// fast SQL pre-filtering before precise haversine calculation in Go.
+func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]Sighting, error) {
+	rows, err := d.pool.QueryContext(ctx,
+		`SELECT s.id, s.plate_id, p.plate, s.seen_at, s.latitude, s.longitude, s.hardware_id
+		 FROM sightings s
+		 JOIN plates p ON p.id = s.plate_id
+		 WHERE s.seen_at >= $1
+		   AND s.latitude BETWEEN $2 AND $3
+		   AND s.longitude BETWEEN $4 AND $5
+		 ORDER BY s.seen_at DESC`,
+		since, minLat, maxLat, minLng, maxLng)
+	if err != nil {
+		return nil, fmt.Errorf("query recent sightings: %w", err)
+	}
+	defer rows.Close()
+
+	var sightings []Sighting
+	for rows.Next() {
+		var s Sighting
+		if err := rows.Scan(&s.ID, &s.PlateID, &s.Plate, &s.SeenAt, &s.Latitude, &s.Longitude, &s.HardwareID); err != nil {
+			return nil, fmt.Errorf("scan sighting: %w", err)
+		}
+		sightings = append(sightings, s)
+	}
+	return sightings, rows.Err()
+}
+
 // Pool returns the underlying *sql.DB for direct queries (e.g., in tests).
 func (d *DB) Pool() *sql.DB {
 	return d.pool
@@ -118,6 +158,16 @@ CREATE TABLE IF NOT EXISTS sightings (
 	hardware_id TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+	id SERIAL PRIMARY KEY,
+	hardware_id TEXT NOT NULL,
+	token TEXT NOT NULL,
+	platform TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	UNIQUE(hardware_id, platform)
+);
+
 CREATE INDEX IF NOT EXISTS idx_sightings_plate_id ON sightings(plate_id);
 CREATE INDEX IF NOT EXISTS idx_sightings_seen_at ON sightings(seen_at);
+CREATE INDEX IF NOT EXISTS idx_sightings_location ON sightings(latitude, longitude);
 `

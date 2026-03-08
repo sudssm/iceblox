@@ -13,6 +13,7 @@ import (
 
 	"cameras/server/internal/db"
 	"cameras/server/internal/handler"
+	"cameras/server/internal/subscribers"
 	"cameras/server/internal/targets"
 )
 
@@ -61,8 +62,12 @@ func main() {
 		log.Fatalf("failed to seed database: %v", err)
 	}
 
+	subStore := subscribers.New()
+	defer subStore.Close()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store))
+	mux.HandleFunc("/api/v1/subscribe", handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}))
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := &http.Server{
@@ -102,6 +107,28 @@ func main() {
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+// dbSightingQuerier adapts db.DB to the handler.SightingQuerier interface.
+type dbSightingQuerier struct {
+	db *db.DB
+}
+
+func (q *dbSightingQuerier) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]handler.SightingResult, error) {
+	rows, err := q.db.RecentSightings(ctx, minLat, maxLat, minLng, maxLng, since)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]handler.SightingResult, len(rows))
+	for i, r := range rows {
+		results[i] = handler.SightingResult{
+			Plate:     r.Plate,
+			Latitude:  r.Latitude,
+			Longitude: r.Longitude,
+			SeenAt:    r.SeenAt,
+		}
+	}
+	return results, nil
 }
 
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {
