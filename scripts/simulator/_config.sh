@@ -26,19 +26,6 @@ SCREENSHOT_DIR="/tmp"
 
 # --- Helpers ---
 
-# Check if this process has macOS Accessibility permissions (needed for CGEventPost).
-check_accessibility() {
-    local HAS_ACCESS
-    HAS_ACCESS=$(osascript -l JavaScript -e "ObjC.import('ApplicationServices'); $.AXIsProcessTrusted();" 2>/dev/null)
-    if [ "$HAS_ACCESS" != "true" ]; then
-        echo "Warning: Accessibility permissions not granted. iOS tap/type/swipe/navigate won't work."
-        echo "Grant access in: System Settings > Privacy & Security > Accessibility"
-        echo "Add the app running these scripts (e.g., Conductor or Terminal)."
-        return 1
-    fi
-    return 0
-}
-
 check_platform() {
     if [ "$1" != "ios" ] && [ "$1" != "android" ]; then
         echo "Usage: $(basename "$0") <ios|android> [args...]"
@@ -120,6 +107,7 @@ for screen_id, config in geom.items():
 }
 
 # Post a mouse click at absolute screen coordinates via CoreGraphics.
+# Requires macOS Accessibility permission for osascript.
 # Usage: ios_click <screen_x> <screen_y>
 ios_click() {
     local SX=$1
