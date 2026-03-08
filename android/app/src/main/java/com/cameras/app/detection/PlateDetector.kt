@@ -16,7 +16,7 @@ data class DetectedPlate(val boundingBox: RectF, val confidence: Float)
 class PlateDetector(context: Context) {
     private var interpreter: Interpreter? = null
     private val inputSize = 640
-    private val confidenceThreshold = 0.7f
+    private val confidenceThreshold = 0.5f
     private val iouThreshold = 0.45f
     private val inputBuffer: ByteBuffer =
         ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
@@ -105,6 +105,14 @@ class PlateDetector(context: Context) {
         val scaleY = originalHeight / inputSize
 
         var maxConfSeen = 0f
+        // Auto-detect coordinate format: scan cx/cy channels to distinguish normalized [0,1] vs pixel [0,640]
+        var maxCoord = 0f
+        for (i in 0 until NUM_DETECTIONS) {
+            maxCoord = maxOf(maxCoord, output[0][i], output[1][i])
+        }
+        val coordScale = if (maxCoord > 2.0f) 1.0f else inputSize.toFloat()
+        DebugLog.d(TAG, "coordScale=%.0f (maxCoord=%.2f)".format(coordScale, maxCoord))
+
         for (i in 0 until NUM_DETECTIONS) {
             // Find max class confidence across all class channels (4..numChannels-1)
             var confidence = 0f
@@ -114,10 +122,10 @@ class PlateDetector(context: Context) {
             if (confidence > maxConfSeen) maxConfSeen = confidence
             if (confidence < confidenceThreshold) continue
 
-            val cx = output[0][i]
-            val cy = output[1][i]
-            val w = output[2][i]
-            val h = output[3][i]
+            val cx = output[0][i] * coordScale
+            val cy = output[1][i] * coordScale
+            val w = output[2][i] * coordScale
+            val h = output[3][i] * coordScale
 
             val x1 = (cx - w / 2) * scaleX
             val y1 = (cy - h / 2) * scaleY

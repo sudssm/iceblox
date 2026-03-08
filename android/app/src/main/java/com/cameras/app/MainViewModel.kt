@@ -98,6 +98,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 enforceMaxQueueSize()
                 _queueDepth.value = queueDao.count()
+                apiClient.flushQueue()
             }
 
             _plateCount.update { it + 1 }
@@ -111,8 +112,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
         }
-
-        apiClient.checkAndFlush()
     }
 
     private fun onPlateSent(hash: String, matched: Boolean) {

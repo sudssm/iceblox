@@ -68,10 +68,14 @@ class ApiClient(
     }
 
     private suspend fun sendBatch() {
-        if (retryManager.isRateLimited) return
+        if (retryManager.isRateLimited) {
+            DebugLog.w(TAG, "sendBatch: rate limited, skipping")
+            return
+        }
 
         val entries = queueDao.dequeue(AppConfig.BATCH_SIZE)
         if (entries.isEmpty()) return
+        DebugLog.d(TAG, "sendBatch: sending ${entries.size} entries")
 
         val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.PLATES_ENDPOINT}"
         val mediaType = "application/json".toMediaType()
