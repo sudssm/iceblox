@@ -25,15 +25,27 @@ class PlateDetector(context: Context) {
         ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
             .order(ByteOrder.nativeOrder())
 
+    private var numChannels = NUM_CHANNELS
+
     init {
         try {
+            Log.d(TAG, "Loading model from assets...")
             val model = loadModelFile(context, "plate_detector.tflite")
+            Log.d(TAG, "Model file loaded, creating interpreter...")
             val options = Interpreter.Options().apply {
                 numThreads = 4
             }
-            interpreter = Interpreter(model, options)
+            val interp = Interpreter(model, options)
+            val outputShape = interp.getOutputTensor(0).shape()
+            Log.d(TAG, "Model output shape: ${outputShape.contentToString()}")
+            // YOLOv8 output is [1, num_channels, 8400]
+            if (outputShape.size >= 2) {
+                numChannels = outputShape[1]
+            }
+            Log.d(TAG, "Interpreter ready, numChannels=$numChannels (default was $NUM_CHANNELS)")
+            interpreter = interp
         } catch (e: Exception) {
-            Log.w(TAG, "Model not found in assets — detection disabled: ${e.message}")
+            Log.e(TAG, "Model init failed: ${e.javaClass.simpleName}: ${e.message}", e)
         }
     }
 
@@ -49,8 +61,13 @@ class PlateDetector(context: Context) {
         }
     }
 
+    @Synchronized
     fun detect(bitmap: Bitmap): List<DetectedPlate> {
-        val interpreter = this.interpreter ?: return emptyList()
+        val interp = this.interpreter
+        if (interp == null) {
+            Log.w(TAG, "detect called but interpreter is null")
+            return emptyList()
+        }
 
         val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
 
@@ -63,9 +80,9 @@ class PlateDetector(context: Context) {
             inputBuffer.putFloat((pixel and 0xFF) / 255.0f)
         }
 
-        // YOLOv8 output: [1, NUM_CHANNELS, 8400] where NUM_CHANNELS = 4 bbox + num_classes
-        val outputArray = Array(1) { Array(NUM_CHANNELS) { FloatArray(NUM_DETECTIONS) } }
-        interpreter.run(inputBuffer, outputArray)
+        // YOLOv8 output: [1, numChannels, 8400] where numChannels = 4 bbox + num_classes
+        val outputArray = Array(1) { Array(numChannels) { FloatArray(NUM_DETECTIONS) } }
+        interp.run(inputBuffer, outputArray)
 
         val rawDetections = parseDetections(
             outputArray[0],
@@ -73,7 +90,9 @@ class PlateDetector(context: Context) {
             bitmap.height.toFloat()
         )
 
-        return nms(rawDetections)
+        val result = nms(rawDetections)
+        Log.d(TAG, "detect: ${rawDetections.size} raw -> ${result.size} after NMS (channels=$numChannels, threshold=$confidenceThreshold)")
+        return result
     }
 
     private fun parseDetections(
@@ -85,12 +104,14 @@ class PlateDetector(context: Context) {
         val scaleX = originalWidth / inputSize
         val scaleY = originalHeight / inputSize
 
+        var maxConfSeen = 0f
         for (i in 0 until NUM_DETECTIONS) {
-            // Find max class confidence across all class channels (4..NUM_CHANNELS-1)
+            // Find max class confidence across all class channels (4..numChannels-1)
             var confidence = 0f
-            for (c in 4 until NUM_CHANNELS) {
+            for (c in 4 until numChannels) {
                 if (output[c][i] > confidence) confidence = output[c][i]
             }
+            if (confidence > maxConfSeen) maxConfSeen = confidence
             if (confidence < confidenceThreshold) continue
 
             val cx = output[0][i]
@@ -111,6 +132,7 @@ class PlateDetector(context: Context) {
             )
         }
 
+        Log.d(TAG, "parseDetections: maxConf=%.4f, passed=${detections.size}/$NUM_DETECTIONS".format(maxConfSeen))
         return detections
     }
 
@@ -121,7 +143,7 @@ class PlateDetector(context: Context) {
     companion object {
         private const val TAG = "PlateDetector"
         private const val NUM_DETECTIONS = 8400
-        private const val NUM_CHANNELS = 84 // 4 bbox + 80 class scores (YOLOv8)
+        private const val NUM_CHANNELS = 84 // fallback, overridden by model output shape
 
         fun nms(detections: List<DetectedPlate>, iouThreshold: Float = 0.45f): List<DetectedPlate> {
             if (detections.isEmpty()) return emptyList()

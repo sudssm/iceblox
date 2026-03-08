@@ -25,7 +25,7 @@ Each feed entry shows:
 State colors:
 - `QUEUED`: white text
 - `SENT`: green text
-- `MATCHED`: bright green/bold text
+- `MATCHED`: gold text (distinct from SENT green for visual clarity)
 
 The feed retains the most recent 20 entries and auto-scrolls to show newest entries at top.
 

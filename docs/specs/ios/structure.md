@@ -44,7 +44,7 @@ ios/
 │   ├── Config/
 │   │   └── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL
 │   └── Models/
-│       └── plate_detector.mlmodel     # YOLOv8-nano Core ML model (bundled at build time)
+│       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
 └── CamerasAppTests/
     └── CamerasAppTests.swift          # Unit tests
 ```
@@ -66,7 +66,7 @@ ios/
 | Min iOS Version | 17.0 | Access to latest APIs, reasonable device coverage |
 | Dependency Management | Swift Package Manager | Built into Xcode, no third-party tooling needed |
 | Offline Queue | Raw SQLite | Lightweight, no Core Data overhead for simple schema |
-| Detection Model | Core ML (YOLOv8-nano) | Platform-native, NMS baked into export |
+| Detection Model | Core ML `.mlpackage` (YOLOv8-nano) | Platform-native, NMS baked into export |
 | OCR | Vision framework | On-device, no network required |
 
 ## Build & Run
