@@ -2,6 +2,8 @@
 
 # Cameras
 
+[![Tests](https://github.com/sudssm/cameras/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/cameras/actions/workflows/test.yml)
+
 A privacy-focused license plate detection system for community watch against ICE vehicles. A dashboard-mounted mobile app continuously scans for license plates, OCRs them on-device, and sends hashed plate identifiers to a server for comparison against a target list of known ICE vehicle plates from [StopICE](https://www.stopice.net/platetracker/?data=1).
 
 The system is designed so that neither party learns what it shouldn't: the app never sees the target plates, and the server never sees non-target plates in plaintext.
