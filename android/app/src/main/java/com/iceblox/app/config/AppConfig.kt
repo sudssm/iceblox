@@ -7,6 +7,9 @@ object AppConfig {
 
     const val NOTIFICATION_CHANNEL_ID = "plate_alerts"
     const val NOTIFICATION_CHANNEL_NAME = "Plate Alerts"
+    const val BACKGROUND_CAPTURE_CHANNEL_ID = "background_capture"
+    const val BACKGROUND_CAPTURE_CHANNEL_NAME = "Background Capture"
+    const val BACKGROUND_CAPTURE_NOTIFICATION_ID = 2001
 
     const val DETECTION_CONFIDENCE_THRESHOLD = 0.7f
     const val OCR_CONFIDENCE_THRESHOLD = 0.6f
@@ -29,4 +32,7 @@ object AppConfig {
     const val TEST_IMAGES_ASSET_DIR = "test_images"
     const val TEST_IMAGES_RUNTIME_DIR = "test_images"
     const val INTENT_EXTRA_TEST_MODE = "test_mode"
+
+    const val ACTION_START_BACKGROUND_CAPTURE = "com.iceblox.app.action.START_BACKGROUND_CAPTURE"
+    const val ACTION_STOP_BACKGROUND_CAPTURE = "com.iceblox.app.action.STOP_BACKGROUND_CAPTURE"
 }

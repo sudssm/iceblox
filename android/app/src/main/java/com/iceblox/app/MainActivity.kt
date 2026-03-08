@@ -31,6 +31,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
+import com.iceblox.app.service.BackgroundCaptureService
 import com.iceblox.app.ui.CameraScreen
 import com.iceblox.app.ui.SplashScreen
 import com.iceblox.app.ui.theme.IceBloxTheme
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
     private var hasCameraPermission by mutableStateOf(false)
     private var hasLocationPermission by mutableStateOf(false)
     private var showCamera by mutableStateOf(false)
+    private var isTestMode = false
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -67,7 +69,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
+        isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
         if (isTestMode) {
             DebugLog.d("MainActivity", "TEST MODE enabled via intent extra")
         }
@@ -113,6 +115,25 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!isTestMode) {
+            BackgroundCaptureService.stop(this)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (
+            !isChangingConfigurations &&
+            !isTestMode &&
+            showCamera &&
+            hasCameraPermission
+        ) {
+            BackgroundCaptureService.start(this)
         }
     }
 
