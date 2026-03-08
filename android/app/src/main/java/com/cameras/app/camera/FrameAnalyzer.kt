@@ -6,6 +6,7 @@ import android.graphics.RectF
 import com.cameras.app.debug.DebugLog
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import com.cameras.app.BuildConfig
 import com.cameras.app.config.AppConfig
 import com.cameras.app.detection.PlateDetector
 import com.cameras.app.detection.PlateOCR

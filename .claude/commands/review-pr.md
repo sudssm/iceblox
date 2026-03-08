@@ -3,10 +3,11 @@ You are reviewing code changes on the current branch before shipping. Run `git d
 ## Review process
 
 1. Run `git diff main...HEAD` to get the full diff.
-2. For each changed file, apply the relevant language checklist below.
-3. If you find issues, fix them directly — do not just report them. Stage and commit fixes with a message like "Fix <issue> found in PR review".
-4. After fixing, re-run `git diff main...HEAD` to confirm the fixes are clean.
-5. When done, report a summary of what you reviewed and what you fixed (if anything).
+2. Review ONLY the code that appears in the diff hunks. Do not read or review unchanged parts of touched files. Pre-existing issues outside the diff are out of scope.
+3. For each diff hunk, apply the relevant language checklist below.
+4. If you find issues in the changed code, fix them directly — do not just report them. Stage and commit fixes with a message like "Fix <issue> found in PR review".
+5. After fixing, re-run `git diff main...HEAD` to confirm the fixes are clean.
+6. When done, report a summary of what you reviewed and what you fixed (if anything).
 
 ## Swift (iOS) — `ios/**/*.swift`
 

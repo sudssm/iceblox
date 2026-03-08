@@ -2,6 +2,7 @@ package com.cameras.app.camera
 
 import com.cameras.app.debug.DebugLog
 import androidx.camera.core.CameraSelector
+import com.cameras.app.BuildConfig
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector

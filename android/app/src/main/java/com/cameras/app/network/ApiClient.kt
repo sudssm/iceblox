@@ -107,7 +107,9 @@ class ApiClient(
                                         onTargetMatched()
                                     }
                                     onPlateSent(entry.plateHash, matched)
-                                } catch (_: Exception) {}
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to parse response: ${e.message}")
+                                }
                             }
                         }
                         429 -> {
