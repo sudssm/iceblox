@@ -8,7 +8,7 @@ The Android app is built with **Kotlin** and **Jetpack Compose** targeting **API
 
 ```
 android/
-├── build.gradle.kts               # Root build file (KSP plugin)
+├── build.gradle.kts               # Root build file (KSP, Google Services plugins)
 ├── settings.gradle.kts             # Project settings & dependency resolution
 ├── gradle.properties               # Gradle configuration
 ├── gradle/
@@ -20,26 +20,29 @@ android/
 ├── gradlew.bat                     # Gradle wrapper (windows)
 └── app/
     ├── build.gradle.kts            # App module build file
+    ├── google-services.json        # Firebase configuration (FCM)
     └── src/
         ├── main/
         │   ├── AndroidManifest.xml
-        │   ├── java/com/cameras/app/
-        │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow
+        │   ├── java/com/iceblox/app/
+        │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow, notification channel
         │   │   ├── MainViewModel.kt        # Pipeline state coordinator
         │   │   ├── camera/
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
         │   │   │   └── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
         │   │   ├── config/
-        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL
+        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config
         │   │   ├── detection/
         │   │   │   ├── PlateDetector.kt    # TFLite interpreter, YOLOv8-nano inference, NMS
         │   │   │   └── PlateOCR.kt         # ML Kit Text Recognition on cropped bitmaps
         │   │   ├── location/
         │   │   │   └── LocationProvider.kt # FusedLocationProviderClient, permission handling
         │   │   ├── network/
-        │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates, batch, 429 handling
+        │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates + /api/v1/devices, batch, 429 handling
         │   │   │   ├── ConnectivityMonitor.kt # ConnectivityManager.NetworkCallback
         │   │   │   └── RetryManager.kt     # Exponential backoff, rate limit tracking
+        │   │   ├── notification/
+        │   │   │   └── PushNotificationService.kt # FirebaseMessagingService: onNewToken, onMessageReceived
         │   │   ├── persistence/
         │   │   │   ├── OfflineQueueDao.kt  # Room DAO: insert, dequeue, delete, count
         │   │   │   ├── OfflineQueueDatabase.kt # Room database singleton
@@ -66,8 +69,8 @@ android/
         │       │   └── themes.xml
         │       └── drawable/
         └── test/
-            └── java/com/cameras/app/
-                └── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry
+            └── java/com/iceblox/app/
+                └── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry, AppConfig
 ```
 
 ## Architecture
@@ -132,7 +135,7 @@ keytool -genkeypair -v \
   -alias cameras-release \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -storepass <password> -keypass <password> \
-  -dname "CN=CamerasApp, O=Cameras, L=, ST=, C=US"
+  -dname "CN=IceBlox, O=IceBlox, L=, ST=, C=US"
 ```
 
 The keystore file (`release.keystore`) is gitignored. Store it and its credentials securely outside of version control.
@@ -176,9 +179,12 @@ Core dependencies (managed via version catalog in `gradle/libs.versions.toml`):
 - `androidx.room:room-runtime` + `room-ktx` (2.6.1) — SQLite offline queue persistence
 - `com.squareup.okhttp3:okhttp` (4.12.0) — HTTP client for server communication
 - `com.google.android.gms:play-services-location` (21.3.0) — Fused location provider
+- `com.google.firebase:firebase-bom` (33.7.0) — Firebase Bill of Materials
+- `com.google.firebase:firebase-messaging` — Firebase Cloud Messaging for push notifications
 
 Build plugins:
 - KSP (2.1.0-1.0.29) — Kotlin Symbol Processing for Room annotation processing
+- Google Services (4.4.2) — Firebase/Google services configuration processing
 
 Testing:
 - `junit` — Unit testing

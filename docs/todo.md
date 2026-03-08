@@ -107,9 +107,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Project Setup
 - [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
 - [x] **Keep screen on** — `FLAG_KEEP_SCREEN_ON` in MainActivity `onCreate` (REQ-M-4a)
-- [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET
+- [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET, POST_NOTIFICATIONS
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)
-- [x] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite, Play Services Location
+- [x] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite, Play Services Location, Firebase Messaging
 
 ### Camera
 - [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)

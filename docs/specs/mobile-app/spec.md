@@ -501,8 +501,8 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 ### Project Structure
 
 ```
-android/app/src/main/java/com/cameras/app/
-├── MainActivity.kt                      # Activity, landscape lock, permission requests, splash→camera flow
+android/app/src/main/java/com/iceblox/app/
+├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
 │   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
@@ -520,9 +520,11 @@ android/app/src/main/java/com/cameras/app/
 │   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper obfuscation
 │   └── DeduplicationCache.kt            # Time-windowed set
 ├── network/
-│   ├── ApiClient.kt                     # OkHttp/Retrofit, POST /api/v1/plates
+│   ├── ApiClient.kt                     # OkHttp, POST /api/v1/plates + /api/v1/devices
 │   ├── RetryManager.kt                  # Exponential backoff, 429 handling
 │   └── ConnectivityMonitor.kt           # ConnectivityManager.NetworkCallback
+├── notification/
+│   └── PushNotificationService.kt       # FirebaseMessagingService: onNewToken, onMessageReceived
 ├── persistence/
 │   ├── OfflineQueueDatabase.kt          # Room database definition
 │   ├── OfflineQueueDao.kt               # Insert, query oldest, delete, count
@@ -530,12 +532,12 @@ android/app/src/main/java/com/cameras/app/
 ├── location/
 │   └── LocationProvider.kt              # FusedLocationProviderClient, permission handling
 ├── config/
-│   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL
+│   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL, notification config
 └── assets/
     └── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
 
 android/app/src/main/
-├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET
+├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET, POST_NOTIFICATIONS
 ```
 
 ### Implementation Order
