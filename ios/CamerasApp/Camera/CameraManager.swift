@@ -13,7 +13,18 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var permissionDenied = false
     @Published var isThrottled = false
 
-    var frameProcessor: FrameProcessor?
+    #if targetEnvironment(simulator)
+    private var simulatorCamera: SimulatorCamera?
+    @Published var simulatorImage: UIImage?
+    #endif
+
+    var frameProcessor: FrameProcessor? {
+        didSet {
+            #if targetEnvironment(simulator)
+            simulatorCamera?.frameProcessor = frameProcessor
+            #endif
+        }
+    }
 
     var currentFrameSkip: Int {
         isThrottled ? AppConfig.throttledFrameSkipCount : AppConfig.frameSkipCount
@@ -21,11 +32,21 @@ final class CameraManager: NSObject, ObservableObject {
 
     override init() {
         super.init()
+        #if targetEnvironment(simulator)
+        let simCam = SimulatorCamera()
+        simulatorCamera = simCam
+        simulatorImage = simCam.previewImage
+        #else
         observeThermalState()
         observeDeviceOrientation()
+        #endif
     }
 
     func checkPermissionAndStart() {
+        #if targetEnvironment(simulator)
+        permissionGranted = true
+        start()
+        #else
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             permissionGranted = true
@@ -43,23 +64,35 @@ final class CameraManager: NSObject, ObservableObject {
         default:
             permissionDenied = true
         }
+        #endif
     }
 
     func start() {
+        #if targetEnvironment(simulator)
+        simulatorCamera?.frameProcessor = frameProcessor
+        simulatorCamera?.start()
+        DispatchQueue.main.async { self.isRunning = true }
+        #else
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.configureSession()
             self.session.startRunning()
             DispatchQueue.main.async { self.isRunning = true }
         }
+        #endif
     }
 
     func stop() {
+        #if targetEnvironment(simulator)
+        simulatorCamera?.stop()
+        DispatchQueue.main.async { self.isRunning = false }
+        #else
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.session.stopRunning()
             DispatchQueue.main.async { self.isRunning = false }
         }
+        #endif
     }
 
     private func configureSession() {
