@@ -418,7 +418,8 @@ ios/CamerasApp/
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
 │   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   └── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+│   ├── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+│   └── SimulatorCamera.swift           # Timer-driven frame generator for simulator testing (simulator-only)
 ├── Detection/
 │   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
 │   └── PlateOCR.swift                  # Vision VNRecognizeTextRequest on cropped regions

@@ -26,7 +26,8 @@ ios/
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   │   └── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue
+│   │   ├── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue
+│   │   └── SimulatorCamera.swift      # Timer-driven frame generator for simulator testing (simulator-only)
 │   ├── Detection/
 │   │   ├── PlateDetector.swift        # Core ML inference, bounding box extraction
 │   │   └── PlateOCR.swift             # Vision VNRecognizeTextRequest on cropped regions
@@ -109,7 +110,7 @@ Prerequisites for App Store submission:
 | Topic | Detail |
 |-------|--------|
 | **Adding new files** | New `.swift` files must be added to `project.pbxproj` in four places: PBXBuildFile, PBXFileReference, PBXGroup (for directory membership), and PBXSourcesBuildPhase. Without this, Xcode compiles but cannot find the new types. The `xcodeproj` Ruby gem can automate this; otherwise manual editing with UUIDs matching the project's existing format is required. |
-| **Simulator camera** | iOS Simulator has no rear camera — `AVCaptureSession` errors with code `-12782`. Use a physical device for camera testing. Grant camera permission automatically with `xcrun simctl privacy <device> grant camera com.cameras.app`. |
+| **Simulator camera** | iOS Simulator has no rear camera — `AVCaptureSession` errors with code `-12782`. `SimulatorCamera.swift` provides a timer-driven frame generator (gated by `#if targetEnvironment(simulator)`) that feeds a bundled or placeholder image through the pipeline at ~10 FPS. To test with real plate images, add a `simulator_frame` image to Assets.xcassets. |
 | **Thread safety for @Published** | `@Published` properties must be updated on the main thread. Use `NSLock` for thread-safe buffer mutation, then dispatch to main for the `@Published` assignment. Check `Thread.isMainThread` to avoid redundant dispatches. |
 | **Debug gating** | Use `#if DEBUG` to gate debug-only code (logging to console, debug UI). This strips debug code from release builds at compile time. |
 | **Server URL** | `AppConfig.swift` hardcodes `http://localhost:8080`. Works on Simulator (shared network namespace) but physical devices need the host machine's LAN IP. |
