@@ -47,3 +47,10 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
+
+---
+
+## Productionizing
+
+- [ ] **Change the pepper** — Replace `default-pepper-change-me` with a secure random value (`openssl rand -hex 32`). Update server env var (`PEPPER`), iOS `PlateHasher.swift` pepperPartA/B, and Android `PlateHasher.kt` pepperPartA/B to match.
+- [ ] **Enable SSL** — Configure TLS for the server. Railway provides automatic HTTPS via its proxy, but update mobile app `SERVER_BASE_URL` to use `https://` and ensure `DATABASE_URL` uses `sslmode=require` for the Postgres connection.
