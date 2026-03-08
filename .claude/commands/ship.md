@@ -24,15 +24,15 @@ Wait for both agents to complete. Review their reports. If either agent made com
 
 If either agent reports unfixable issues (e.g., a spec ambiguity that needs human input), STOP and report the issue to the user. Do not proceed until resolved.
 
-## Step 3: Run all tests
+## Step 3: Run relevant tests
 
-Run these test suites and verify they pass:
+Look at the files changed in the diff from step 1 and run ONLY the test suites for areas that were modified. Run whichever apply in parallel:
 
-- **Go server**: `cd server && go test ./...`
-- **iOS**: `cd ios && xcodebuild test -project CamerasApp.xcodeproj -scheme CamerasApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
-- **Android**: `cd android && ./gradlew test --quiet 2>&1 | tail -20`
+- If any `server/**` files changed: `cd server && go test ./...`
+- If any `ios/**` files changed: `cd ios && xcodebuild test -project CamerasApp.xcodeproj -scheme CamerasApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
+- If any `android/**` files changed: `cd android && ./gradlew test --quiet 2>&1 | tail -20`
 
-Run all three in parallel. If any test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.
+Skip test suites for areas with no code changes. If a test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.
 
 ## Step 4: Commit remaining code changes
 
