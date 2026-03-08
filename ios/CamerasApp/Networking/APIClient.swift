@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import UIKit
 
@@ -10,7 +11,7 @@ struct PlateSubmission: Codable {
 
 struct PlateResponse: Codable {
     let status: String
-    let matched: Bool
+    let matched: Bool?
 }
 
 final class APIClient {
@@ -88,7 +89,7 @@ final class APIClient {
             session.dataTask(with: request) { [weak self] data, response, error in
                 defer { semaphore.signal() }
 
-                if let error {
+                if error != nil {
                     if let delay = self?.retryManager.handleFailure() {
                         Thread.sleep(forTimeInterval: delay)
                     }
@@ -109,7 +110,7 @@ final class APIClient {
 
                     if let data,
                        let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data),
-                       plateResponse.matched {
+                       plateResponse.matched == true {
                         DispatchQueue.main.async {
                             self?.totalTargets += 1
                         }

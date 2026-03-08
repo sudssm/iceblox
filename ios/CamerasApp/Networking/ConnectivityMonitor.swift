@@ -1,3 +1,4 @@
+import Combine
 import Network
 
 final class ConnectivityMonitor: ObservableObject {

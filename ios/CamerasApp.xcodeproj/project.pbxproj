@@ -29,6 +29,7 @@
 		A1B2C3D4E5F60001000032 /* FrameProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000032 /* FrameProcessor.swift */; };
 		A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */; };
 		A1B2C3D4E5F60001000034 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */; };
+		A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +67,7 @@
 		A1B2C3D4E5F60002000032 /* FrameProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameProcessor.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugOverlayView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = plate_detector.mlpackage; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,6 +111,7 @@
 				A1B2C3D4E5F60008000013 /* Location */,
 				A1B2C3D4E5F60008000014 /* Networking */,
 				A1B2C3D4E5F60008000015 /* Persistence */,
+				A1B2C3D4E5F60008000018 /* Models */,
 				A1B2C3D4E5F60008000016 /* Processing */,
 				A1B2C3D4E5F60008000017 /* Views */,
 			);
@@ -202,6 +205,14 @@
 				A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60008000018 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -315,6 +326,7 @@
 				A1B2C3D4E5F60001000031 /* ConnectivityMonitor.swift in Sources */,
 				A1B2C3D4E5F60001000032 /* FrameProcessor.swift in Sources */,
 				A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */,
+				A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
