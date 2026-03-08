@@ -6,6 +6,7 @@ struct PlateSubmission: Codable {
     let plate_hash: String
     let latitude: Double?
     let longitude: Double?
+    let timestamp: String?
 }
 
 struct PlateResponse: Codable {
@@ -21,6 +22,7 @@ final class APIClient {
 
     private var batchTimer: Timer?
     @Published var totalTargets = 0
+    var onPlateSent: ((String, Bool) -> Void)?
 
     init(offlineQueue: OfflineQueue) {
         self.offlineQueue = offlineQueue
@@ -71,10 +73,12 @@ final class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
 
+            let formatter = ISO8601DateFormatter()
             let submission = PlateSubmission(
                 plate_hash: entry.plateHash,
                 latitude: entry.latitude,
-                longitude: entry.longitude
+                longitude: entry.longitude,
+                timestamp: formatter.string(from: entry.timestamp)
             )
 
             guard let body = try? JSONEncoder().encode(submission) else { continue }
@@ -105,13 +109,19 @@ final class APIClient {
                     shouldRemove = true
                     self?.retryManager.reset()
 
+                    let matched: Bool
                     if let data,
-                       let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data),
-                       plateResponse.matched == true {
-                        DispatchQueue.main.async {
-                            self?.totalTargets += 1
+                       let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data) {
+                        matched = plateResponse.matched == true
+                        if matched {
+                            DispatchQueue.main.async {
+                                self?.totalTargets += 1
+                            }
                         }
+                    } else {
+                        matched = false
                     }
+                    self?.onPlateSent?(entry.plateHash, matched)
                 }
             }.resume()
 

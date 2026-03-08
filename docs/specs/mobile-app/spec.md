@@ -42,7 +42,7 @@ The app MUST use an on-device ML model to detect license plate regions in camera
 #### REQ-M-6: Detection Model
 
 The app MUST use a **YOLOv8-nano** model for license plate detection, converted to platform-native formats:
-- **iOS**: Core ML (`.mlmodel` converted via `coremltools`)
+- **iOS**: Core ML (`.mlpackage` exported via `ultralytics`)
 - **Android**: TFLite (`.tflite` converted via `ultralytics` export)
 
 The detection model MUST:
@@ -292,7 +292,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 | Component | Framework |
 |---|---|
 | Camera capture | AVFoundation (`AVCaptureSession`) |
-| Plate detection | Core ML (YOLOv8-nano `.mlmodel`) |
+| Plate detection | Core ML (YOLOv8-nano `.mlpackage`) |
 | OCR | Vision (`VNRecognizeTextRequest`) |
 | Hashing | CryptoKit (`HMAC<SHA256>`) |
 | Pepper storage | Build-time constant (obfuscated) |
@@ -319,7 +319,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 - C-2: No user accounts or authentication in v1. `device_id` is the hardware identifier (`identifierForVendor` on iOS, `Settings.Secure.ANDROID_ID` on Android)
 - C-3: The app does not receive the target plate list. It learns only whether individual submitted plates matched (boolean per plate in server response)
 - C-4: The ML detection model must be bundled with the app (no model downloads)
-- C-5: Minimum deployment targets: iOS 16+ / Android API 31+ (Android 12)
+- C-5: Minimum deployment targets: iOS 17+ / Android API 28+ (Android 9.0)
 
 ---
 
@@ -333,7 +333,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 | Detection feedback | None (no sound, no vibration) |
 | HMAC pepper provisioning | Hardcoded at build time, obfuscated in binary |
 | device_id | Hardware ID (`identifierForVendor` / `ANDROID_ID`) |
-| Training data (Phase 1) | Roboflow US-EU (350 images) + augmentation, fine-tuned from COCO |
+| Training data (Phase 1) | HuggingFace license-plate-object-detection (8,823 images), fine-tuned from COCO |
 | Targets counter styling | No special color treatment |
 
 ## Open Questions
@@ -358,12 +358,13 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ```
 ios/CamerasApp/
 ├── CamerasApp.swift                    # App entry point, landscape lock
+├── ContentView.swift                   # Root view, wires all managers
+├── StatusBarView.swift                 # Bottom status bar (online, last detected, counts)
 ├── Views/
-│   ├── CameraView.swift                # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
-│   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS
+│   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS, detection feed
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
+│   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
 │   └── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
 ├── Detection/
 │   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
@@ -384,7 +385,7 @@ ios/CamerasApp/
 ├── Config/
 │   └── AppConfig.swift                 # Confidence thresholds, batch size, dedup window, server URL
 ├── Models/
-│   └── plate_detector.mlmodel          # YOLOv8-nano Core ML model (bundled)
+│   └── plate_detector.mlpackage        # YOLOv8-nano Core ML model (bundled)
 └── Info.plist                          # Camera, location usage descriptions
 ```
 
@@ -422,7 +423,7 @@ Camera frame to Core ML inference:
 
 1. `CameraManager` receives `CMSampleBuffer` via `captureOutput(_:didOutput:from:)` delegate callback on a dedicated serial `DispatchQueue`
 2. Extract `CVPixelBuffer` from the sample buffer via `CMSampleBufferGetImageBuffer` — no `UIImage` conversion needed
-3. Create a `VNCoreMLModel` wrapping the compiled `PlateDetector.mlmodel` (load once at startup, reuse — `VNCoreMLModel(for:)` is expensive)
+3. Create a `VNCoreMLModel` wrapping the compiled `plate_detector.mlpackage` (load once at startup, reuse — `VNCoreMLModel(for:)` is expensive)
 4. Create a `VNCoreMLRequest` with the cached Vision model
 5. Create a `VNImageRequestHandler(cvPixelBuffer:)` — Vision handles resizing to 640x640 internally
 6. Call `handler.perform([request])`
@@ -450,11 +451,11 @@ android/app/src/main/java/com/cameras/app/
 ├── MainActivity.kt                      # Activity, landscape lock, permission requests
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar
-│   ├── StatusBar.kt                     # Online/offline, last detected, counts
-│   └── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (StatusBar composable inline)
+│   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
+│   └── theme/                           # Material 3 theme, colors, typography
 ├── camera/
-│   ├── CameraSetup.kt                   # CameraX initialization, preview + analysis use cases
+│   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
 │   └── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
 ├── detection/
 │   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS

@@ -110,10 +110,11 @@ func (s *Store) load() error {
 func normalize(plate string) string {
 	plate = strings.ToUpper(plate)
 	plate = strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' {
-			return -1
+		// Keep only ASCII alphanumeric (overview spec: "ASCII only")
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
 		}
-		return r
+		return -1
 	}, plate)
 	return strings.TrimSpace(plate)
 }

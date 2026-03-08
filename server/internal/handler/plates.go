@@ -46,6 +46,7 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker) http.Handle
 		}
 
 		matched := targets.Contains(req.PlateHash)
+		log.Printf("POST /api/v1/plates hash=%s matched=%v lat=%.4f lon=%.4f", req.PlateHash, matched, req.Latitude, req.Longitude)
 
 		if matched {
 			plateID, _ := targets.PlateID(req.PlateHash)

@@ -18,12 +18,16 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class ApiClient(
     context: Context,
     private val queueDao: OfflineQueueDao,
     private val retryManager: RetryManager,
-    private val onTargetMatched: () -> Unit
+    private val onTargetMatched: () -> Unit,
+    private val onPlateSent: (hash: String, matched: Boolean) -> Unit = { _, _ -> }
 ) {
     private val client = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -76,6 +80,10 @@ class ApiClient(
                 put("plate_hash", entry.plateHash)
                 put("latitude", entry.latitude ?: 0.0)
                 put("longitude", entry.longitude ?: 0.0)
+                val ts = Instant.ofEpochMilli(entry.timestamp)
+                    .atOffset(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ISO_INSTANT)
+                put("timestamp", ts)
             }
 
             val request = Request.Builder()
@@ -94,10 +102,14 @@ class ApiClient(
                             response.body?.string()?.let { body ->
                                 try {
                                     val responseJson = JSONObject(body)
-                                    if (responseJson.optBoolean("matched", false)) {
+                                    val matched = responseJson.optBoolean("matched", false)
+                                    if (matched) {
                                         onTargetMatched()
                                     }
-                                } catch (_: Exception) {}
+                                    onPlateSent(entry.plateHash, matched)
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to parse response: ${e.message}")
+                                }
                             }
                         }
                         429 -> {

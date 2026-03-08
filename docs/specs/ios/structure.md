@@ -18,12 +18,12 @@ ios/
 │   │   ├── AccentColor.colorset/
 │   │   └── Contents.json
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
+│   ├── StatusBarView.swift             # Bottom status bar (connectivity, last detected, counts)
 │   ├── Views/
-│   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   │   ├── StatusBarView.swift        # Bottom status bar (connectivity, last detected, counts)
 │   │   └── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
+│   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
 │   │   └── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue
 │   ├── Detection/
 │   │   ├── PlateDetector.swift        # Core ML inference, bounding box extraction
@@ -44,7 +44,7 @@ ios/
 │   ├── Config/
 │   │   └── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL
 │   └── Models/
-│       └── plate_detector.mlmodel     # YOLOv8-nano Core ML model (bundled at build time)
+│       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
 └── CamerasAppTests/
     └── CamerasAppTests.swift          # Unit tests
 ```
@@ -66,7 +66,7 @@ ios/
 | Min iOS Version | 17.0 | Access to latest APIs, reasonable device coverage |
 | Dependency Management | Swift Package Manager | Built into Xcode, no third-party tooling needed |
 | Offline Queue | Raw SQLite | Lightweight, no Core Data overhead for simple schema |
-| Detection Model | Core ML (YOLOv8-nano) | Platform-native, NMS baked into export |
+| Detection Model | Core ML `.mlpackage` (YOLOv8-nano) | Platform-native, NMS baked into export |
 | OCR | Vision framework | On-device, no network required |
 
 ## Build & Run

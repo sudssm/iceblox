@@ -14,8 +14,8 @@ Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_p
 - [ ] Download license plate dataset (HuggingFace, 8,823 images)
 - [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
 - [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [ ] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
-- [ ] Copy model artifacts to iOS and Android asset directories
+- [x] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
+- [x] Copy trained model artifacts to iOS and Android asset directories
 - [x] Create `models/Makefile` with build/export/deploy targets
 - [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
@@ -29,12 +29,13 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 - [x] **Config** — CLI flags (`--port`, `--plates-file`, `--pepper`, `--db-dsn`)
 - [x] **Database** — PostgreSQL schema (`plates`, `sightings` tables), migrations, pgx driver (REQ-S-8)
 - [x] **Target loader** — Load `plates.txt`, compute HMAC hashes, seed DB, build in-memory hash→plate_id map, SIGHUP reload with DB re-seed (REQ-S-5)
-- [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2)
+- [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [x] **Sighting persistence** — Record matched plates to `sightings` table with plate_id, timestamp, GPS, hardware_id (REQ-S-3)
-- [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6)
+- [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
 - [x] **POST /api/v1/plates** — Parse plate with timestamp and X-Device-ID header, validate, match, record sighting, return matched boolean (REQ-S-1, REQ-S-4)
 - [x] **GET /healthz** — Status endpoint (REQ-S-7)
-- [x] **Integration** — Wire handlers, DB init, graceful shutdown
+- [x] **Integration** — Wire handlers, DB init, graceful shutdown (fixed: `srv.Shutdown` for graceful drain)
+- [x] **Normalization** — Aligned server, iOS, and Android plate normalization to strip non-alphanumeric and filter ASCII-only per overview spec
 - [x] **Tests** — Unit tests for handler, health; integration tests with mock recorder; DB integration tests for persistence
 - [x] **Example seed file** — `testdata/test_plates.txt` with known plates for E2E testing
 
@@ -79,15 +80,18 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Persistence & Networking
 - [x] **Offline queue** — OfflineQueue.swift: SQLite-backed FIFO, max 1000 entries, oldest eviction (REQ-M-15)
 - [x] **Location services** — LocationManager.swift: CLLocationManager, GPS attach, "No GPS" warning (REQ-M-16)
-- [x] **Batch upload** — APIClient.swift: URLSession POST, 10-plate or 30-second trigger (REQ-M-14)
+- [x] **Batch upload** — APIClient.swift: URLSession POST, 10-plate or 30-second trigger, sends device timestamp in ISO 8601 (REQ-M-14)
 - [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
 - [x] **Retry logic** — RetryManager.swift: exponential backoff, max 10 retries (REQ-M-17)
 - [x] **429 handling** — Read Retry-After header, pause uploads (REQ-M-17a)
 - [x] **Connectivity monitor** — ConnectivityMonitor.swift: NWPathMonitor, flush queue on reconnect (REQ-M-14)
+- [x] **Plate normalization ASCII filter** — Added `.isASCII` filter to match overview spec and Android (REQ-M-10)
 
 ### Debug Mode
 - [x] **Debug toggle** — Triple-tap gesture, `#if DEBUG` gated (REQ-M-18)
 - [x] **Debug overlay** — DebugOverlayView.swift: bounding boxes, plate text, truncated hash, FPS, queue depth (REQ-M-19)
+- [x] **Raw detection boxes** — Yellow bounding boxes for all PlateDetector results (pre-OCR) with confidence labels (DBG-1)
+- [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
 
 ### Reliability & Performance
@@ -131,7 +135,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Detection Pipeline
 - [x] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
 - [x] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
-- [x] **Raw output parsing** — Parse `[1, 5, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
+- [x] **Raw output parsing** — Parse `[1, N, 8400]` tensor (N=5 for trained plate model, N=84 for COCO placeholder) into per-candidate detections, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates. Channel count auto-detected from model at init. (REQ-M-6)
 - [x] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7)
 - [x] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
 - [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
@@ -146,7 +150,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Persistence & Networking
 - [x] **Offline queue** — Room database, max 1000 entries, oldest eviction (REQ-M-15)
 - [x] **Location services** — FusedLocationProviderClient, GPS warning in status bar (REQ-M-16)
-- [x] **Batch upload** — OkHttp POST, 10-plate or 30-second trigger (REQ-M-14)
+- [x] **Batch upload** — OkHttp POST, 10-plate or 30-second trigger, sends device timestamp in ISO 8601 (REQ-M-14)
 - [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
 - [x] **Retry logic** — Exponential backoff on failure (REQ-M-17)
 - [x] **429 handling** — Read Retry-After, pause uploads (REQ-M-17a)
@@ -155,6 +159,8 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Debug Mode
 - [x] **Debug toggle** — Triple-tap gesture, debug builds only via `BuildConfig.DEBUG` (REQ-M-18)
 - [x] **Debug overlay** — DebugOverlay.kt: Canvas overlay with bounding boxes, text, hash, FPS, queue depth (REQ-M-19)
+- [x] **Raw detection boxes** — Yellow bounding boxes for all PlateDetector results (pre-OCR) with confidence labels (DBG-1)
+- [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 
 ### Reliability & Performance

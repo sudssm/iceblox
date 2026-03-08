@@ -11,13 +11,13 @@ final class ConnectivityMonitor: ObservableObject {
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
-            let wasDisconnected = !(self?.isConnected ?? true)
             let nowConnected = path.status == .satisfied
             DispatchQueue.main.async {
+                let wasDisconnected = !(self?.isConnected ?? true)
                 self?.isConnected = nowConnected
-            }
-            if wasDisconnected && nowConnected {
-                self?.onReconnect?()
+                if wasDisconnected && nowConnected {
+                    self?.onReconnect?()
+                }
             }
         }
         monitor.start(queue: monitorQueue)

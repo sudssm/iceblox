@@ -2,7 +2,9 @@ package com.cameras.app
 
 import android.app.Application
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.PowerManager
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cameras.app.camera.FrameAnalyzer
@@ -16,10 +18,14 @@ import com.cameras.app.persistence.OfflineQueueDatabase
 import com.cameras.app.persistence.OfflineQueueEntry
 import com.cameras.app.processing.DeduplicationCache
 import com.cameras.app.processing.PlateHasher
+import com.cameras.app.ui.DetectionFeedEntry
+import com.cameras.app.ui.DetectionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val deduplicationCache = DeduplicationCache()
@@ -41,11 +47,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _queueDepth = MutableStateFlow(0)
     val queueDepth: StateFlow<Int> = _queueDepth
 
+    private val _detectionFeed = MutableStateFlow<List<DetectionFeedEntry>>(emptyList())
+    val detectionFeed: StateFlow<List<DetectionFeedEntry>> = _detectionFeed
+
     val apiClient = ApiClient(
         context = application,
         queueDao = queueDao,
         retryManager = retryManager,
-        onTargetMatched = { _targetCount.value++ }
+        onTargetMatched = { _targetCount.update { it + 1 } },
+        onPlateSent = { hash, matched -> onPlateSent(hash, matched) }
     )
 
     val frameAnalyzer = FrameAnalyzer(application) { plates ->
@@ -61,11 +71,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val powerManager = application.getSystemService(Context.POWER_SERVICE) as PowerManager
+
     init {
         connectivityMonitor.onReconnected = {
             apiClient.flushQueue()
         }
-        val powerManager = application.getSystemService(Context.POWER_SERVICE) as PowerManager
         powerManager.addThermalStatusListener(thermalListener)
     }
 
@@ -89,16 +100,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _queueDepth.value = queueDao.count()
             }
 
-            _plateCount.value++
+            _plateCount.update { it + 1 }
             _lastDetectionTime.value = System.currentTimeMillis()
+
+            addFeedEntry(DetectionFeedEntry(
+                plateText = plate.normalizedText,
+                hashPrefix = hash.take(8),
+                state = DetectionState.QUEUED
+            ))
         }
 
         apiClient.checkAndFlush()
     }
 
+    private fun onPlateSent(hash: String, matched: Boolean) {
+        val prefix = hash.take(8)
+        val newState = if (matched) DetectionState.MATCHED else DetectionState.SENT
+        val current = _detectionFeed.value.toMutableList()
+        val idx = current.indexOfLast { it.hashPrefix == prefix && it.state == DetectionState.QUEUED }
+        if (idx >= 0) {
+            current[idx] = current[idx].copy(state = newState)
+            _detectionFeed.value = current
+        }
+    }
+
+    private fun addFeedEntry(entry: DetectionFeedEntry) {
+        val current = _detectionFeed.value.toMutableList()
+        current.add(0, entry)
+        if (current.size > 20) current.subList(20, current.size).clear()
+        _detectionFeed.value = current
+    }
+
     fun startPipeline() {
         locationProvider.startUpdates()
         apiClient.startBatchTimer()
+        processTestImage()
+    }
+
+    private fun processTestImage() {
+        val testFile = File(getApplication<Application>().filesDir, "test_plate.png")
+        if (!testFile.exists()) return
+        if (BuildConfig.DEBUG) Log.d(TAG, "Found test image at ${testFile.absolutePath}")
+        viewModelScope.launch(Dispatchers.IO) {
+            val bitmap = BitmapFactory.decodeFile(testFile.absolutePath)
+            if (bitmap != null) {
+                if (BuildConfig.DEBUG) Log.d(TAG, "Loaded test image: ${bitmap.width}x${bitmap.height}")
+                frameAnalyzer.analyzeBitmap(bitmap)
+            } else {
+                Log.w(TAG, "Failed to decode test image")
+            }
+        }
     }
 
     fun stopPipeline() {
@@ -114,8 +165,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    companion object {
+        private const val TAG = "MainViewModel"
+    }
+
     override fun onCleared() {
         super.onCleared()
+        powerManager.removeThermalStatusListener(thermalListener)
         frameAnalyzer.close()
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()

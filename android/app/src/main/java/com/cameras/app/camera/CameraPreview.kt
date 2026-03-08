@@ -2,6 +2,7 @@ package com.cameras.app.camera
 
 import android.util.Log
 import androidx.camera.core.CameraSelector
+import com.cameras.app.BuildConfig
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -79,9 +80,9 @@ fun CameraPreview(
                             preview,
                             imageAnalysis
                         )
-                        Log.d(TAG, "Camera bound successfully")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Camera bound successfully")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Camera binding failed", e)
+                        Log.e(TAG, "Camera binding failed", e)  // Log.e is acceptable for errors
                     }
                 }, ContextCompat.getMainExecutor(ctx))
             }

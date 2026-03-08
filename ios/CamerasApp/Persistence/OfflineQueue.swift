@@ -1,6 +1,8 @@
 import Foundation
 import SQLite3
 
+private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
 final class OfflineQueue {
     private var db: OpaquePointer?
     private let queue = DispatchQueue(label: "offlinequeue.db")
@@ -38,7 +40,7 @@ final class OfflineQueue {
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
             defer { sqlite3_finalize(stmt) }
 
-            sqlite3_bind_text(stmt, 1, (entry.plateHash as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 1, (entry.plateHash as NSString).utf8String, -1, SQLITE_TRANSIENT)
             sqlite3_bind_double(stmt, 2, entry.timestamp.timeIntervalSince1970)
             if let lat = entry.latitude {
                 sqlite3_bind_double(stmt, 3, lat)
