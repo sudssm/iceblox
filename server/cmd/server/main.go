@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 80, "server listen port")
+	port := flag.Int("port", 8080, "server listen port")
 	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
 	pepper := flag.String("pepper", "default-pepper-change-me", "HMAC pepper for hashing plates")
 	dbDSN := flag.String("db-dsn", "postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable", "PostgreSQL connection string")
