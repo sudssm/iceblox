@@ -1,6 +1,6 @@
 # Cameras
 
-A privacy-focused license plate detection system for private security and community watch. A dashboard-mounted mobile app continuously scans for license plates, OCRs them on-device, and sends hashed plate identifiers to a server for comparison against a target list.
+A privacy-focused license plate detection system for community watch against ICE vehicles. A dashboard-mounted mobile app continuously scans for license plates, OCRs them on-device, and sends hashed plate identifiers to a server for comparison against a target list of known ICE vehicle plates from [StopICE](https://www.stopice.net/platetracker/?data=1).
 
 The system is designed so that neither party learns what it shouldn't: the app never sees the target plates, and the server never sees non-target plates in plaintext.
 
@@ -17,6 +17,9 @@ The system is designed so that neither party learns what it shouldn't: the app n
 ```
 ├── android/          # Android app (Kotlin, Jetpack Compose)
 ├── ios/              # iOS app (Swift, SwiftUI)
+├── server/           # Go server (plate matching, logging)
+│   ├── Makefile      # setup, extract, run-server
+│   └── data/         # Downloaded plate data (gitignored)
 └── docs/             # Specifications and documentation
     ├── development-philosophy.md
     └── specs/
@@ -64,6 +67,23 @@ xcodebuild -project ios/CamerasApp.xcodeproj \
   -scheme CamerasApp \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   test
+```
+
+### Server
+
+**Prerequisites:** Go 1.26+, curl
+
+```bash
+cd server
+
+# Download latest ICE plate data from StopICE
+make setup
+
+# Extract plates from XML into data/plates.txt
+make extract
+
+# Run the server (loads plates, computes hashes, listens on :8080)
+make run-server
 ```
 
 ### Android

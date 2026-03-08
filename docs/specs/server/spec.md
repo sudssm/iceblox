@@ -4,105 +4,99 @@
 
 ## Purpose
 
-Receive hashed license plate identifiers from mobile clients, compare against a target list, log results, and return per-plate match status to the device.
+Receive hashed license plate identifiers from mobile clients, compare against a target list of ICE vehicle plates, log results, and return per-plate match status to the device.
+
+## Target Data Source
+
+Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetracker/?data=1), a public database of ICE vehicle license plates (~2,600 unique plates as of March 2026). The data is published as a nightly-compiled ZIP archive containing an XML file with `<vehicle_license>` entries.
+
+**Data pipeline:**
+1. `make setup` — Downloads the latest ZIP archive from stopice.net
+2. `make extract` — Parses the XML, normalizes plates, and writes `data/plates.txt` (one plate per line)
+3. The Go server loads `data/plates.txt` at startup and computes HMAC-SHA256 hashes in memory
 
 ## Technology
 
 - **Language**: Go
 - **Framework**: `net/http` (standard library)
-- **Target list source (v1)**: JSON seed file loaded at startup
-- **Target list source (future)**: Third-party API integration
+- **Target list source**: `data/plates.txt` — plaintext plate list extracted from StopICE data
 
 ## Requirements
 
 ### REQ-S-1: Receive Hashed Plates
 
-The server MUST expose an HTTPS endpoint that accepts hashed plate submissions.
+The server MUST expose an HTTP endpoint that accepts a single hashed plate submission.
 
 ```
 POST /api/v1/plates
 Content-Type: application/json
 
 {
-  "device_id": "string (hardware identifier)",
-  "plates": [
-    {
-      "hash": "string (64-char hex, HMAC-SHA256)",
-      "timestamp": "string (ISO 8601, UTC)",
-      "latitude": "number (required if device has GPS permission)",
-      "longitude": "number (required if device has GPS permission)"
-    }
-  ]
+  "plate_hash": "string (64-char hex, HMAC-SHA256)",
+  "latitude": number,
+  "longitude": number
 }
 ```
 
-The endpoint MUST accept batches (for offline cache flush).
+**Field validation:**
+- `plate_hash`: Required. MUST be a 64-character hexadecimal string.
+- `latitude`: Required. MUST be in range [-90, 90].
+- `longitude`: Required. MUST be in range [-180, 180].
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok"
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — malformed JSON or failed field validation. Body: `{"error": "description"}`.
+- `405 Method Not Allowed` — non-POST request to this endpoint.
+
+> **Future:** Batch submissions (array of plates + device_id) will be added when offline queue flush is needed. See original batch format in git history.
 
 ### REQ-S-2: Compare Against Targets
 
-The server MUST compare each received hash against a pre-computed set of HMAC-SHA256 target hashes loaded from the seed file. Comparison MUST be constant-time (`crypto/subtle.ConstantTimeCompare`) to prevent timing side-channels.
+> **Deferred.** Target matching will be implemented after the logging-only server is validated. The server MUST compare each received hash against a pre-computed set of HMAC-SHA256 target hashes loaded from the seed file. Comparison MUST be constant-time (`crypto/subtle.ConstantTimeCompare`) to prevent timing side-channels.
 
-### REQ-S-3: Log Results
+### REQ-S-3: Log Submissions
 
-The server MUST write match logs to a **structured JSON log file** (one JSON object per line, aka JSONL). The log file path MUST be configurable via command-line flag or environment variable (default: `./matches.jsonl`).
+The server MUST write every received plate submission to a **structured JSON log file** (one JSON object per line, aka JSONL). The log file path MUST be configurable via command-line flag or environment variable (default: `./plates.jsonl`).
 
-**Match log entry format:**
+**Log entry format:**
 ```json
 {
-  "event": "match",
-  "target_label": "target-001",
-  "device_id": "abc123",
-  "timestamp": "2026-03-08T14:30:00Z",
+  "plate_hash": "a3f8b2c1...64 hex chars",
   "latitude": 31.7619,
   "longitude": -106.4850,
-  "server_time": "2026-03-08T14:30:01Z"
+  "received_at": "2026-03-08T14:30:01Z"
 }
 ```
 
-**Non-matches**: The server MUST log a periodic summary to stdout (e.g., every 60 seconds: `"non_match_count": 47`). Individual non-matching hashes MUST NOT be persisted to disk, database, or any durable storage.
-
-The match log file is the data source for the future monitoring app's REST API.
+> **Future:** When target matching is added (REQ-S-2), match logs will include `event`, `target_label`, and `device_id` fields. Non-matching hashes will not be persisted.
 
 ### REQ-S-4: Response
 
-The response MUST include a per-plate match boolean, in the same order as the request:
+> **Deferred.** Per-plate match booleans will be returned when target matching is implemented. For now, the response is a simple acknowledgment (see REQ-S-1 response format).
 
-```json
-{
-  "received": 3,
-  "results": [
-    { "match": false },
-    { "match": true },
-    { "match": false }
-  ]
-}
+### REQ-S-5: Target Plate Loading
+
+The server MUST load target plates from a plaintext file (`data/plates.txt`) at startup. Each line contains one normalized license plate number.
+
+**On startup, the server:**
+1. Reads `data/plates.txt` (one plate per line)
+2. Normalizes each plate (uppercase, strip whitespace/hyphens)
+3. Computes HMAC-SHA256 of each normalized plate using the shared pepper
+4. Stores the hashes in an in-memory set for O(1) lookup
+
+**Data preparation (via Makefile):**
+```bash
+make setup    # Download latest ZIP from stopice.net
+make extract  # Parse XML → data/plates.txt
 ```
 
-The response MUST NOT include any additional detail about which target was matched, the target label, or any target metadata. The device learns only: "this hash matched something."
-
-### REQ-S-5: Target Seed File
-
-The server MUST load target plates from a JSON seed file at startup:
-
-```json
-{
-  "targets": [
-    {
-      "label": "target-001",
-      "hash": "a3f8b2c1...64 hex chars"
-    },
-    {
-      "label": "target-002",
-      "hash": "7d4e9f0a...64 hex chars"
-    }
-  ]
-}
-```
-
-- `label`: Human-readable identifier for logging (never sent to devices)
-- `hash`: Pre-computed HMAC-SHA256 of the normalized plate using the shared pepper
-
-The server MUST support reloading the seed file without restart (e.g., via SIGHUP or an admin endpoint).
+The server MUST support reloading the plates file without restart (e.g., via SIGHUP).
 
 ### REQ-S-6: Rate Limiting
 
@@ -160,7 +154,7 @@ The server MUST expose a `GET /healthz` endpoint returning `200 OK` with:
 | Question | Decision |
 |---|---|
 | Language / framework | Go with `net/http` |
-| Target list source | JSON seed file at startup (future: third-party API) |
+| Target list source | StopICE plate tracker data (plaintext `plates.txt` extracted via Makefile) |
 | Alert delivery | No alerting from server to device. Separate monitoring app (TODO) |
 | Match results to device | Yes — per-plate boolean only, no target details |
 | Match log storage | Structured JSONL file (`matches.jsonl`) |
@@ -187,7 +181,7 @@ server/
 │   ├── config/
 │   │   └── config.go            # CLI flags, env vars, config struct
 │   ├── targets/
-│   │   └── targets.go           # Seed file loader, SIGHUP reload, hash lookup
+│   │   └── targets.go           # Load plates.txt, compute hashes, SIGHUP reload
 │   ├── matcher/
 │   │   └── matcher.go           # Constant-time hash comparison logic
 │   ├── ratelimit/
@@ -197,7 +191,9 @@ server/
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
 │       └── health.go            # GET /healthz handler
-├── targets.json                 # Example seed file
+├── data/                        # Downloaded plate data (gitignored)
+│   └── plates.txt               # Extracted plates, one per line
+├── Makefile                     # setup, extract, run-server targets
 ├── go.mod
 └── go.sum
 ```
@@ -210,7 +206,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
 | 2 | Config | — | Parse CLI flags: `--port`, `--targets-file`, `--log-file`; env var overrides |
-| 3 | Target loader | REQ-S-5 | Load seed JSON at startup, parse into in-memory hash set, SIGHUP reload |
+| 3 | Target loader | REQ-S-5 | Load plates.txt at startup, compute HMAC hashes into in-memory set, SIGHUP reload |
 | 4 | Matcher | REQ-S-2 | Constant-time comparison against target set, return matched label or nil |
 | 5 | JSONL logger | REQ-S-3 | Append match entries to file; periodic non-match count to stdout |
 | 6 | Rate limiter | REQ-S-6 | Token bucket per device_id, 429 response with Retry-After |
@@ -222,6 +218,6 @@ Each step is independently testable. Later steps depend on earlier ones.
 ### Key Technical Notes
 
 - **No external dependencies** for v1. Standard library only (`net/http`, `encoding/json`, `crypto/subtle`, `crypto/hmac`, `os/signal`).
-- **Seed file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → swaps the in-memory hash map atomically (`sync.RWMutex`).
+- **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, swaps the in-memory hash set atomically (`sync.RWMutex`).
 - **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
 - **Graceful shutdown**: `SIGTERM`/`SIGINT` → stop accepting new connections → flush pending log writes → exit.
