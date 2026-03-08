@@ -4,10 +4,11 @@ import android.app.NotificationManager
 import android.content.Context
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
-import com.iceblox.app.config.AppConfig
-import com.iceblox.app.debug.DebugLog
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.iceblox.app.config.AppConfig
+import com.iceblox.app.debug.DebugLog
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,7 +19,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.io.IOException
 
 class PushNotificationService : FirebaseMessagingService() {
 

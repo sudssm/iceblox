@@ -2,11 +2,11 @@ package com.iceblox.app.detection
 
 import android.graphics.Bitmap
 import android.graphics.RectF
-import com.iceblox.app.debug.DebugLog
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.iceblox.app.debug.DebugLog
 
 data class OCRResult(val text: String, val confidence: Float)
 
