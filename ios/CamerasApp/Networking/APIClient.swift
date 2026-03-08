@@ -22,6 +22,7 @@ final class APIClient {
 
     private var batchTimer: Timer?
     @Published var totalTargets = 0
+    var onPlateSent: ((String, Bool) -> Void)?
 
     init(offlineQueue: OfflineQueue) {
         self.offlineQueue = offlineQueue
@@ -108,13 +109,19 @@ final class APIClient {
                     shouldRemove = true
                     self?.retryManager.reset()
 
+                    let matched: Bool
                     if let data,
-                       let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data),
-                       plateResponse.matched == true {
-                        DispatchQueue.main.async {
-                            self?.totalTargets += 1
+                       let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data) {
+                        matched = plateResponse.matched == true
+                        if matched {
+                            DispatchQueue.main.async {
+                                self?.totalTargets += 1
+                            }
                         }
+                    } else {
+                        matched = false
                     }
+                    self?.onPlateSent?(entry.plateHash, matched)
                 }
             }.resume()
 

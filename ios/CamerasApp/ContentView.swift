@@ -44,6 +44,8 @@ struct ContentView: View {
             if debugMode, let fp = frameProcessor {
                 DebugOverlayView(
                     detections: fp.currentDetections,
+                    rawDetections: fp.rawDetections,
+                    feedEntries: fp.detectionFeed,
                     fps: fp.fps,
                     queueDepth: offlineQueue.count,
                     isConnected: connectivityMonitor.isConnected
@@ -98,6 +100,10 @@ struct ContentView: View {
             locationManager: locationManager,
             apiClient: client
         )
+
+        client.onPlateSent = { [weak processor] hash, matched in
+            processor?.onPlateSent(hash: hash, matched: matched)
+        }
 
         connectivityMonitor.onReconnect = { [weak client] in
             client?.flushQueue()
