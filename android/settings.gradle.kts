@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CamerasApp"
+rootProject.name = "IceBlox"
 include(":app")
