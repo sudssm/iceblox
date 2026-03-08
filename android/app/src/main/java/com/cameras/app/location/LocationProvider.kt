@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -46,7 +46,7 @@ class LocationProvider(private val context: Context) {
                 .build()
             fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
         } catch (e: SecurityException) {
-            Log.w(TAG, "Location permission revoked: ${e.message}")
+            DebugLog.w(TAG, "Location permission revoked: ${e.message}")
         }
     }
 
