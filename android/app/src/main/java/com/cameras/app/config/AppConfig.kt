@@ -1,7 +1,7 @@
 package com.cameras.app.config
 
 object AppConfig {
-    const val SERVER_BASE_URL = "http://localhost:8080"
+    const val SERVER_BASE_URL = "http://10.0.2.2:8080"
     const val PLATES_ENDPOINT = "/api/v1/plates"
 
     const val DETECTION_CONFIDENCE_THRESHOLD = 0.7f

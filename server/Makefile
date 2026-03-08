@@ -3,7 +3,7 @@ PLATES_FILE := $(DATA_DIR)/plates.txt
 ZIP_FILE := $(DATA_DIR)/plates.zip
 TRACKER_URL := https://www.stopice.net/platetracker
 
-.PHONY: setup extract run-server clean
+.PHONY: setup extract run-server run-test-server clean
 
 ## setup: Download the latest ICE plate data ZIP from StopICE
 setup:
@@ -30,6 +30,10 @@ extract: $(ZIP_FILE)
 ## run-server: Build and run the Go server
 run-server:
 	go run ./cmd/server/...
+
+## run-test-server: Run server with test plates (known plates for E2E testing)
+run-test-server:
+	go run ./cmd/server/... --plates-file testdata/test_plates.txt
 
 ## clean: Remove downloaded data
 clean:
