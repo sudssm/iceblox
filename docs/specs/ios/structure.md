@@ -18,12 +18,12 @@ ios/
 │   │   ├── AccentColor.colorset/
 │   │   └── Contents.json
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
+│   ├── StatusBarView.swift             # Bottom status bar (connectivity, last detected, counts)
 │   ├── Views/
-│   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   │   ├── StatusBarView.swift        # Bottom status bar (connectivity, last detected, counts)
 │   │   └── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
+│   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
 │   │   └── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue
 │   ├── Detection/
 │   │   ├── PlateDetector.swift        # Core ML inference, bounding box extraction

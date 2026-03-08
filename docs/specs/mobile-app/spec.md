@@ -319,7 +319,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 - C-2: No user accounts or authentication in v1. `device_id` is the hardware identifier (`identifierForVendor` on iOS, `Settings.Secure.ANDROID_ID` on Android)
 - C-3: The app does not receive the target plate list. It learns only whether individual submitted plates matched (boolean per plate in server response)
 - C-4: The ML detection model must be bundled with the app (no model downloads)
-- C-5: Minimum deployment targets: iOS 16+ / Android API 31+ (Android 12)
+- C-5: Minimum deployment targets: iOS 17+ / Android API 28+ (Android 9.0)
 
 ---
 
@@ -358,12 +358,13 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ```
 ios/CamerasApp/
 ├── CamerasApp.swift                    # App entry point, landscape lock
+├── ContentView.swift                   # Root view, wires all managers
+├── StatusBarView.swift                 # Bottom status bar (online, last detected, counts)
 ├── Views/
-│   ├── CameraView.swift                # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
 │   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
+│   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
 │   └── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
 ├── Detection/
 │   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
@@ -450,11 +451,10 @@ android/app/src/main/java/com/cameras/app/
 ├── MainActivity.kt                      # Activity, landscape lock, permission requests
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar
-│   ├── StatusBar.kt                     # Online/offline, last detected, counts
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (StatusBar composable inline)
 │   └── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS
 ├── camera/
-│   ├── CameraSetup.kt                   # CameraX initialization, preview + analysis use cases
+│   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
 │   └── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
 ├── detection/
 │   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
