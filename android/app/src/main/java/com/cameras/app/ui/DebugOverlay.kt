@@ -121,7 +121,7 @@ fun DebugOverlay(
                     color = Color.Yellow,
                     topLeft = Offset(left, top),
                     size = Size(boxWidth, boxHeight),
-                    style = Stroke(width = 1.5f.dp.toPx())
+                    style = Stroke(width = 2.dp.toPx())
                 )
 
                 drawContext.canvas.nativeCanvas.drawText(
