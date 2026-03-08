@@ -24,16 +24,16 @@ Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_p
 
 Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
-- [ ] **Project scaffold** — `go mod init`, directory structure, `main.go` with flag parsing
-- [ ] **Config** — CLI flags (`--port`, `--targets-file`, `--log-file`), env var overrides
+- [x] **Project scaffold** — `go mod init`, directory structure, `main.go` with flag parsing
+- [x] **Config** — CLI flags (`--port`, `--log-file`)
 - [ ] **Target loader** — Load seed JSON at startup, in-memory hash set, SIGHUP reload (REQ-S-5)
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2)
-- [ ] **JSONL logger** — Append match entries to file, periodic non-match count to stdout (REQ-S-3)
+- [x] **JSONL logger** — Append plate submissions to file (REQ-S-3)
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6)
-- [ ] **POST /api/v1/plates** — Parse batch, validate, call matcher, build response (REQ-S-1, REQ-S-4)
-- [ ] **GET /healthz** — Status + targets_loaded count (REQ-S-7)
-- [ ] **Integration** — Wire handlers, TLS config, graceful shutdown
-- [ ] **Tests** — Unit tests per package, integration test with seed file + HTTP requests
+- [x] **POST /api/v1/plates** — Parse single plate, validate, log, return ok (REQ-S-1)
+- [x] **GET /healthz** — Status endpoint (REQ-S-7)
+- [x] **Integration** — Wire handlers, graceful shutdown
+- [x] **Tests** — Unit tests for handler, logger, health; end-to-end smoke test
 - [ ] **Example seed file** — `targets.json` with sample hashed plates for testing
 
 ---
