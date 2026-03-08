@@ -92,7 +92,7 @@ class FrameAnalyzer(
                 onPlatesDetected(plates)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Frame analysis failed: ${e.message}")
+            Log.w(TAG, "Frame analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
         } finally {
             imageProxy.close()
         }
