@@ -1,7 +1,7 @@
 import XCTest
-@testable import CamerasApp
+@testable import IceBloxApp
 
-final class CamerasAppTests: XCTestCase {
+final class IceBloxAppTests: XCTestCase {
     func testCameraManagerInitialState() throws {
         let manager = CameraManager()
         XCTAssertFalse(manager.isRunning)

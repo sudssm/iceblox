@@ -11,16 +11,16 @@ if [ -z "$JAVA_HOME" ]; then
 fi
 
 # Ephemeral postgres
-E2E_PG_CONTAINER="cameras-e2e-postgres-$$"
+E2E_PG_CONTAINER="iceblox-e2e-postgres-$$"
 E2E_PG_PORT=""
 E2E_PG_USER="postgres"
-E2E_PG_PASSWORD="e2e_cameras"
-E2E_PG_DB="cameras_e2e"
+E2E_PG_PASSWORD="e2e_iceblox"
+E2E_PG_DB="iceblox_e2e"
 
 # Go server
 E2E_SERVER_PORT=8080
 E2E_SERVER_PID=""
-E2E_SERVER_LOG="/tmp/cameras-e2e-server-$$.log"
+E2E_SERVER_LOG="/tmp/iceblox-e2e-server-$$.log"
 E2E_PLATES_FILE="$PROJECT_ROOT/server/testdata/test_plates.txt"
 E2E_PEPPER="default-pepper-change-me"
 

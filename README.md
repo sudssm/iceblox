@@ -1,6 +1,6 @@
-[![Tests](https://github.com/sudssm/cameras/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/cameras/actions/workflows/test.yml) ![Lines of Code](https://img.shields.io/badge/lines%20of%20code-6%2E8k-blue)
+[![Tests](https://github.com/sudssm/iceblox/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/iceblox/actions/workflows/test.yml) ![Lines of Code](https://img.shields.io/badge/lines%20of%20code-6%2E8k-blue)
 
-# Cameras
+# IceBlox
 
 A privacy-focused license plate detection system for community watch against ICE vehicles. A dashboard-mounted mobile app continuously scans for license plates, OCRs them on-device, and sends hashed plate identifiers to a server for comparison against a target list of known ICE vehicle plates from [StopICE](https://www.stopice.net/platetracker/?data=1).
 
@@ -84,23 +84,23 @@ Training uses MPS (Apple Silicon GPU) automatically when available, falling back
 
 ```bash
 # Open in Xcode
-open ios/CamerasApp.xcodeproj
+open ios/IceBloxApp.xcodeproj
 
 # Or build and run from the command line
-xcodebuild -project ios/CamerasApp.xcodeproj \
-  -scheme CamerasApp \
+xcodebuild -project ios/IceBloxApp.xcodeproj \
+  -scheme IceBloxApp \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   build
 
 # Install and launch on simulator
 xcrun simctl boot "iPhone 16 Pro"
 xcrun simctl install "iPhone 16 Pro" \
-  Build/Products/Debug-iphonesimulator/CamerasApp.app
-xcrun simctl launch "iPhone 16 Pro" com.cameras.app
+  Build/Products/Debug-iphonesimulator/IceBloxApp.app
+xcrun simctl launch "iPhone 16 Pro" com.iceblox.app
 
 # Run tests
-xcodebuild -project ios/CamerasApp.xcodeproj \
-  -scheme CamerasApp \
+xcodebuild -project ios/IceBloxApp.xcodeproj \
+  -scheme IceBloxApp \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   test
 ```

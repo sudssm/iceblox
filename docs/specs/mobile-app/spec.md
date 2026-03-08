@@ -445,8 +445,8 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ### Project Structure
 
 ```
-ios/CamerasApp/
-├── CamerasApp.swift                    # App entry point, landscape lock, splash→camera flow
+ios/IceBloxApp/
+├── IceBloxApp.swift                    # App entry point, landscape lock, splash→camera flow
 ├── ContentView.swift                   # Root view, wires all managers
 ├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
 ├── Views/

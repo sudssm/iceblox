@@ -160,7 +160,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
 
 ### Rename
-- [ ] **Rename to IceBlox everywhere** — Update iOS bundle ID, server references, specs, and any remaining `cameras` references to use `iceblox` branding
+- [x] **Rename to IceBlox everywhere** — Update iOS bundle ID, server references, specs, and any remaining legacy branding references to use IceBlox branding
 
 ### Test Mode
 - [x] **Test mode intent extra** — `test_mode` boolean extra bypasses camera permission, splash screen shown normally (TS-33)

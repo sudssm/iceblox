@@ -127,7 +127,7 @@ Release builds are signed using a keystore configured in `app/build.gradle.kts`.
 ```properties
 RELEASE_STORE_FILE=../release.keystore
 RELEASE_STORE_PASSWORD=...
-RELEASE_KEY_ALIAS=cameras-release
+RELEASE_KEY_ALIAS=iceblox-release
 RELEASE_KEY_PASSWORD=...
 ```
 
@@ -136,7 +136,7 @@ To generate the keystore:
 ```bash
 keytool -genkeypair -v \
   -keystore android/release.keystore \
-  -alias cameras-release \
+  -alias iceblox-release \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -storepass <password> -keypass <password> \
   -dname "CN=IceBlox, O=IceBlox, L=, ST=, C=US"

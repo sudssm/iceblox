@@ -8,7 +8,7 @@ struct SplashScreenView: View {
             Color.black.ignoresSafeArea()
 
             VStack(spacing: 32) {
-                Text("CamerasApp")
+                Text("IceBlox")
                     .font(.system(size: 48, weight: .bold))
                     .foregroundStyle(.white)
 
