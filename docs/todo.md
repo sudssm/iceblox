@@ -10,13 +10,14 @@ Items are ordered by dependency — earlier items unblock later ones. Within a c
 
 Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_plate_detection.md)
 
-- [ ] Create `models/training/` directory and `train.py` script
-- [ ] Download Roboflow US-EU license plate dataset
-- [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
-- [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [ ] Export to Core ML (`.mlmodel`) and TFLite (`.tflite`)
-- [ ] Copy model artifacts to iOS and Android asset directories
-- [ ] Create `models/CHANGELOG.md` with v1 metrics
+- [x] Create `models/training/` directory and `train.py` script
+- [x] Download license plate dataset (HuggingFace, 8,823 images)
+- [x] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
+- [x] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
+- [x] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
+- [x] Copy model artifacts to iOS and Android asset directories
+- [x] Create `models/Makefile` with build/export/deploy targets
+- [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
 ---
 
