@@ -482,5 +482,4 @@ The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
 - **Railway config** (`server/railway.toml`): Configures the build to use the Dockerfile, with a `/healthz` healthcheck and ON_FAILURE restart policy.
-- **CI** (`.github/workflows/deploy.yml`): On push to `main`, deploys to Railway using `railwayapp/deploy@v1` with the `RAILWAY_TOKEN` secret.
 - **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. These override the CLI flag defaults.
