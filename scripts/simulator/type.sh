@@ -20,19 +20,19 @@ if [ "$PLATFORM" = "android" ]; then
 elif [ "$PLATFORM" = "ios" ]; then
     open -a Simulator
     sleep 0.3
-    # Type each character via CoreGraphics keyboard events
-    osascript -l JavaScript -e "
+    osascript -l JavaScript <<JSEOF
 ObjC.import('CoreGraphics');
 var text = '$TEXT';
 var source = $.CGEventSourceCreate(1);
 for (var i = 0; i < text.length; i++) {
+    var down = $.CGEventCreateKeyboardEvent(source, 0, true);
     var ch = text.charCodeAt(i);
-    var event = $.CGEventCreateKeyboardEvent(source, 0, true);
-    $.CGEventKeyboardSetUnicodeString(event, 1, $.NSString.stringWithString(text[i]).characterAtIndex(0));
-    $.CGEventPost(0, event);
+    var buf = $.NSString.stringWithString(text[i]).characterAtIndex(0);
+    $.CGEventKeyboardSetUnicodeString(down, 1, buf);
+    $.CGEventPost(0, down);
     var up = $.CGEventCreateKeyboardEvent(source, 0, false);
     $.CGEventPost(0, up);
     delay(0.02);
 }
-"
+JSEOF
 fi

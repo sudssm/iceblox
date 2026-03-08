@@ -18,7 +18,7 @@ The primary use case is AI-assisted testing — an AI agent can use these script
 
 - Xcode 16+ installed
 - iPhone 16 Pro simulator available (UDID: `C06D96F6-6AE3-4B73-874F-C8324A15B0B9`)
-- macOS Accessibility permissions granted to Terminal/IDE (required for iOS tap/type/swipe)
+- macOS Accessibility permissions granted to `/usr/bin/osascript` (required for iOS tap/type/swipe via CoreGraphics)
 
 ## Scripts Reference
 
@@ -99,7 +99,7 @@ scripts/simulator/type.sh ios "hello world"
 ```
 
 - **Android**: Uses `adb shell input text`. Spaces are encoded automatically.
-- **iOS**: Uses AppleScript `keystroke` on the active Simulator. Simulator must be frontmost.
+- **iOS**: Uses CoreGraphics keyboard events on the active Simulator. Simulator must be frontmost.
 
 ### swipe.sh
 
@@ -126,7 +126,7 @@ scripts/simulator/navigate.sh ios home
 ```
 
 - **Android**: Uses `adb shell input keyevent` (KEYCODE_BACK, KEYCODE_HOME).
-- **iOS**: Uses Simulator keyboard shortcuts (Cmd+Shift+H for Home). iOS has no system "back" button — use `swipe.sh` from the left edge or tap the back button directly.
+- **iOS**: Uses `simctl terminate` to return to the home screen. iOS has no system "back" button — use `swipe.sh` from the left edge or tap the back button directly.
 
 ### logs.sh
 
@@ -198,9 +198,9 @@ scripts/simulator/screenshot.sh ios
 
 ### iOS Interaction
 
-- **tap/type/swipe** use macOS-level AppleScript/CoreGraphics to interact with the Simulator window. This requires:
+- **tap/type/swipe** use macOS-level CoreGraphics events (via `osascript`) to interact with the Simulator window. This requires:
   - The Simulator to be the frontmost application (scripts activate it automatically)
-  - macOS Accessibility permissions granted to Terminal or IDE
+  - macOS Accessibility permissions granted to `/usr/bin/osascript` (System Settings > Privacy & Security > Accessibility)
   - The Simulator window to not be obscured by other windows
 - **Coordinate mapping** assumes the Simulator renders the device screen filling the window content area with standard macOS title bar chrome. Unusual window sizing may cause coordinate drift.
 - **inspect** (UI hierarchy dump) is not available for iOS without an XCUITest target. Use screenshots for visual inspection.

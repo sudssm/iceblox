@@ -18,7 +18,6 @@ if [ "$PLATFORM" = "android" ]; then
     "$ADB" shell input tap "$X" "$Y"
 
 elif [ "$PLATFORM" = "ios" ]; then
-    check_accessibility || exit 1
     open -a Simulator
     sleep 0.3
     read -r SCREEN_X SCREEN_Y <<< "$(ios_map_coords "$X" "$Y")"
