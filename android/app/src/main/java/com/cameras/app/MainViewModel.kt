@@ -140,11 +140,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun processTestImage() {
         val testFile = File(getApplication<Application>().filesDir, "test_plate.png")
         if (!testFile.exists()) return
-        Log.d(TAG, "Found test image at ${testFile.absolutePath}")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Found test image at ${testFile.absolutePath}")
         viewModelScope.launch(Dispatchers.IO) {
             val bitmap = BitmapFactory.decodeFile(testFile.absolutePath)
             if (bitmap != null) {
-                Log.d(TAG, "Loaded test image: ${bitmap.width}x${bitmap.height}")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Loaded test image: ${bitmap.width}x${bitmap.height}")
                 frameAnalyzer.analyzeBitmap(bitmap)
             } else {
                 Log.w(TAG, "Failed to decode test image")
