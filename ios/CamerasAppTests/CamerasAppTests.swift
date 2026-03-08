@@ -36,6 +36,11 @@ final class CamerasAppTests: XCTestCase {
         XCTAssertNotEqual(h1, h2)
     }
 
+    func testHashMatchesServer() {
+        let hash = PlateHasher.hash(normalizedPlate: "ABC1234")
+        XCTAssertEqual(hash, "05be670b85dd08fcf6aec15df8235688d89327be73c71bb36c6d5008e5f0f51b")
+    }
+
     // MARK: - DeduplicationCache
 
     func testDedupFirstSeen() {

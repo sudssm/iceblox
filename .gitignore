@@ -21,8 +21,9 @@ ios/*.xcworkspace/xcuserdata/
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 
-# Server data
+# Server
 server/data/
+server/server
 *.jsonl
 
 # IDE

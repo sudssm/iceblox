@@ -69,7 +69,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Plate normalization** — PlateNormalizer.swift: uppercase, strip, validate 2-8 chars (REQ-M-10)
 - [x] **Deduplication** — DeduplicationCache.swift: 60-second time-windowed set (REQ-M-8)
 - [x] **Frame processor** — FrameProcessor.swift: frame → detect → OCR → normalize → dedup → hash → queue (REQ-M-30)
-- [x] **Build verification** — Full pipeline compiles and all 28 unit tests pass
+- [x] **Build verification** — Full pipeline compiles and all 29 unit tests pass
 
 ### Hashing & Privacy
 - [x] **HMAC-SHA256** — PlateHasher.swift: CryptoKit `HMAC<SHA256>`, XOR-obfuscated pepper (REQ-M-12, REQ-M-42)
