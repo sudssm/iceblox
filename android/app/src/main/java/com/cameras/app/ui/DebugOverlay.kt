@@ -37,12 +37,7 @@ data class DebugDetection(
     val imageHeight: Int
 )
 
-data class RawDetectionBox(
-    val boundingBox: RectF,
-    val confidence: Float,
-    val imageWidth: Int,
-    val imageHeight: Int
-)
+data class RawDetectionBox(val boundingBox: RectF, val confidence: Float, val imageWidth: Int, val imageHeight: Int)
 
 data class DetectionFeedEntry(
     val plateText: String,

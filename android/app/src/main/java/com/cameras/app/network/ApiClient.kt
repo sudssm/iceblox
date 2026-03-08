@@ -2,9 +2,13 @@ package com.cameras.app.network
 
 import android.content.Context
 import android.provider.Settings
-import com.cameras.app.debug.DebugLog
 import com.cameras.app.config.AppConfig
+import com.cameras.app.debug.DebugLog
 import com.cameras.app.persistence.OfflineQueueDao
+import java.io.IOException
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,10 +21,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.io.IOException
-import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 class ApiClient(
     context: Context,
@@ -33,7 +33,8 @@ class ApiClient(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var batchJob: Job? = null
     private val deviceId: String = Settings.Secure.getString(
-        context.contentResolver, Settings.Secure.ANDROID_ID
+        context.contentResolver,
+        Settings.Secure.ANDROID_ID
     ) ?: "unknown"
 
     fun startBatchTimer() {
@@ -112,11 +113,13 @@ class ApiClient(
                                 }
                             }
                         }
+
                         429 -> {
                             val retryAfter = response.header("Retry-After")?.toLongOrNull() ?: 60
                             retryManager.handleRateLimit(retryAfter)
                             return
                         }
+
                         else -> {
                             val delayMs = retryManager.handleFailure() ?: return
                             delay(delayMs)

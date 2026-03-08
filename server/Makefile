@@ -6,7 +6,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://$(USER)@localhost:5432/cameras?sslmode=disable
 TEST_DB ?= cameras_test
 
-.PHONY: setup extract run-server run-test-server db db-stop test test-db clean
+.PHONY: setup extract run-server run-test-server db db-stop test test-db lint clean
 
 ## setup: Download the latest ICE plate data ZIP from StopICE
 setup:
@@ -37,6 +37,10 @@ run-server:
 ## run-test-server: Run server with test plates (known plates for E2E testing)
 run-test-server:
 	go run ./cmd/server/... --plates-file testdata/test_plates.txt --db-dsn "$(DB_DSN)"
+
+## lint: Run golangci-lint
+lint:
+	golangci-lint run ./...
 
 ## test: Run all Go tests (unit only, no DB required)
 test:

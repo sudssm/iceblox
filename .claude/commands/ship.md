@@ -24,7 +24,17 @@ Wait for both agents to complete. Review their reports. If either agent made com
 
 If either agent reports unfixable issues (e.g., a spec ambiguity that needs human input), STOP and report the issue to the user. Do not proceed until resolved.
 
-## Step 3: Run relevant tests
+## Step 3: Lint changed code
+
+Look at the files changed in the diff from step 1 and run ONLY the linters for areas that were modified. Run whichever apply in parallel:
+
+- If any `server/**` files changed: `cd server && golangci-lint run ./...`
+- If any `ios/**` files changed: `cd ios && swiftlint --strict`
+- If any `android/**` files changed: `cd android && ktlint`
+
+Skip linters for areas with no code changes. If a linter fails, fix the issues and re-run. If you cannot fix a lint failure, STOP and report it to the user.
+
+## Step 4: Run relevant tests
 
 Look at the files changed in the diff from step 1 and run ONLY the test suites for areas that were modified. Run whichever apply in parallel:
 
@@ -34,23 +44,23 @@ Look at the files changed in the diff from step 1 and run ONLY the test suites f
 
 Skip test suites for areas with no code changes. If a test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.
 
-## Step 4: Commit remaining code changes
+## Step 5: Commit remaining code changes
 
 Stage and commit any remaining code changes (non-docs) with a descriptive commit message summarizing the feature. Do NOT commit .code-workspace files.
 
 If the review agents already committed everything, skip this step.
 
-## Step 5: Commit doc changes
+## Step 6: Commit doc changes
 
 If there are any remaining doc updates not already committed by the spec review agent, stage and commit them separately with a message like "Update docs to reflect <feature> implementation".
 
 If docs are already up to date, skip this step.
 
-## Step 6: Push and create PR
+## Step 7: Push and create PR
 
 Push the branch to origin and create a pull request targeting `main` using `gh pr create`. The PR title should be concise. The body should summarize what was implemented and what spec requirements were addressed.
 
-## Step 7: Merge the PR
+## Step 8: Merge the PR
 
 After the PR is created, merge it using `gh pr merge --squash --delete-branch`. If merge fails (e.g., due to checks), report the error and stop.
 

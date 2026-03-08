@@ -8,10 +8,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
-data class OCRResult(
-    val text: String,
-    val confidence: Float
-)
+data class OCRResult(val text: String, val confidence: Float)
 
 class PlateOCR {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -40,8 +37,12 @@ class PlateOCR {
                 val confidence = bestLine.confidence ?: 1.0f
                 if (confidence >= confidenceThreshold) {
                     OCRResult(text = bestLine.text, confidence = confidence)
-                } else null
-            } else null
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
         } catch (e: Exception) {
             Log.w(TAG, "OCR failed: ${e.message}")
             null

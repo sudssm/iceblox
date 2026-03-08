@@ -70,7 +70,9 @@ func TestPlatesHandler_ValidRequest(t *testing.T) {
 	}
 
 	var resp map[string]interface{}
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["status"] != "ok" {
 		t.Fatalf("expected status ok, got %s", resp["status"])
 	}
@@ -100,7 +102,9 @@ func TestPlatesHandler_MatchedTarget(t *testing.T) {
 	}
 
 	var resp map[string]interface{}
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["matched"] != true {
 		t.Fatalf("expected matched true for target hash")
 	}

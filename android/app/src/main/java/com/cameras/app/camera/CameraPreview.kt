@@ -1,8 +1,6 @@
 package com.cameras.app.camera
 
-import com.cameras.app.debug.DebugLog
 import androidx.camera.core.CameraSelector
-import com.cameras.app.BuildConfig
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -17,15 +15,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.cameras.app.BuildConfig
+import com.cameras.app.debug.DebugLog
 import java.util.concurrent.Executors
 
 private const val TAG = "CameraPreview"
 
 @Composable
-fun CameraPreview(
-    modifier: Modifier = Modifier,
-    analyzer: ImageAnalysis.Analyzer? = null
-) {
+fun CameraPreview(modifier: Modifier = Modifier, analyzer: ImageAnalysis.Analyzer? = null) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }

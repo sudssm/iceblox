@@ -7,8 +7,8 @@ import com.cameras.app.network.RetryManager
 import com.cameras.app.processing.DeduplicationCache
 import com.cameras.app.processing.PlateHasher
 import com.cameras.app.processing.PlateNormalizer
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 

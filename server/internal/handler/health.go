@@ -18,9 +18,12 @@ func HealthHandler(targets TargetCounter) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":         "ok",
 			"targets_loaded": targets.Count(),
-		})
+		}); err != nil {
+			http.Error(w, "encode error", http.StatusInternalServerError)
+			return
+		}
 	}
 }

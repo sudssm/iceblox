@@ -4,12 +4,12 @@ import android.app.Application
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.os.PowerManager
-import com.cameras.app.debug.DebugLog
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cameras.app.camera.FrameAnalyzer
 import com.cameras.app.camera.ProcessedPlate
 import com.cameras.app.config.AppConfig
+import com.cameras.app.debug.DebugLog
 import com.cameras.app.location.LocationProvider
 import com.cameras.app.network.ApiClient
 import com.cameras.app.network.ConnectivityMonitor
@@ -20,12 +20,12 @@ import com.cameras.app.processing.DeduplicationCache
 import com.cameras.app.processing.PlateHasher
 import com.cameras.app.ui.DetectionFeedEntry
 import com.cameras.app.ui.DetectionState
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val deduplicationCache = DeduplicationCache()
@@ -103,11 +103,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _plateCount.update { it + 1 }
             _lastDetectionTime.value = System.currentTimeMillis()
 
-            addFeedEntry(DetectionFeedEntry(
-                plateText = plate.normalizedText,
-                hashPrefix = hash.take(8),
-                state = DetectionState.QUEUED
-            ))
+            addFeedEntry(
+                DetectionFeedEntry(
+                    plateText = plate.normalizedText,
+                    hashPrefix = hash.take(8),
+                    state = DetectionState.QUEUED
+                )
+            )
         }
 
         apiClient.checkAndFlush()

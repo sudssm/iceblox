@@ -7,6 +7,24 @@ on:
     branches: [main]
 
 jobs:
+  go-lint:
+    name: Go Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.11.2
+          working-directory: server
+
   go-tests:
     name: Go Unit Tests
     runs-on: ubuntu-latest
@@ -21,6 +39,42 @@ jobs:
           go-version-file: server/go.mod
 
       - run: go test ./...
+
+  swift-lint:
+    name: Swift Lint
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - run: swiftlint --strict
+
+  android-lint:
+    name: Android Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install ktlint
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
+          chmod +x ktlint
+          sudo mv ktlint /usr/local/bin/
+
+      - run: ktlint
 
   android-tests:
     name: Android Unit Tests

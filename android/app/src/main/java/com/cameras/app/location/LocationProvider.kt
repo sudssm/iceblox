@@ -34,7 +34,8 @@ class LocationProvider(private val context: Context) {
 
     fun startUpdates() {
         val hasFine = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
         _hasPermission.value = hasFine

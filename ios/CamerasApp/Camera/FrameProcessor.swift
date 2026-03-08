@@ -44,7 +44,7 @@ final class FrameProcessor: ObservableObject {
 
     private var frameCount = 0
     private var fpsFrameCount = 0
-    private var fpsTimer: Date = Date()
+    private var fpsTimer = Date()
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient) {
         self.offlineQueue = offlineQueue
