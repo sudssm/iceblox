@@ -11,13 +11,13 @@ Items are ordered by dependency — earlier items unblock later ones. Within a c
 Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_plate_detection.md)
 
 - [x] Create `models/training/` directory and `train.py` script
-- [x] Download license plate dataset (HuggingFace, 8,823 images)
-- [x] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
-- [x] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [x] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
-- [x] Copy model artifacts to iOS and Android asset directories
+- [ ] Download license plate dataset (HuggingFace, 8,823 images)
+- [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
+- [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
+- [ ] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
+- [ ] Copy trained model artifacts to iOS and Android asset directories (currently COCO placeholder)
 - [x] Create `models/Makefile` with build/export/deploy targets
-- [x] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
+- [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
 ---
 
@@ -135,7 +135,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Detection Pipeline
 - [x] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
 - [x] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
-- [x] **Raw output parsing** — Parse `[1, 5, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
+- [x] **Raw output parsing** — Parse `[1, N, 8400]` tensor (N=5 for trained plate model, N=84 for COCO placeholder) into per-candidate detections, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates. Channel count auto-detected from model at init. (REQ-M-6)
 - [x] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7)
 - [x] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
 - [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
