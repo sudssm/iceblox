@@ -455,7 +455,8 @@ ios/CamerasApp/
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
 │   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   └── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+│   ├── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+│   └── SimulatorCamera.swift           # Timer-driven frame generator for simulator testing (simulator-only)
 ├── Detection/
 │   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
 │   └── PlateOCR.swift                  # Vision VNRecognizeTextRequest on cropped regions
@@ -542,17 +543,18 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 ### Project Structure
 
 ```
-android/app/src/main/java/com/cameras/app/
-├── MainActivity.kt                      # Activity, landscape lock, permission requests, splash→camera flow
+android/app/src/main/java/com/iceblox/app/
+├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
 │   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
 ├── camera/
 │   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
-│   └── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+│   ├── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+│   └── TestFrameFeeder.kt              # Test mode: loads images, feeds them through analyzeBitmap() on a timer
 ├── detection/
 │   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
 │   └── PlateOCR.kt                      # ML Kit Text Recognition on cropped bitmaps
@@ -561,10 +563,12 @@ android/app/src/main/java/com/cameras/app/
 │   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper obfuscation
 │   └── DeduplicationCache.kt            # Time-windowed set
 ├── network/
-│   ├── ApiClient.kt                     # OkHttp/Retrofit, POST /api/v1/plates
+│   ├── ApiClient.kt                     # OkHttp, POST /api/v1/plates + /api/v1/devices
 │   ├── AlertClient.kt                   # Subscribe endpoint client, coroutine timer, GPS truncation
 │   ├── RetryManager.kt                  # Exponential backoff, 429 handling
 │   └── ConnectivityMonitor.kt           # ConnectivityManager.NetworkCallback
+├── notification/
+│   └── PushNotificationService.kt       # FirebaseMessagingService: onNewToken, onMessageReceived
 ├── persistence/
 │   ├── OfflineQueueDatabase.kt          # Room database definition
 │   ├── OfflineQueueDao.kt               # Insert, query oldest, delete, count
@@ -572,12 +576,16 @@ android/app/src/main/java/com/cameras/app/
 ├── location/
 │   └── LocationProvider.kt              # FusedLocationProviderClient, permission handling
 ├── config/
-│   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL
+│   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL, notification config
 └── assets/
     └── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
 
 android/app/src/main/
-├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET
+├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET, POST_NOTIFICATIONS
+
+android/app/src/debug/
+└── assets/
+    └── test_images/                     # Test plate images for test mode (debug builds only)
 ```
 
 ### Implementation Order

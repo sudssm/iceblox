@@ -54,12 +54,15 @@ final class FrameProcessor: ObservableObject {
     }
 
     func processFrame(_ sampleBuffer: CMSampleBuffer, skipCount: Int) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        processFrame(pixelBuffer, skipCount: skipCount)
+    }
+
+    func processFrame(_ pixelBuffer: CVPixelBuffer, skipCount: Int) {
         frameCount += 1
         if frameCount % (skipCount + 1) != 0 { return }
 
         updateFPS()
-
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let detections = detector.detect(pixelBuffer: pixelBuffer)
         DebugLog.shared.d("FrameProcessor", "\(detections.count) raw detections")

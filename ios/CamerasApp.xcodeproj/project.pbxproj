@@ -33,6 +33,7 @@
 		A1B2C3D4E5F60001000036 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000036 /* DebugLog.swift */; };
 		A1B2C3D4E5F60001000037 /* DebugLogPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */; };
 		A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000038 /* SplashScreenView.swift */; };
+		A1B2C3D4E5F60001000039 /* SimulatorCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000039 /* SimulatorCamera.swift */; };
 		A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000040 /* AlertClient.swift */; };
 		A1B2C3D4E5F60001000041 /* AlertClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000041 /* AlertClientTests.swift */; };
 		A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */; };
@@ -77,6 +78,7 @@
 		A1B2C3D4E5F60002000036 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogPanel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000038 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000039 /* SimulatorCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorCamera.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000040 /* AlertClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClient.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000041 /* AlertClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClientTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTests.swift; sourceTree = "<group>"; };
@@ -157,6 +159,7 @@
 				A1B2C3D4E5F60002000010 /* CameraManager.swift */,
 				A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */,
 				A1B2C3D4E5F60002000032 /* FrameProcessor.swift */,
+				A1B2C3D4E5F60002000039 /* SimulatorCamera.swift */,
 			);
 			path = Camera;
 			sourceTree = "<group>";
@@ -356,6 +359,7 @@
 				A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */,
 				A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */,
 				A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */,
+				A1B2C3D4E5F60001000039 /* SimulatorCamera.swift in Sources */,
 				A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

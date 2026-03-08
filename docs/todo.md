@@ -107,9 +107,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Project Setup
 - [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
 - [x] **Keep screen on** — `FLAG_KEEP_SCREEN_ON` in MainActivity `onCreate` (REQ-M-4a)
-- [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET
+- [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET, POST_NOTIFICATIONS
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)
-- [x] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite, Play Services Location
+- [x] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite, Play Services Location, Firebase Messaging
 
 ### Camera
 - [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
@@ -154,10 +154,19 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 
 ### Push Notifications
-- [ ] **Firebase setup** — Add FCM dependency, `google-services.json`, notification channel (REQ-M-60)
-- [ ] **POST_NOTIFICATIONS permission** — Runtime permission request for Android 13+ (REQ-M-60)
-- [ ] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
-- [ ] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
+- [x] **Firebase setup** — Add FCM dependency, `google-services.json`, notification channel (REQ-M-60)
+- [x] **POST_NOTIFICATIONS permission** — Runtime permission request for Android 13+ (REQ-M-60)
+- [x] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
+- [x] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
+
+### Rename
+- [ ] **Rename to IceBlox everywhere** — Update iOS bundle ID, server references, specs, and any remaining `cameras` references to use `iceblox` branding
+
+### Test Mode
+- [x] **Test mode intent extra** — `test_mode` boolean extra skips splash screen and camera permission (TS-33)
+- [x] **TestFrameFeeder** — Loads images from `src/debug/assets/test_images/` and `filesDir/test_images/`, feeds through `analyzeBitmap()` on 500ms timer (TS-34)
+- [x] **Test mode UI** — `TestImagePreview` composable replaces camera preview, `[TEST MODE]` banner shown (TS-35)
+- [x] **test_mode.sh script** — Installs APK, optionally pushes images via `--push-dir`, launches with test_mode extra
 
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
