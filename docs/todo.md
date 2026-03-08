@@ -58,8 +58,10 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Wire live data** — Connect status bar to real pipeline state
 
 ### Detection Pipeline
-- [ ] **Core ML model integration** — Load YOLOv8-nano `.mlmodel`, run inference on frames (REQ-M-5, REQ-M-6)
-- [ ] **Confidence threshold** — Filter detections below 0.7 (REQ-M-7)
+- [ ] **Core ML model loading** — Compile `.mlmodel`, create and cache `VNCoreMLModel` instance at startup (REQ-M-5, REQ-M-6)
+- [ ] **Frame-to-inference bridge** — Extract `CVPixelBuffer` from `CMSampleBuffer`, create `VNImageRequestHandler`, run `VNCoreMLRequest` on a dedicated serial queue (REQ-M-6). NMS is baked into the Core ML export — no manual implementation needed
+- [ ] **Detection result parsing** — Extract `VNRecognizedObjectObservation` bounding boxes, convert Vision coordinates (bottom-left origin, normalized) to pixel coordinates for cropping (REQ-M-6)
+- [ ] **Confidence threshold** — Filter detections with `confidence` below 0.7 (REQ-M-7)
 - [ ] **OCR** — Vision `VNRecognizeTextRequest` on cropped plate regions (REQ-M-9)
 - [ ] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
 - [ ] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
@@ -114,8 +116,10 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Wire ViewModel** — Connect status bar to pipeline state via StateFlow
 
 ### Detection Pipeline
-- [ ] **TFLite model integration** — Load YOLOv8-nano `.tflite`, run inference in Analyzer (REQ-M-5, REQ-M-6)
-- [ ] **Post-processing / NMS** — Bounding box extraction, non-max suppression, confidence filter (REQ-M-7)
+- [ ] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
+- [ ] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
+- [ ] **Raw output parsing** — Parse `[1, 6, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
+- [ ] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7). TFLite export does NOT include NMS — this must be implemented manually (unlike iOS Core ML)
 - [ ] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
 - [ ] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
 - [ ] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
