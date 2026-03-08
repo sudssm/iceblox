@@ -19,13 +19,18 @@ type PlateLogEntry struct {
 	Latitude   float64 `json:"latitude"`
 	Longitude  float64 `json:"longitude"`
 	ReceivedAt string  `json:"received_at"`
+	Matched    bool    `json:"matched"`
 }
 
 type LogWriter interface {
 	WriteEntry(entry PlateLogEntry) error
 }
 
-func PlatesHandler(logger LogWriter) http.HandlerFunc {
+type TargetChecker interface {
+	Contains(hash string) bool
+}
+
+func PlatesHandler(logger LogWriter, targets TargetChecker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -44,11 +49,14 @@ func PlatesHandler(logger LogWriter) http.HandlerFunc {
 			return
 		}
 
+		matched := targets.Contains(req.PlateHash)
+
 		entry := PlateLogEntry{
 			PlateHash:  req.PlateHash,
 			Latitude:   req.Latitude,
 			Longitude:  req.Longitude,
 			ReceivedAt: time.Now().UTC().Format(time.RFC3339),
+			Matched:    matched,
 		}
 
 		if err := logger.WriteEntry(entry); err != nil {
@@ -58,7 +66,10 @@ func PlatesHandler(logger LogWriter) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "ok",
+			"matched": matched,
+		})
 	}
 }
 

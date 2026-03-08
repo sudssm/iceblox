@@ -10,6 +10,7 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+android/release.keystore
 *.apk
 *.aab
 
@@ -19,6 +20,10 @@ ios/DerivedData/
 ios/*.xcworkspace/xcuserdata/
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# Server data
+server/data/
+*.jsonl
 
 # IDE
 .idea/

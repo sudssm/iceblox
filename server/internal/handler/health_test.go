@@ -8,7 +8,8 @@ import (
 )
 
 func TestHealthHandler_ReturnsOK(t *testing.T) {
-	h := HealthHandler()
+	targets := &mockTargets{hashes: map[string]bool{"a": true, "b": true}}
+	h := HealthHandler(targets)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	w := httptest.NewRecorder()
@@ -18,15 +19,19 @@ func TestHealthHandler_ReturnsOK(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]string
+	var resp map[string]interface{}
 	json.NewDecoder(w.Body).Decode(&resp)
 	if resp["status"] != "ok" {
-		t.Fatalf("expected status ok, got %s", resp["status"])
+		t.Fatalf("expected status ok, got %v", resp["status"])
+	}
+	if resp["targets_loaded"] != float64(2) {
+		t.Fatalf("expected targets_loaded 2, got %v", resp["targets_loaded"])
 	}
 }
 
 func TestHealthHandler_MethodNotAllowed(t *testing.T) {
-	h := HealthHandler()
+	targets := &mockTargets{hashes: map[string]bool{}}
+	h := HealthHandler(targets)
 
 	req := httptest.NewRequest(http.MethodPost, "/healthz", nil)
 	w := httptest.NewRecorder()

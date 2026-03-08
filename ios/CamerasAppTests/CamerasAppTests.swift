@@ -16,40 +16,6 @@ final class CamerasAppTests: XCTestCase {
         XCTAssertTrue(manager.session.outputs.isEmpty)
     }
 
-    // MARK: - PlateNormalizer
-
-    func testNormalizeValidPlate() {
-        XCTAssertEqual(PlateNormalizer.normalize("abc 1234"), "ABC1234")
-    }
-
-    func testNormalizeStripsHyphens() {
-        XCTAssertEqual(PlateNormalizer.normalize("AB-1234"), "AB1234")
-    }
-
-    func testNormalizeStripsSpecialChars() {
-        XCTAssertEqual(PlateNormalizer.normalize("AB*12#34"), "AB1234")
-    }
-
-    func testNormalizeTooShort() {
-        XCTAssertNil(PlateNormalizer.normalize("A"))
-    }
-
-    func testNormalizeTooLong() {
-        XCTAssertNil(PlateNormalizer.normalize("ABCDEFGHIJ"))
-    }
-
-    func testNormalizeMaxLength() {
-        XCTAssertEqual(PlateNormalizer.normalize("ABCD1234"), "ABCD1234")
-    }
-
-    func testNormalizeEmpty() {
-        XCTAssertNil(PlateNormalizer.normalize(""))
-    }
-
-    func testNormalizeWhitespaceOnly() {
-        XCTAssertNil(PlateNormalizer.normalize("   "))
-    }
-
     // MARK: - PlateHasher
 
     func testHashProduces64CharHex() {
@@ -166,5 +132,51 @@ final class CamerasAppTests: XCTestCase {
         XCTAssertEqual(AppConfig.deduplicationWindowSeconds, 60)
         XCTAssertEqual(AppConfig.batchSize, 10)
         XCTAssertEqual(AppConfig.maxQueueSize, 1000)
+    }
+}
+
+final class PlateNormalizerTests: XCTestCase {
+    func testBasicNormalization() {
+        XCTAssertEqual(PlateNormalizer.normalize("abc 1234"), "ABC1234")
+    }
+
+    func testRemovesHyphens() {
+        XCTAssertEqual(PlateNormalizer.normalize("AB-1234"), "AB1234")
+    }
+
+    func testRemovesWhitespace() {
+        XCTAssertEqual(PlateNormalizer.normalize("AB  12 34"), "AB1234")
+    }
+
+    func testUppercases() {
+        XCTAssertEqual(PlateNormalizer.normalize("abc"), "ABC")
+    }
+
+    func testRemovesNonAlphanumeric() {
+        XCTAssertEqual(PlateNormalizer.normalize("AB@#1234"), "AB1234")
+    }
+
+    func testTruncatesTo8Chars() {
+        XCTAssertEqual(PlateNormalizer.normalize("ABCDEFGHIJ"), "ABCDEFGH")
+    }
+
+    func testRejectsTooShort() {
+        XCTAssertNil(PlateNormalizer.normalize("A"))
+    }
+
+    func testRejectsEmpty() {
+        XCTAssertNil(PlateNormalizer.normalize(""))
+    }
+
+    func testRejectsAllSymbols() {
+        XCTAssertNil(PlateNormalizer.normalize("@#$"))
+    }
+
+    func testAcceptsMinLength() {
+        XCTAssertEqual(PlateNormalizer.normalize("AB"), "AB")
+    }
+
+    func testAcceptsMaxLength() {
+        XCTAssertEqual(PlateNormalizer.normalize("ABCD1234"), "ABCD1234")
     }
 }

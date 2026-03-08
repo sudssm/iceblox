@@ -8,10 +8,10 @@ enum PlateNormalizer {
             .replacingOccurrences(of: "-", with: "")
             .filter { $0.isLetter || $0.isNumber }
 
-        let length = cleaned.count
-        guard length >= AppConfig.minPlateLength, length <= AppConfig.maxPlateLength else {
+        let trimmed = String(cleaned.prefix(AppConfig.maxPlateLength))
+        guard trimmed.count >= AppConfig.minPlateLength else {
             return nil
         }
-        return String(cleaned.prefix(AppConfig.maxPlateLength))
+        return trimmed
     }
 }
