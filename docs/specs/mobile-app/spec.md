@@ -165,6 +165,47 @@ If the server responds with `429 Too Many Requests`, the app MUST:
 - Keep plates in the offline queue during the backoff period
 - Resume normal upload behavior after the backoff expires
 
+### Push Notifications
+
+#### REQ-M-60: Push Notification Permission
+
+The app MUST request push notification permission from the user.
+
+**Platform implementations:**
+- **iOS**: Request authorization via `UNUserNotificationCenter.requestAuthorization(options: [.alert, .sound, .badge])`. On grant, call `application.registerForRemoteNotifications()`.
+- **Android**: On API 33+ (Android 13), request `POST_NOTIFICATIONS` runtime permission. Create a notification channel (`plate_alerts`, importance high) on app startup for Android 8.0+.
+
+Push notifications are optional — the app MUST function normally if permission is denied.
+
+#### REQ-M-61: Device Token Registration
+
+After obtaining a push notification token, the app MUST send it to the server:
+
+```
+POST /api/v1/devices
+Content-Type: application/json
+X-Device-ID: <device identifier>
+
+{
+  "token": "<push token>",
+  "platform": "ios" | "android"
+}
+```
+
+The app MUST re-register whenever the token refreshes:
+- **iOS**: `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)` — convert `Data` to hex string (MUST NOT use `.description`)
+- **Android**: `FirebaseMessagingService.onNewToken()` — token is a string
+
+#### REQ-M-62: Notification Display
+
+The app MUST handle incoming push notifications:
+- **Foreground**: Display as a system banner notification (iOS: return `.banner, .sound` from `willPresent`; Android: build and post via `NotificationManager`)
+- **Background / Not running**: Handled automatically by the system (iOS) or built by the app via `onMessageReceived` (Android, data-only messages)
+
+#### REQ-M-63: Notification Privacy
+
+Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Target plate detected") and a sighting reference ID.
+
 ### Debug Mode
 
 #### REQ-M-18: Debug Mode Toggle
@@ -307,6 +348,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 | Pepper storage | Build-time constant (obfuscated) |
 | Local database | Core Data or SQLite (for offline queue) |
 | Networking | URLSession |
+| Push notifications | UserNotifications (`UNUserNotificationCenter`) |
 
 ### Android (Kotlin)
 
@@ -319,12 +361,13 @@ When foregrounded again, it MUST resume capture within 1 second.
 | Pepper storage | Build-time constant (obfuscated) |
 | Local database | Room (for offline queue) |
 | Networking | OkHttp / Retrofit |
+| Push notifications | Firebase Cloud Messaging (`firebase-messaging`) |
 
 ---
 
 ## Constraints
 
-- C-1: No network calls except to the configured server endpoint
+- C-1: No network calls except to the configured server endpoint and platform push notification services (APNs managed by iOS; FCM managed by Firebase SDK)
 - C-2: No user accounts or authentication in v1. `device_id` is the hardware identifier (`identifierForVendor` on iOS, `Settings.Secure.ANDROID_ID` on Android)
 - C-3: The app does not receive the target plate list. It learns only whether individual submitted plates matched (boolean per plate in server response)
 - C-4: The ML detection model must be bundled with the app (no model downloads)
@@ -419,6 +462,7 @@ ios/CamerasApp/
 | 14 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
 | 15 | Background/crash | REQ-M-50, REQ-M-51 | Stop capture on background, flush queue, resume on foreground |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
+| 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 
 ### Key Technical Notes
 
@@ -514,6 +558,7 @@ android/app/src/main/
 | 14 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
 | 15 | Background/crash | REQ-M-50, REQ-M-51 | Lifecycle-aware: stop analysis on STOPPED, flush queue, resume on STARTED |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
+| 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 
 ### Key Technical Notes
 

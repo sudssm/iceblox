@@ -23,6 +23,11 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
+- [ ] **Device token store** — `device_tokens` table, CRUD operations in `db.go` (REQ-S-9)
+- [ ] **POST /api/v1/devices** — Device token registration endpoint with upsert (REQ-S-9)
+- [ ] **APNs client** — HTTP/2 push provider, ES256 JWT signing, `.p8` key loading, token caching (REQ-S-11)
+- [ ] **FCM client** — HTTP v1 API, RS256 JWT → OAuth2 token exchange, token caching (REQ-S-12)
+- [ ] **Push notifier** — Dispatch notifications to all registered devices on match, async goroutine, stale token cleanup (REQ-S-10)
 
 ---
 
@@ -80,6 +85,12 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [x] **Debug log panel** — Translucent log panel at bottom of overlay showing DebugLog entries, color-coded by level, auto-scrolling (DBG-4)
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
+
+### Push Notifications
+- [ ] **Notification permission** — Request via `UNUserNotificationCenter`, register for remote notifications (REQ-M-60)
+- [ ] **APNs token registration** — Convert device token to hex string, POST to `/api/v1/devices` (REQ-M-61)
+- [ ] **Notification handling** — `UNUserNotificationCenterDelegate`, foreground banner display (REQ-M-62)
+
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 - [ ] **App icon** — Add 1024×1024 PNG to `AppIcon.appiconset`
@@ -141,5 +152,12 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [x] **Debug log panel** — Translucent log panel at bottom of overlay showing DebugLog entries, color-coded by level, auto-scrolling (DBG-4)
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
+
+### Push Notifications
+- [ ] **Firebase setup** — Add FCM dependency, `google-services.json`, notification channel (REQ-M-60)
+- [ ] **POST_NOTIFICATIONS permission** — Runtime permission request for Android 13+ (REQ-M-60)
+- [ ] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
+- [ ] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
+
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
