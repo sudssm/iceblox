@@ -18,8 +18,9 @@ final class PlateDetector {
             config.computeUnits = .all
             let model = try plate_detector(configuration: config).model
             visionModel = try VNCoreMLModel(for: model)
+            DebugLog.shared.d("PlateDetector", "Model loaded successfully")
         } catch {
-            print("Failed to load plate detection model: \(error)")
+            DebugLog.shared.e("PlateDetector", "Failed to load model: \(error)")
         }
     }
 

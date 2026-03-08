@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cameras.app.debug.LogEntry
 
 data class DebugDetection(
     val plateText: String,
@@ -60,6 +61,7 @@ fun DebugOverlay(
     fps: Double,
     queueDepth: Int,
     isConnected: Boolean,
+    logEntries: List<LogEntry> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -224,7 +226,14 @@ fun DebugOverlay(
             }
         }
 
-        // [DEBUG MODE] label (bottom-left)
+        // Log panel (bottom)
+        DebugLogPanel(
+            entries = logEntries,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
+        )
+
         Text(
             text = "[DEBUG MODE]",
             color = Color.Yellow,
@@ -232,7 +241,7 @@ fun DebugOverlay(
             fontFamily = FontFamily.Monospace,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(8.dp)
+                .padding(start = 8.dp, bottom = 186.dp)
         )
     }
 }

@@ -3,7 +3,7 @@ package com.cameras.app.camera
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.cameras.app.config.AppConfig
@@ -54,18 +54,9 @@ class FrameAnalyzer(
             updateFps()
 
             val bitmap = imageProxy.toBitmap()
-            Log.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}")
+            DebugLog.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}")
             val detections = detector.detect(bitmap)
-            Log.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
-
-            _rawDetections.value = detections.map { det ->
-                RawDetectionBox(
-                    boundingBox = det.boundingBox,
-                    confidence = det.confidence,
-                    imageWidth = bitmap.width,
-                    imageHeight = bitmap.height
-                )
-            }
+            DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
 
             _rawDetections.value = detections.map { det ->
                 RawDetectionBox(
@@ -103,7 +94,7 @@ class FrameAnalyzer(
                 onPlatesDetected(plates)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Frame analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
+            DebugLog.e(TAG, "Frame analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
         } finally {
             imageProxy.close()
         }
@@ -112,15 +103,15 @@ class FrameAnalyzer(
     fun analyzeBitmap(bitmap: Bitmap) {
         try {
             val detections = detector.detect(bitmap)
-            Log.d(TAG, "Test image: ${detections.size} detections")
+            DebugLog.d(TAG, "Test image: ${detections.size} detections")
 
             val plates = detections.mapNotNull { detection ->
                 val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
                     ?: return@mapNotNull null
-                Log.d(TAG, "OCR result: ${ocrResult.text} (conf=${ocrResult.confidence})")
+                DebugLog.d(TAG, "OCR result: ${ocrResult.text} (conf=${ocrResult.confidence})")
                 val normalized = PlateNormalizer.normalize(ocrResult.text)
                     ?: return@mapNotNull null
-                Log.d(TAG, "Normalized: $normalized")
+                DebugLog.d(TAG, "Normalized: $normalized")
 
                 ProcessedPlate(
                     normalizedText = normalized,
@@ -130,14 +121,14 @@ class FrameAnalyzer(
             }
 
             if (plates.isNotEmpty()) {
-                Log.d(TAG, "Test image produced ${plates.size} plates")
+                DebugLog.d(TAG, "Test image produced ${plates.size} plates")
                 onPlatesDetected(plates)
             } else {
-                Log.w(TAG, "Test image: no plates extracted, injecting fallback")
+                DebugLog.w(TAG, "Test image: no plates extracted, injecting fallback")
                 onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Test image analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
+            DebugLog.w(TAG, "Test image analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
             onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
         }
     }

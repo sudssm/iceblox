@@ -20,7 +20,8 @@ ios/
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
 │   ├── Views/
 │   │   ├── StatusBarView.swift        # Bottom status bar (connectivity, last detected, counts)
-│   │   └── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
+│   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
+│   │   └── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
@@ -43,6 +44,8 @@ ios/
 │   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning
 │   ├── Config/
 │   │   └── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL
+│   ├── Debug/
+│   │   └── DebugLog.swift             # Singleton logger: ring buffer + @Published entries for UI
 │   └── Models/
 │       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
 └── CamerasAppTests/
@@ -99,6 +102,16 @@ Prerequisites for App Store submission:
 5. **App Store Connect** — Create listing with screenshots, description, privacy policy URL
 6. **TestFlight** — Upload archive for beta testing before submission
 7. **ML Model** — Bundle `plate_detector.mlmodel` (not committed to repo; see model training docs)
+
+## Build Learnings
+
+| Topic | Detail |
+|-------|--------|
+| **Adding new files** | New `.swift` files must be added to `project.pbxproj` in four places: PBXBuildFile, PBXFileReference, PBXGroup (for directory membership), and PBXSourcesBuildPhase. Without this, Xcode compiles but cannot find the new types. The `xcodeproj` Ruby gem can automate this; otherwise manual editing with UUIDs matching the project's existing format is required. |
+| **Simulator camera** | iOS Simulator has no rear camera — `AVCaptureSession` errors with code `-12782`. Use a physical device for camera testing. Grant camera permission automatically with `xcrun simctl privacy <device> grant camera com.cameras.app`. |
+| **Thread safety for @Published** | `@Published` properties must be updated on the main thread. Use `NSLock` for thread-safe buffer mutation, then dispatch to main for the `@Published` assignment. Check `Thread.isMainThread` to avoid redundant dispatches. |
+| **Debug gating** | Use `#if DEBUG` to gate debug-only code (logging to console, debug UI). This strips debug code from release builds at compile time. |
+| **Server URL** | `AppConfig.swift` hardcodes `http://localhost:8080`. Works on Simulator (shared network namespace) but physical devices need the host machine's LAN IP. |
 
 ## Dependencies
 

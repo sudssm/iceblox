@@ -90,7 +90,8 @@ final class APIClient {
             session.dataTask(with: request) { [weak self] data, response, error in
                 defer { semaphore.signal() }
 
-                if error != nil {
+                if let error {
+                    DebugLog.shared.w("APIClient", "Upload failed: \(error.localizedDescription)")
                     if let delay = self?.retryManager.handleFailure() {
                         Thread.sleep(forTimeInterval: delay)
                     }
@@ -101,11 +102,13 @@ final class APIClient {
 
                 if httpResponse.statusCode == 429 {
                     let retryAfter = Double(httpResponse.value(forHTTPHeaderField: "Retry-After") ?? "60") ?? 60
+                    DebugLog.shared.w("APIClient", "Rate limited for \(retryAfter)s")
                     self?.retryManager.handleRateLimit(retryAfter: retryAfter)
                     return
                 }
 
                 if httpResponse.statusCode == 200 {
+                    DebugLog.shared.d("APIClient", "Upload OK")
                     shouldRemove = true
                     self?.retryManager.reset()
 

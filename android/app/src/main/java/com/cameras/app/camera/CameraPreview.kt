@@ -1,6 +1,6 @@
 package com.cameras.app.camera
 
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -79,9 +79,9 @@ fun CameraPreview(
                             preview,
                             imageAnalysis
                         )
-                        Log.d(TAG, "Camera bound successfully")
+                        DebugLog.d(TAG, "Camera bound successfully")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Camera binding failed", e)
+                        DebugLog.e(TAG, "Camera binding failed", e)
                     }
                 }, ContextCompat.getMainExecutor(ctx))
             }
