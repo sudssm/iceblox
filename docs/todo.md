@@ -154,10 +154,13 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 
 ### Push Notifications
-- [ ] **Firebase setup** — Add FCM dependency, `google-services.json`, notification channel (REQ-M-60)
-- [ ] **POST_NOTIFICATIONS permission** — Runtime permission request for Android 13+ (REQ-M-60)
-- [ ] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
-- [ ] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
+- [x] **Firebase setup** — Add FCM dependency, `google-services.json`, notification channel (REQ-M-60)
+- [x] **POST_NOTIFICATIONS permission** — Runtime permission request for Android 13+ (REQ-M-60)
+- [x] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
+- [x] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
+
+### Rename
+- [ ] **Rename to IceBlox everywhere** — Update iOS bundle ID, server references, specs, and any remaining `cameras` references to use `iceblox` branding
 
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
