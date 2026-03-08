@@ -52,7 +52,7 @@ android/
 - **Pattern**: MVVM (Model-View-ViewModel)
 - **UI Framework**: Jetpack Compose with Material 3
 - **Minimum SDK**: 28 (Android 9.0)
-- **Target SDK**: 34 (Android 14)
+- **Target SDK**: 35 (Android 15)
 - **Language**: Kotlin 2.0+
 
 ## Key Decisions
@@ -72,6 +72,12 @@ android/
 cd android
 ./gradlew assembleDebug
 
+# Build release AAB (for Play Store)
+./gradlew bundleRelease
+
+# Build release APK (for sideloading)
+./gradlew assembleRelease
+
 # Install on connected device/emulator
 ./gradlew installDebug
 
@@ -81,6 +87,45 @@ cd android
 # Run lint
 ./gradlew lint
 ```
+
+## Release & Distribution
+
+### Signing
+
+Release builds are signed using a keystore configured in `app/build.gradle.kts`. Keystore credentials are read from `local.properties` (gitignored) with the following keys:
+
+```properties
+RELEASE_STORE_FILE=../release.keystore
+RELEASE_STORE_PASSWORD=...
+RELEASE_KEY_ALIAS=cameras-release
+RELEASE_KEY_PASSWORD=...
+```
+
+To generate the keystore:
+
+```bash
+keytool -genkeypair -v \
+  -keystore android/release.keystore \
+  -alias cameras-release \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -storepass <password> -keypass <password> \
+  -dname "CN=CamerasApp, O=Cameras, L=, ST=, C=US"
+```
+
+The keystore file (`release.keystore`) is gitignored. Store it and its credentials securely outside of version control.
+
+### R8 / ProGuard
+
+Release builds enable R8 minification and resource shrinking. ProGuard rules for third-party libraries (CameraX, Compose, ML Kit, OkHttp, Room) are maintained in `app/proguard-rules.pro`.
+
+### Play Store
+
+- **Target SDK**: 35 (current Play Store minimum)
+- **Upload format**: Android App Bundle (`.aab`) via `./gradlew bundleRelease`
+- **App icon**: 512x512 PNG for Play Store listing (separate from adaptive icon)
+- **Required listing assets**: feature graphic (1024x500), 2+ phone screenshots, privacy policy URL
+- **Content rating**: IARC questionnaire in Play Console
+- **Data safety**: camera (on-device only), location (sent to server), hashed plate data (sent to server)
 
 ## Dependencies
 

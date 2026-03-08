@@ -105,6 +105,14 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)
 - [ ] **Dependencies** — ~~CameraX~~ done, ML Kit, Room, OkHttp, TFLite still needed
 
+### Release & Distribution
+- [x] **Bump targetSdk to 35** — compileSdk + targetSdk → 35, manifest targetApi → 35
+- [x] **Release signing config** — keystore generated, `signingConfigs` block reads from `local.properties`
+- [x] **Enable R8 minification** — `isMinifyEnabled = true`, `isShrinkResources = true` in release build type
+- [x] **ProGuard rules** — keep rules for CameraX, Compose, Kotlin coroutines, Lifecycle
+- [x] **Gitignore release artifacts** — `release.keystore` added to `.gitignore` (`local.properties`, `*.aab`, `*.apk` already covered)
+- [x] **Verify release build** — `bundleRelease` produces signed 7.7 MB AAB, `assembleRelease` produces signed 13 MB APK
+
 ### Camera
 - [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
 - [x] **Camera preview** — Compose `PreviewView` wrapper (REQ-M-3)
