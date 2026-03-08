@@ -318,18 +318,17 @@ X-Device-ID: <device identifier>
 **Error responses:**
 - `400 Bad Request` — malformed JSON or failed field validation. Body: `{"error": "description"}`.
 - `405 Method Not Allowed` — non-POST request to this endpoint.
-- `500 Internal Server Error` — Redis or database failure. Body: `{"error": "description"}`.
+- `500 Internal Server Error` — database query failure. Body: `{"error": "description"}`.
 
-### REQ-S-14: Redis Subscriber Storage
+### REQ-S-14: In-Memory Subscriber Storage
 
-The server MUST store subscriber location data in Redis with:
-- **Key**: `subscriber:{device_id}`
-- **Value**: JSON string `{"lat": number, "lng": number, "radius_miles": number}`
-- **TTL**: 3600 seconds (1 hour)
+The server MUST store subscriber location data in an in-memory map keyed by device ID. Each entry contains:
+- **Fields**: `lat`, `lng`, `radius_miles`, `expires_at`
+- **TTL**: 1 hour from the time of subscription
 
-When a device re-subscribes, the existing key MUST be overwritten (SET with EX), refreshing the TTL. Subscriber entries are automatically cleaned up if a device stops sending updates for more than 1 hour.
+When a device re-subscribes, the existing entry MUST be overwritten, refreshing the TTL. A background goroutine MUST periodically clean up expired entries (every 5 minutes). The store MUST be concurrency-safe (protected by a read-write mutex).
 
-The Redis connection MUST be configured via a `--redis-addr` CLI flag (default: `localhost:6379`).
+Note: An earlier version of this spec specified Redis for subscriber storage. The in-memory approach was chosen to avoid adding an external dependency for v1. The TTL and cleanup behavior is equivalent. Redis may be revisited if horizontal scaling requires shared state across multiple server instances.
 
 ### REQ-S-15: Recent Sightings Query
 
@@ -344,7 +343,7 @@ The response MUST include the plaintext plate identifier (from the `plates` tabl
 ### REQ-S-16: Proximity-Filtered Fan-Out on Match
 
 When a new target plate match is detected via `POST /api/v1/plates`, the existing push notification dispatch (REQ-S-10) MUST be enhanced to filter by proximity:
-1. Query all subscribers from Redis (using `SCAN` with the `subscriber:*` key pattern)
+1. Query all active subscribers from the in-memory subscriber store
 2. Compute haversine distance between the sighting location and each subscriber's registered location
 3. Only send push notifications (via the existing APNs/FCM infrastructure from REQ-S-11/REQ-S-12) to devices whose sighting falls within their requested radius
 
@@ -375,7 +374,7 @@ This proximity filtering MUST NOT block the plates handler HTTP response. It MUS
 |---|---|
 | Language / framework | Go with `net/http` |
 | Target list source | StopICE plate tracker data (plaintext `plates.txt` extracted via Makefile) |
-| Alert delivery | Push notifications to registered devices on match, filtered by proximity (APNs for iOS, FCM for Android, Redis for subscriber locations) |
+| Alert delivery | Push notifications to registered devices on match, filtered by proximity (APNs for iOS, FCM for Android, in-memory store for subscriber locations) |
 | Match results to device | Yes — per-plate boolean only, no target details |
 | Storage | PostgreSQL — `plates` table for targets, `sightings` table for matched observations |
 | Monitoring app data source | REST API querying `sightings` table |
@@ -416,7 +415,7 @@ server/
 │   ├── geo/
 │   │   └── haversine.go         # Haversine distance, bounding box calculation
 │   ├── subscribers/
-│   │   └── store.go             # Redis subscriber store (SET/SCAN with TTL)
+│   │   └── store.go             # In-memory subscriber store (map with TTL cleanup)
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
 │       ├── subscribe.go         # POST /api/v1/subscribe handler
@@ -439,7 +438,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`) |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`). Subscriber storage is in-memory (no external config needed). |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -453,9 +452,9 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 13 | FCM client | REQ-S-12 | HTTP v1 API client, RS256 JWT, OAuth2 token exchange, token caching |
 | 14 | Notifier | REQ-S-10 | Match → push dispatch to all devices, async goroutine, stale token cleanup |
 | 15 | Geo package | REQ-S-15 | Haversine distance calculation, bounding box utility (pure functions, no deps) |
-| 16 | Subscriber store | REQ-S-14 | Redis-backed subscriber location storage with SET/SCAN and 1-hour TTL |
+| 16 | Subscriber store | REQ-S-14 | In-memory subscriber location storage with 1-hour TTL and periodic cleanup |
 | 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, Sighting struct, composite geo index |
-| 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in Redis, query+filter recent sightings, respond |
+| 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
 
 ### Key Technical Notes
@@ -471,10 +470,10 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **APNs JWT**: ES256 (ECDSA P-256) signed with `.p8` key. Cache token for ~50 minutes. All signing uses Go stdlib (`crypto/ecdsa`, `crypto/sha256`, `encoding/pem`).
 - **FCM OAuth2**: RS256 JWT exchanged for access token at Google's token endpoint. Cache token until near expiry (~55 minutes). All signing uses Go stdlib (`crypto/rsa`, `crypto/sha256`).
 - **Async push dispatch**: Send notifications in a goroutine after recording the sighting. Push failures MUST NOT affect the plates endpoint response.
-- **Redis dependency**: `github.com/redis/go-redis/v9` for subscriber location storage. `make redis` starts Redis 7 Alpine container. Default address: `localhost:6379`.
+- **Subscriber storage**: In-memory `map[string]Subscriber` protected by `sync.RWMutex`. Background goroutine cleans expired entries every 5 minutes. No external dependency (Redis was considered but deferred to avoid operational complexity in v1).
 - **Haversine distance**: Pure Go implementation in `internal/geo/`. Used for both subscribe response filtering and proximity fan-out. Bounding-box pre-filter in SQL narrows candidates before precise haversine calculation.
-- **Proximity fan-out**: Enhances the existing push notification goroutine. After recording a sighting, SCAN Redis subscribers, compute haversine distance, and only notify devices within their requested radius.
-- **PlateText lookup**: `targets.Store` exposes `PlateText(hash)` to resolve hash → plaintext plate for subscribe response and notification content.
+- **Proximity fan-out**: Enhances the existing push notification goroutine. After recording a sighting, query active subscribers from the in-memory store, compute haversine distance, and only notify devices within their requested radius.
+- **Recent sightings enrichment**: The subscribe query joins `sightings` with `plates` so nearby results can include plaintext target plates without exposing non-target plate text.
 
 ### Deployment
 

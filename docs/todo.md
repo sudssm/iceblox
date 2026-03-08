@@ -23,11 +23,11 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
-- [ ] **Device token store** — `device_tokens` table, CRUD operations in `db.go` (REQ-S-9)
-- [ ] **POST /api/v1/devices** — Device token registration endpoint with upsert (REQ-S-9)
-- [ ] **APNs client** — HTTP/2 push provider, ES256 JWT signing, `.p8` key loading, token caching (REQ-S-11)
-- [ ] **FCM client** — HTTP v1 API, RS256 JWT → OAuth2 token exchange, token caching (REQ-S-12)
-- [ ] **Push notifier** — Dispatch notifications to all registered devices on match, async goroutine, stale token cleanup (REQ-S-10)
+- [x] **Device token store** — `device_tokens` table, CRUD operations in `db.go` (REQ-S-9)
+- [x] **POST /api/v1/devices** — Device token registration endpoint with upsert (REQ-S-9)
+- [x] **APNs client** — HTTP/2 push provider, ES256 JWT signing, `.p8` key loading, token caching (REQ-S-11)
+- [x] **FCM client** — HTTP v1 API, RS256 JWT → OAuth2 token exchange, token caching (REQ-S-12)
+- [x] **Push notifier** — Dispatch notifications to all registered devices on match, async goroutine, stale token cleanup (REQ-S-10)
 
 ---
 
@@ -87,9 +87,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
 
 ### Push Notifications
-- [ ] **Notification permission** — Request via `UNUserNotificationCenter`, register for remote notifications (REQ-M-60)
-- [ ] **APNs token registration** — Convert device token to hex string, POST to `/api/v1/devices` (REQ-M-61)
-- [ ] **Notification handling** — `UNUserNotificationCenterDelegate`, foreground banner display (REQ-M-62)
+- [x] **Notification permission** — Request via `UNUserNotificationCenter`, register for remote notifications (REQ-M-60)
+- [x] **APNs token registration** — Convert device token to hex string, POST to `/api/v1/devices` (REQ-M-61)
+- [x] **Notification handling** — `UNUserNotificationCenterDelegate`, foreground banner display (REQ-M-62)
 
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
@@ -198,28 +198,26 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md) REQ-S-13 through REQ-S-16, 
 
 ### Server
 
-- [ ] **Geo package** — Haversine distance calculation + bounding box utility, pure functions (REQ-S-15)
-- [ ] **Subscriber store** — Redis-backed subscriber location storage with SET/SCAN and 1-hour TTL (REQ-S-14)
-- [ ] **Recent sightings query** — DB method with bounding-box SQL pre-filter, `Sighting` struct, composite geo index (REQ-S-15)
-- [ ] **Subscribe handler** — `POST /api/v1/subscribe` endpoint: validate, store subscriber, query+filter sightings, respond (REQ-S-13)
-- [ ] **Proximity fan-out** — Enhance push dispatch with subscriber location filtering via haversine (REQ-S-16)
-- [ ] **PlateText lookup** — Add `PlateText(hash)` method to targets.Store for notification content (REQ-S-16)
-- [ ] **Wire in main.go** — `--redis-addr` flag, Redis client init, subscribe handler registration
-- [ ] **Makefile** — Add `redis` / `redis-stop` Docker targets
+- [x] **Geo package** — Haversine distance calculation + bounding box utility, pure functions (REQ-S-15)
+- [x] **Subscriber store** — In-memory subscriber location storage with 1-hour TTL and cleanup (REQ-S-14)
+- [x] **Recent sightings query** — DB method with bounding-box SQL pre-filter, `Sighting` struct, composite geo index (REQ-S-15)
+- [x] **Subscribe handler** — `POST /api/v1/subscribe` endpoint: validate, store subscriber, query+filter sightings, respond (REQ-S-13)
+- [x] **Proximity fan-out** — Enhance push dispatch with subscriber location filtering via haversine (REQ-S-16)
+- [x] **Wire in main.go** — Subscriber store init, subscribe handler registration, notifier wiring
 
 ### iOS
 
-- [ ] **AlertClient** — Subscribe endpoint client with 10-minute timer, GPS truncation to 2 decimal places (REQ-M-64, REQ-M-65, REQ-M-66)
-- [ ] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
-- [ ] **Lifecycle integration** — Start timer on active, subscribe+stop on background to refresh TTL (REQ-M-64, REQ-M-68)
-- [ ] **AppConfig** — Add `subscribeEndpoint`, `subscribeIntervalSeconds`, `defaultRadiusMiles` constants
+- [x] **AlertClient** — Subscribe endpoint client with 10-minute timer, GPS truncation to 2 decimal places (REQ-M-64, REQ-M-65, REQ-M-66)
+- [x] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
+- [x] **Lifecycle integration** — Start timer on active, subscribe+stop on background to refresh TTL (REQ-M-64, REQ-M-68)
+- [x] **AppConfig** — Add `subscribeEndpoint`, `subscribeIntervalSeconds`, `defaultRadiusMiles` constants
 
 ### Android
 
-- [ ] **AlertClient** — Subscribe endpoint client with coroutine timer (600s delay), GPS truncation (REQ-M-64, REQ-M-65, REQ-M-66)
-- [ ] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
-- [ ] **Lifecycle integration** — Start/stop with pipeline lifecycle, subscribe on stop to refresh TTL (REQ-M-64, REQ-M-68)
-- [ ] **AppConfig** — Add `SUBSCRIBE_ENDPOINT`, `SUBSCRIBE_INTERVAL_MS`, `DEFAULT_RADIUS_MILES` constants
+- [x] **AlertClient** — Subscribe endpoint client with coroutine timer (600s delay), GPS truncation (REQ-M-64, REQ-M-65, REQ-M-66)
+- [x] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
+- [x] **Lifecycle integration** — Start/stop with pipeline lifecycle, subscribe on stop to refresh TTL (REQ-M-64, REQ-M-68)
+- [x] **AppConfig** — Add `SUBSCRIBE_ENDPOINT`, `SUBSCRIBE_INTERVAL_MS`, `DEFAULT_RADIUS_MILES` constants
 
 ---
 
