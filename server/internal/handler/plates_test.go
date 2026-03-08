@@ -23,18 +23,26 @@ type mockSighting struct {
 	HardwareID string
 }
 
-func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error {
+func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.sightings = append(m.sightings, mockSighting{
 		PlateID: plateID, SeenAt: seenAt,
 		Lat: lat, Lng: lng, HardwareID: hardwareID,
 	})
-	return nil
+	return int64(len(m.sightings)), nil
 }
 
 type mockTargets struct {
 	hashes map[string]int64
+}
+
+type mockNotifier struct {
+	mu         sync.Mutex
+	sightingID int64
+	lat        float64
+	lng        float64
+	calls      int
 }
 
 func (m *mockTargets) Contains(hash string) bool {
@@ -51,12 +59,21 @@ func (m *mockTargets) Count() int {
 	return len(m.hashes)
 }
 
+func (m *mockNotifier) NotifyAsync(sightingID int64, lat, lng float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sightingID = sightingID
+	m.lat = lat
+	m.lng = lng
+	m.calls++
+}
+
 var validHash = "a3f8b2c1d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5061728394a5b6c7d8e9"
 
 func TestPlatesHandler_ValidRequest(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets)
+	h := PlatesHandler(recorder, targets, nil)
 
 	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -88,7 +105,8 @@ func TestPlatesHandler_ValidRequest(t *testing.T) {
 func TestPlatesHandler_MatchedTarget(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
-	h := PlatesHandler(recorder, targets)
+	notifier := &mockNotifier{}
+	h := PlatesHandler(recorder, targets, notifier)
 
 	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"timestamp":"2026-03-08T14:30:00Z"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -126,12 +144,21 @@ func TestPlatesHandler_MatchedTarget(t *testing.T) {
 	if !s.SeenAt.Equal(expected) {
 		t.Errorf("expected seen_at %v, got %v", expected, s.SeenAt)
 	}
+	if notifier.calls != 1 {
+		t.Fatalf("expected notifier to be called once, got %d", notifier.calls)
+	}
+	if notifier.sightingID != 1 {
+		t.Errorf("expected notifier sighting_id 1, got %d", notifier.sightingID)
+	}
+	if notifier.lat != 31.7619 || notifier.lng != -106.485 {
+		t.Errorf("expected notifier coordinates (31.7619, -106.485), got (%f, %f)", notifier.lat, notifier.lng)
+	}
 }
 
 func TestPlatesHandler_MatchedTarget_DefaultTimestamp(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 1}}
-	h := PlatesHandler(recorder, targets)
+	h := PlatesHandler(recorder, targets, nil)
 
 	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -154,7 +181,7 @@ func TestPlatesHandler_MatchedTarget_DefaultTimestamp(t *testing.T) {
 func TestPlatesHandler_MethodNotAllowed(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets)
+	h := PlatesHandler(recorder, targets, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/plates", nil)
 	w := httptest.NewRecorder()
@@ -168,7 +195,7 @@ func TestPlatesHandler_MethodNotAllowed(t *testing.T) {
 func TestPlatesHandler_InvalidJSON(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets)
+	h := PlatesHandler(recorder, targets, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader("not json"))
 	w := httptest.NewRecorder()
@@ -193,7 +220,7 @@ func TestPlatesHandler_InvalidHash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets)
+			h := PlatesHandler(recorder, targets, nil)
 
 			body := `{"plate_hash":"` + tt.hash + `","latitude":31.0,"longitude":-106.0}`
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -223,7 +250,7 @@ func TestPlatesHandler_InvalidCoordinates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets)
+			h := PlatesHandler(recorder, targets, nil)
 
 			body, _ := json.Marshal(PlateRequest{
 				PlateHash: validHash,
@@ -256,7 +283,7 @@ func TestPlatesHandler_BoundaryCoordinates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets)
+			h := PlatesHandler(recorder, targets, nil)
 
 			body, _ := json.Marshal(PlateRequest{
 				PlateHash: validHash,

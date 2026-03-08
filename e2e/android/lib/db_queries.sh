@@ -31,6 +31,15 @@ get_latest_sighting() {
     "
 }
 
+get_sighting_coords() {
+    e2e_psql -c "
+        SELECT s.latitude, s.longitude
+        FROM sightings s
+        ORDER BY s.seen_at DESC
+        LIMIT 1;
+    "
+}
+
 truncate_sightings() {
     e2e_psql -c "TRUNCATE sightings;"
 }

@@ -70,8 +70,8 @@ Push the branch to origin and create a pull request targeting `main` using `gh p
 
 After the PR is created, merge it using `gh pr merge --squash --delete-branch`. If merge fails (e.g., due to checks), report the error and stop.
 
-## Step 8: Update local main after merge
+## Step 9: Fast-forward local main after merge
 
-Run `git fetch origin main` and update the local main branch to match (same approach as Step 0). This ensures future branches and diffs start from the latest main.
+Run `git fetch origin main` and fast-forward local `main` to the merge commit (same approach as Step 0). This keeps future branches and diffs based on the latest `main`, and ensures the local repo state matches the merged PR. If this workspace cannot check out `main` because it is checked out in another worktree, update `main` in that worktree and then fast-forward the current branch to `origin/main` so this workspace also reflects the merged repo state.
 
 Report the merged PR URL when done.

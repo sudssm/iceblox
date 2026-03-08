@@ -4,28 +4,53 @@ import Foundation
 import UIKit
 
 final class SimulatorCamera {
+    private struct Frame {
+        let image: UIImage
+        let pixelBuffer: CVPixelBuffer
+        let expectedPlate: String?
+        let sourceName: String
+    }
+
+    private struct LoadedFrames {
+        let frames: [Frame]
+        let signature: String
+    }
+
     let previewImage: UIImage
-    private let pixelBuffer: CVPixelBuffer?
+    var onPreviewImageChange: ((UIImage) -> Void)?
+
+    private var frames: [Frame]
+    private var frameSignature: String
     private var timer: DispatchSourceTimer?
     private let frameQueue = DispatchQueue(label: "simulator.camera.frames")
+    private var currentFrameIndex = 0
+    private var lastReloadCheck = Date.distantPast
     weak var frameProcessor: FrameProcessor?
 
     init() {
-        if let bundled = UIImage(named: "simulator_frame") {
-            previewImage = bundled
+        let loadedFrames = SimulatorCamera.loadFrames()
+        frames = loadedFrames.frames
+        frameSignature = loadedFrames.signature
+        DebugLog.shared.d("SimulatorCamera", "Initial frame source: \(frameSignature)")
+        if let firstFrame = frames.first {
+            previewImage = firstFrame.image
         } else {
-            previewImage = SimulatorCamera.generatePlaceholder()
+            let placeholder = SimulatorCamera.generatePlaceholder()
+            previewImage = placeholder
         }
-        pixelBuffer = SimulatorCamera.createPixelBuffer(from: previewImage)
     }
 
     func start() {
-        guard timer == nil, let pixelBuffer else { return }
-        let source = DispatchSource.makeTimerSource(queue: frameQueue)
-        source.schedule(deadline: .now(), repeating: .milliseconds(100))
-        source.setEventHandler { [weak self] in
+        guard timer == nil, !frames.isEmpty else { return }
+        currentFrameIndex = 0
+        DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.frameProcessor?.processFrame(pixelBuffer, skipCount: 0)
+            self.onPreviewImageChange?(self.frames[self.currentFrameIndex].image)
+        }
+        let source = DispatchSource.makeTimerSource(queue: frameQueue)
+        source.schedule(deadline: .now(), repeating: .milliseconds(AppConfig.simulatorFrameIntervalMilliseconds))
+        source.setEventHandler { [weak self] in
+            self?.emitCurrentFrame()
         }
         source.resume()
         timer = source
@@ -34,6 +59,55 @@ final class SimulatorCamera {
     func stop() {
         timer?.cancel()
         timer = nil
+    }
+
+    private func emitCurrentFrame() {
+        reloadFramesIfNeeded()
+        guard !frames.isEmpty else { return }
+        if currentFrameIndex >= frames.count {
+            currentFrameIndex = 0
+        }
+
+        let frame = frames[currentFrameIndex]
+        if let expectedPlate = frame.expectedPlate {
+            DebugLog.shared.d("SimulatorCamera", "Injecting plate override \(expectedPlate) for \(frame.sourceName)")
+            frameProcessor?.processSimulatedPlate(
+                expectedPlate,
+                imageWidth: Int(frame.image.size.width),
+                imageHeight: Int(frame.image.size.height)
+            )
+        } else {
+            frameProcessor?.processFrame(frame.pixelBuffer, skipCount: 0)
+        }
+
+        if frames.count > 1 {
+            currentFrameIndex = (currentFrameIndex + 1) % frames.count
+            let nextImage = frames[currentFrameIndex].image
+            DispatchQueue.main.async { [weak self] in
+                self?.onPreviewImageChange?(nextImage)
+            }
+        }
+    }
+
+    private func reloadFramesIfNeeded() {
+        let now = Date()
+        guard now.timeIntervalSince(lastReloadCheck) >= 0.5 else { return }
+        lastReloadCheck = now
+
+        let loadedFrames = SimulatorCamera.loadFrames()
+        guard loadedFrames.signature != frameSignature else { return }
+
+        frames = loadedFrames.frames
+        frameSignature = loadedFrames.signature
+        currentFrameIndex = 0
+
+        if let image = frames.first?.image {
+            DispatchQueue.main.async { [weak self] in
+                self?.onPreviewImageChange?(image)
+            }
+        }
+
+        DebugLog.shared.d("SimulatorCamera", "Reloaded frame source: \(frameSignature)")
     }
 
     private static func generatePlaceholder() -> UIImage {
@@ -92,6 +166,95 @@ final class SimulatorCamera {
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         return pixelBuffer
+    }
+
+    private static func loadFrames() -> LoadedFrames {
+        let runtimeImages = runtimeImageURLs()
+        if !runtimeImages.isEmpty {
+            let frames = runtimeImages.compactMap { imageURL -> Frame? in
+                guard let image = UIImage(contentsOfFile: imageURL.path),
+                      let pixelBuffer = createPixelBuffer(from: image) else {
+                    DebugLog.shared.w("SimulatorCamera", "Skipping unreadable image at \(imageURL.lastPathComponent)")
+                    return nil
+                }
+                return Frame(
+                    image: image,
+                    pixelBuffer: pixelBuffer,
+                    expectedPlate: plateOverride(for: imageURL),
+                    sourceName: imageURL.lastPathComponent
+                )
+            }
+
+            if !frames.isEmpty {
+                let signature = frames.map { "\($0.sourceName):\($0.expectedPlate ?? "-")" }.joined(separator: "|")
+                return LoadedFrames(frames: frames, signature: "runtime:\(signature)")
+            }
+        }
+
+        if let bundled = UIImage(named: "simulator_frame"),
+           let pixelBuffer = createPixelBuffer(from: bundled) {
+            return LoadedFrames(
+                frames: [Frame(
+                    image: bundled,
+                    pixelBuffer: pixelBuffer,
+                    expectedPlate: nil,
+                    sourceName: "simulator_frame"
+                )],
+                signature: "bundled:simulator_frame"
+            )
+        }
+
+        let placeholder = generatePlaceholder()
+        guard let pixelBuffer = createPixelBuffer(from: placeholder) else {
+            return LoadedFrames(frames: [], signature: "placeholder:empty")
+        }
+        return LoadedFrames(
+            frames: [Frame(
+                image: placeholder,
+                pixelBuffer: pixelBuffer,
+                expectedPlate: nil,
+                sourceName: "placeholder"
+            )],
+            signature: "placeholder"
+        )
+    }
+
+    private static func runtimeImageURLs() -> [URL] {
+        let fm = FileManager.default
+        let candidateDirectories = [
+            fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+                .appendingPathComponent(AppConfig.simulatorTestImagesDirectoryName, isDirectory: true),
+            fm.urls(for: .documentDirectory, in: .userDomainMask).first?
+                .appendingPathComponent(AppConfig.simulatorTestImagesDirectoryName, isDirectory: true)
+        ].compactMap { $0 }
+
+        let supportedExtensions = Set(["png", "jpg", "jpeg", "bmp"])
+        var urls: [URL] = []
+
+        for directory in candidateDirectories {
+            guard let contents = try? fm.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            ) else {
+                continue
+            }
+
+            urls.append(contentsOf: contents.filter {
+                supportedExtensions.contains($0.pathExtension.lowercased())
+            })
+        }
+
+        return urls.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    private static func plateOverride(for imageURL: URL) -> String? {
+        let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("txt")
+        guard let contents = try? String(contentsOf: sidecarURL, encoding: .utf8) else {
+            return nil
+        }
+        let plate = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        return plate.isEmpty ? nil : plate
     }
 }
 #endif

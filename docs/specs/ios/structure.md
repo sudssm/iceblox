@@ -37,6 +37,7 @@ ios/
 │   │   └── DeduplicationCache.swift   # Time-windowed set of recently seen plates
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
+│   │   ├── AlertClient.swift          # Subscribe endpoint client, 10-min timer, GPS truncation
 │   │   ├── RetryManager.swift         # Exponential backoff, 429 handling
 │   │   └── ConnectivityMonitor.swift  # NWPathMonitor wrapper, triggers queue flush
 │   ├── Persistence/
@@ -51,7 +52,9 @@ ios/
 │   └── Models/
 │       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
 └── IceBloxAppTests/
-    └── IceBloxAppTests.swift          # Unit tests
+    ├── IceBloxAppTests.swift          # Unit tests
+    ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
+    └── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
 ```
 
 ## Architecture
@@ -111,7 +114,7 @@ Prerequisites for App Store submission:
 | Topic | Detail |
 |-------|--------|
 | **Adding new files** | New `.swift` files must be added to `project.pbxproj` in four places: PBXBuildFile, PBXFileReference, PBXGroup (for directory membership), and PBXSourcesBuildPhase. Without this, Xcode compiles but cannot find the new types. The `xcodeproj` Ruby gem can automate this; otherwise manual editing with UUIDs matching the project's existing format is required. |
-| **Simulator camera** | iOS Simulator has no rear camera — `AVCaptureSession` errors with code `-12782`. `SimulatorCamera.swift` provides a timer-driven frame generator (gated by `#if targetEnvironment(simulator)`) that feeds a bundled or placeholder image through the pipeline at ~10 FPS. To test with real plate images, add a `simulator_frame` image to Assets.xcassets. |
+| **Simulator camera** | iOS Simulator has no rear camera — `AVCaptureSession` errors with code `-12782`. `SimulatorCamera.swift` provides a timer-driven frame generator (gated by `#if targetEnvironment(simulator)`) that feeds a bundled or placeholder image through the pipeline at ~10 FPS. For runtime E2E injection, the app can start on the splash screen, transition into camera mode, then pick up files copied into `Library/Application Support/test_images/` inside the app container while it is already running. Optional same-basename `.txt` sidecars (for example `target.jpg` + `target.txt`) can inject a deterministic plate string through the post-detection pipeline for simulator-only E2E. |
 | **Thread safety for @Published** | `@Published` properties must be updated on the main thread. Use `NSLock` for thread-safe buffer mutation, then dispatch to main for the `@Published` assignment. Check `Thread.isMainThread` to avoid redundant dispatches. |
 | **Debug gating** | Use `#if DEBUG` to gate debug-only code (logging to console, debug UI). This strips debug code from release builds at compile time. |
 | **Server URL** | `AppConfig.swift` hardcodes `http://localhost:8080`. Works on Simulator (shared network namespace) but physical devices need the host machine's LAN IP. |

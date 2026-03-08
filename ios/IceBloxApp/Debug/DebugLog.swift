@@ -23,6 +23,7 @@ final class DebugLog: ObservableObject {
 
     func d(_ tag: String, _ message: String) {
         #if DEBUG
+        NSLog("[\(tag)] \(message)")
         print("[\(tag)] \(message)")
         #endif
         add(LogEntry(timestamp: Date(), level: .debug, tag: tag, message: message))
@@ -30,6 +31,7 @@ final class DebugLog: ObservableObject {
 
     func w(_ tag: String, _ message: String) {
         #if DEBUG
+        NSLog("[WARN][\(tag)] \(message)")
         print("[WARN][\(tag)] \(message)")
         #endif
         add(LogEntry(timestamp: Date(), level: .warning, tag: tag, message: message))
@@ -37,6 +39,7 @@ final class DebugLog: ObservableObject {
 
     func e(_ tag: String, _ message: String) {
         #if DEBUG
+        NSLog("[ERROR][\(tag)] \(message)")
         print("[ERROR][\(tag)] \(message)")
         #endif
         add(LogEntry(timestamp: Date(), level: .error, tag: tag, message: message))

@@ -9,6 +9,7 @@ import com.iceblox.app.camera.FrameAnalyzer
 import com.iceblox.app.camera.ProcessedPlate
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.location.LocationProvider
+import com.iceblox.app.network.AlertClient
 import com.iceblox.app.network.ApiClient
 import com.iceblox.app.network.ConnectivityMonitor
 import com.iceblox.app.network.RetryManager
@@ -36,6 +37,10 @@ class CaptureRepository(private val application: Application) {
 
     val locationProvider = LocationProvider(application)
     val connectivityMonitor = ConnectivityMonitor(application)
+    val alertClient = AlertClient(
+        context = application,
+        locationProvider = locationProvider
+    )
 
     private val _plateCount = MutableStateFlow(0L)
     val plateCount: StateFlow<Long> = _plateCount
@@ -117,10 +122,13 @@ class CaptureRepository(private val application: Application) {
         if (foregroundActive || backgroundActive) {
             locationProvider.startUpdates()
             apiClient.startBatchTimer()
+            alertClient.startTimer()
         } else {
             locationProvider.stopUpdates()
             apiClient.stopBatchTimer()
             apiClient.flushQueue()
+            alertClient.subscribeOnce()
+            alertClient.stopTimer()
         }
     }
 

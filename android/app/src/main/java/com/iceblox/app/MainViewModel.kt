@@ -25,6 +25,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val lastDetectionTime: StateFlow<Long> = repository.lastDetectionTime
     val queueDepth: StateFlow<Int> = repository.queueDepth
     val detectionFeed = repository.detectionFeed
+    val alertClient = repository.alertClient
     val apiClient = repository.apiClient
 
     private val _testFrameFeeder = MutableStateFlow<TestFrameFeeder?>(null)

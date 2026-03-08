@@ -182,7 +182,7 @@ Drop `.png`, `.jpg`, `.jpeg`, or `.bmp` files into `android/app/src/debug/assets
 All coordinate-based scripts (tap, swipe) use **pixel coordinates matching the screenshot output**.
 
 - **Android**: Screenshots are at device resolution (1080x2400 for the configured AVD). Coordinates go directly to `adb shell input`.
-- **iOS**: Screenshots are at device resolution (1179x2556 for iPhone 16 Pro at 3x). The scripts internally map device pixels to Simulator window screen coordinates using the window's geometry.
+- **iOS**: Screenshots are at device resolution (1206x2622 for the configured iPhone 16 Pro simulator at 3x). The scripts internally map device pixels to Simulator window screen coordinates using the window's geometry.
 
 ## Testing Workflow
 
@@ -254,13 +254,17 @@ End-to-end tests validate the full pipeline: Android app detects a plate from an
 ```bash
 e2e/android/run.sh              # full run: build + infra + tests
 e2e/android/run.sh --skip-build  # reuse existing APK
+e2e/ios/run.sh                  # full run: build + infra + tests
+e2e/ios/run.sh --skip-build     # reuse existing .app build
 ```
 
 ### How It Works
 
 1. **Infrastructure**: Starts an ephemeral PostgreSQL container (random port) and the Go server with `testdata/test_plates.txt`
-2. **App**: Builds and installs the debug APK on the Android emulator
-3. **Injection**: Pushes fixture images to `filesDir/test_images/` and launches with `--ez test_mode true`
+2. **App**: Builds and installs the debug app on the target simulator/emulator
+3. **Injection**:
+   - **Android**: Pushes fixture images to `filesDir/test_images/` and launches with `--ez test_mode true`
+   - **iOS**: Launches to the splash screen, triggers the same start-camera path used by the "Start Camera" button, then copies fixture images into `Library/Application Support/test_images/` while the app is already running in camera mode
 4. **Verification**: Queries the database directly (via `docker exec psql`) to check for sightings
 5. **Cleanup**: `trap EXIT` stops the app, kills the server, and removes the postgres container
 
@@ -278,14 +282,22 @@ e2e/android/run.sh --skip-build  # reuse existing APK
 
 ### Fixtures
 
-Test images live in `e2e/android/fixtures/`:
+Test images live in `e2e/android/fixtures/` and are shared by both mobile harnesses:
 - `no_plate/` — images without license plates
 - `non_target_plate/` — images with real plates not in `test_plates.txt`
 - `target_plate/` — images with known test plates (e.g., AB12345)
 
+For iOS simulator E2E, optional same-basename `.txt` sidecars can accompany injected images:
+- `target_plate/target.txt` → `AB12345`
+- `non_target_plate/non_target.txt` → `ZZZ9999`
+
+When present, the simulator camera injects that normalized plate string into the post-detection pipeline. This keeps iOS E2E deterministic even when simulator OCR differs from device behavior.
+The iOS harness still launches on the real splash screen first; it only uses the sidecar after the splash-to-camera transition has happened.
+
 ### Timing
 
-The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is below `BATCH_SIZE` (10), the tests wait 35 seconds for the timer-based flush.
+- **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is below `BATCH_SIZE` (10), the tests wait 35 seconds for the timer-based flush.
+- **iOS**: The E2E harness overrides the batch interval to 1 second at launch, so each scenario waits 6 seconds for upload and DB persistence.
 
 ## Future Enhancements
 

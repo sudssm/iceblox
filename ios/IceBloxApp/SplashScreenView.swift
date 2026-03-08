@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SplashScreenView: View {
     let onStartCamera: () -> Void
+    @State private var e2eTriggerTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -23,6 +24,29 @@ struct SplashScreenView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
+        }
+        .onAppear {
+            guard AppConfig.useSplashTrigger else { return }
+
+            e2eTriggerTask?.cancel()
+            e2eTriggerTask = Task {
+                while !Task.isCancelled {
+                    if let triggerURL = AppConfig.splashTriggerURL,
+                       FileManager.default.fileExists(atPath: triggerURL.path) {
+                        try? FileManager.default.removeItem(at: triggerURL)
+                        await MainActor.run {
+                            onStartCamera()
+                        }
+                        return
+                    }
+
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+            }
+        }
+        .onDisappear {
+            e2eTriggerTask?.cancel()
+            e2eTriggerTask = nil
         }
     }
 }

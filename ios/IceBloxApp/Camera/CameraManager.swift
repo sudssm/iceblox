@@ -34,6 +34,9 @@ final class CameraManager: NSObject, ObservableObject {
         super.init()
         #if targetEnvironment(simulator)
         let simCam = SimulatorCamera()
+        simCam.onPreviewImageChange = { [weak self] image in
+            self?.simulatorImage = image
+        }
         simulatorCamera = simCam
         simulatorImage = simCam.previewImage
         #else
