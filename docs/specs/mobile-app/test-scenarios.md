@@ -389,21 +389,32 @@ And the batch flush interval elapses (35 seconds)
 Then zero sightings exist in the database
 ```
 
-### TS-E2E-2: Plate image produces matched sighting
+### TS-E2E-2: Non-target plate image produces zero sightings
 
 ```
 Given an ephemeral postgres and Go server are running with test plates
 And the Android app is installed on the emulator
-When an image containing plate "AB12345" is pushed and the app is launched in test mode
+When an image containing a plate NOT in test_plates.txt is pushed and the app is launched in test mode
 And the batch flush interval elapses (35 seconds)
-Then at least one sighting exists in the database for plate "AB12345"
+Then zero sightings exist in the database
+And the app logcat shows FrameAnalyzer detected plates from the test image
+```
+
+### TS-E2E-3: Target plate image produces matched sighting
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the Android app is installed on the emulator
+When an image containing a known test plate is pushed and the app is launched in test mode
+And the batch flush interval elapses (35 seconds)
+Then at least one sighting exists in the database
 And the server log contains a matched POST response
 ```
 
-### TS-E2E-3: Full pipeline verification
+### TS-E2E-4: Full pipeline verification
 
 ```
-Given TS-E2E-2 has passed
+Given TS-E2E-3 has passed
 Then the app logcat shows FrameAnalyzer detected plates from the test image
 And the server log shows the plate hash was matched
 And the sightings table contains a row with plate_id, seen_at, and hardware_id

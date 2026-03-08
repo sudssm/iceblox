@@ -267,7 +267,8 @@ e2e/android/run.sh --skip-build  # reuse existing APK
 ### Test Scenarios
 
 - **No-plate image** (`tests/test_no_plate.sh`): Pushes an image with no license plates. After the batch flush interval, verifies zero sightings in the database.
-- **Plate image** (`tests/test_plate.sh`): Pushes an image containing plate "AB12345" (a known test plate). After the batch flush interval, verifies a matched sighting exists in the database.
+- **Non-target plate image** (`tests/test_non_target_plate.sh`): Pushes an image containing a real plate that is NOT in `test_plates.txt`. After the batch flush interval, verifies zero sightings (the app detects and uploads the plate, but the server does not match it).
+- **Target plate image** (`tests/test_target_plate.sh`): Pushes an image containing a known test plate. After the batch flush interval, verifies at least one matched sighting exists in the database.
 
 ### Prerequisites
 
@@ -279,7 +280,8 @@ e2e/android/run.sh --skip-build  # reuse existing APK
 
 Test images live in `e2e/android/fixtures/`:
 - `no_plate/` — images without license plates
-- `plate/` — images with known test plates (e.g., AB12345)
+- `non_target_plate/` — images with real plates not in `test_plates.txt`
+- `target_plate/` — images with known test plates (e.g., AB12345)
 
 ### Timing
 

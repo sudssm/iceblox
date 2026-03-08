@@ -184,8 +184,10 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 - [x] **App lifecycle** — Build, install, push images, launch in test mode via `--ez test_mode true`
 - [x] **DB verification** — `docker exec psql` queries for sighting assertions
 - [x] **`analyzeBitmap()` fallback param** — `useFallback` parameter so no-plate test works correctly
-- [ ] **No-plate test scenario** — Verify zero sightings with no-plate image (TS-E2E-1). Needs real no-plate fixture image.
-- [ ] **Plate test scenario** — Verify matched sighting with AB12345 image (TS-E2E-2). Needs real plate fixture image.
+- [x] **Fixture images** — Real images added: `no_plate/no_plate.png`, `non_target_plate/non_target.jpg`, `target_plate/target.jpg`
+- [ ] **No-plate test scenario** — Verify zero sightings with no-plate image (TS-E2E-1). Needs validation on emulator.
+- [ ] **Non-target plate test scenario** — Verify zero sightings with non-target plate image (TS-E2E-2). Needs validation on emulator.
+- [ ] **Target plate test scenario** — Verify matched sighting with target plate image (TS-E2E-3). Needs validation on emulator.
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---
