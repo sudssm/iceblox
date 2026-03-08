@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Receive hashed license plate identifiers from mobile clients, compare against a target list of ICE vehicle plates, persist sighting records to a PostgreSQL database, and return per-plate match status to the device.
+Receive hashed license plate identifiers from mobile clients, compare against a target list of ICE vehicle plates, persist sighting records to a PostgreSQL database, return per-plate match status to the device, and send push notifications to all registered devices when a target plate is detected.
 
 ## Target Data Source
 
@@ -21,6 +21,7 @@ Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetra
 - **Framework**: `net/http` (standard library)
 - **Database**: PostgreSQL (via `pgx` driver with `database/sql`)
 - **Target list source**: `data/plates.txt` — plaintext plate list extracted from StopICE data, seeded into the `plates` database table on startup
+- **Push notifications**: APNs (iOS) via HTTP/2 + ES256 JWT, FCM (Android) via HTTP v1 API + OAuth2 — Go stdlib only (`net/http`, `crypto/*`)
 
 ## Requirements
 
@@ -161,6 +162,18 @@ CREATE INDEX idx_sightings_plate_id ON sightings(plate_id);
 CREATE INDEX idx_sightings_seen_at ON sightings(seen_at);
 ```
 
+**Table: `device_tokens`** — registered push notification tokens
+```sql
+CREATE TABLE device_tokens (
+    id          SERIAL PRIMARY KEY,
+    hardware_id TEXT NOT NULL,
+    token       TEXT NOT NULL,
+    platform    TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(hardware_id, platform)
+);
+```
+
 **Data flow:**
 1. On startup, plates from `data/plates.txt` are upserted into the `plates` table
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
@@ -169,12 +182,104 @@ CREATE INDEX idx_sightings_seen_at ON sightings(seen_at);
 
 **Connection:** Configured via `--db-dsn` flag. Default: `postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable`. Migrations run automatically on startup using `CREATE TABLE IF NOT EXISTS`.
 
+### REQ-S-9: Device Token Registration
+
+The server MUST expose an endpoint for devices to register their push notification token.
+
+```
+POST /api/v1/devices
+Content-Type: application/json
+X-Device-ID: <device identifier>
+
+{
+  "token": "string (push notification token)",
+  "platform": "ios" | "android"
+}
+```
+
+**Field validation:**
+- `token`: Required. Non-empty string.
+- `platform`: Required. MUST be either `"ios"` or `"android"`.
+
+**Headers:**
+- `X-Device-ID`: Required. Identifies the device. Maps to `hardware_id` in the `device_tokens` table.
+
+**Behavior:**
+- Upsert: one token per `(hardware_id, platform)` pair. If a token already exists for this device and platform, update it.
+- Update `updated_at` on every registration (used for stale token cleanup).
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok"
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — missing or invalid fields, or missing `X-Device-ID` header.
+
+### REQ-S-10: Push Notification Dispatch
+
+When a plate hash matches a target (REQ-S-2), the server MUST send a push notification to all registered devices.
+
+**Dispatch rules:**
+- Notifications MUST be sent asynchronously — the HTTP response to the detecting device MUST NOT be blocked by notification delivery.
+- The server MUST query all active device tokens from the `device_tokens` table and send to each.
+- If a push provider returns a token-expired error (APNs HTTP 410 / FCM `UNREGISTERED`), the server MUST delete that token from the database.
+- Push delivery failures MUST be logged but MUST NOT affect the plates endpoint response.
+
+**Notification content:**
+- Title: `"Target Detected"`
+- Body: `"A target plate was detected"`
+- Custom data: `sighting_id` (references the `sightings` table)
+- No plaintext plate text, hash, or target label in the payload (privacy model).
+
+### REQ-S-11: APNs Integration (iOS)
+
+The server MUST support sending push notifications to iOS devices via the Apple Push Notification service (APNs) HTTP/2 API.
+
+**Authentication:** Token-based (JWT signed with ES256).
+- `.p8` key file containing an ECDSA P-256 private key
+- Key ID and Team ID from the Apple Developer portal
+- JWT refreshed every 50 minutes (Apple requires refresh within 60 minutes)
+
+**Configuration flags:**
+- `--apns-key-file` — path to `.p8` key file
+- `--apns-key-id` — 10-character Key ID
+- `--apns-team-id` — Apple Team ID
+- `--apns-bundle-id` — iOS app bundle ID (used as `apns-topic` header)
+- `--apns-production` — use production APNs endpoint (default: false)
+
+**Endpoints:**
+- Development: `https://api.development.push.apple.com`
+- Production: `https://api.push.apple.com`
+
+**Required headers:** `authorization` (bearer JWT), `apns-topic` (bundle ID), `apns-push-type` (`alert`), `apns-priority` (`10`).
+
+**Implementation:** Go stdlib `net/http` with automatic HTTP/2 negotiation via TLS ALPN. No external HTTP/2 library required. Use a single shared `http.Client` to maintain long-lived connections (Apple throttles rapid connect/disconnect).
+
+### REQ-S-12: FCM Integration (Android)
+
+The server MUST support sending push notifications to Android devices via the Firebase Cloud Messaging (FCM) HTTP v1 API.
+
+**Authentication:** OAuth2 access token obtained by:
+1. Constructing a JWT signed with RS256 using the service account's RSA private key
+2. Exchanging the JWT for an access token at `https://oauth2.googleapis.com/token`
+3. Caching the access token until near expiry (tokens last 1 hour, refresh at ~55 minutes)
+
+**Configuration flags:**
+- `--fcm-service-account` — path to Firebase service account JSON file (contains `project_id`, `client_email`, and `private_key`)
+
+**Endpoint:** `POST https://fcm.googleapis.com/v1/projects/{project_id}/messages:send`
+
+**Message format:** Data-only messages (no `notification` key) to ensure `onMessageReceived()` is called in all app states. The Android app builds and displays the notification locally.
+
+**Implementation:** Go stdlib `net/http`, `crypto/rsa`, `crypto/sha256`, `encoding/json`. No external dependencies.
+
 ## Out of Scope (v1)
 
-- Alerting / notification system (future: separate monitoring app)
 - Admin dashboard
 - User authentication
-- Device registration
 - Analytics / reporting
 - Target plate management CRUD (future: third-party API integration)
 
@@ -196,7 +301,7 @@ CREATE INDEX idx_sightings_seen_at ON sightings(seen_at);
 |---|---|
 | Language / framework | Go with `net/http` |
 | Target list source | StopICE plate tracker data (plaintext `plates.txt` extracted via Makefile) |
-| Alert delivery | No alerting from server to device. Separate monitoring app (TODO) |
+| Alert delivery | Push notifications to all registered devices on match (APNs for iOS, FCM for Android) |
 | Match results to device | Yes — per-plate boolean only, no target details |
 | Storage | PostgreSQL — `plates` table for targets, `sightings` table for matched observations |
 | Monitoring app data source | REST API querying `sightings` table |
@@ -205,6 +310,8 @@ CREATE INDEX idx_sightings_seen_at ON sightings(seen_at);
 ## Open Questions
 
 - [ ] Should the server require an API key or shared secret from devices (beyond device_id)?
+- [ ] Should push notifications be throttled (e.g., max one per minute) to prevent flooding when multiple plates match in rapid succession?
+- [ ] Should the detecting device be excluded from receiving its own match notification?
 
 ---
 
@@ -228,9 +335,14 @@ server/
 │   │   └── matcher.go           # Constant-time hash comparison logic
 │   ├── ratelimit/
 │   │   └── ratelimit.go         # Per-device token bucket rate limiter
+│   ├── push/
+│   │   ├── apns.go              # APNs HTTP/2 client, ES256 JWT auth
+│   │   ├── fcm.go               # FCM HTTP v1 client, OAuth2 auth
+│   │   └── notifier.go          # Dispatch to all registered devices
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
 │       ├── health.go            # GET /healthz handler
+│       ├── devices.go           # POST /api/v1/devices handler
 │       └── logger.go            # JSONL file writer (legacy, optional)
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
@@ -246,7 +358,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`; env var overrides |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -255,6 +367,10 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 8 | Health handler | REQ-S-7 | Return status + targets_loaded count |
 | 9 | Integration | All | Wire handlers into `http.ServeMux`, graceful shutdown, SIGHUP reload with DB re-seed |
 | 10 | Tests | All | Unit tests per package, integration test with seed file + HTTP requests + mock recorder |
+| 11 | Device store | REQ-S-9 | `device_tokens` table operations, registration endpoint handler |
+| 12 | APNs client | REQ-S-11 | HTTP/2 provider, ES256 JWT auth, `.p8` key loading, token caching |
+| 13 | FCM client | REQ-S-12 | HTTP v1 API client, RS256 JWT, OAuth2 token exchange, token caching |
+| 14 | Notifier | REQ-S-10 | Match → push dispatch to all devices, async goroutine, stale token cleanup |
 
 ### Key Technical Notes
 
@@ -265,3 +381,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
 - **Graceful shutdown**: `SIGTERM`/`SIGINT` → stop accepting new connections → close DB connection pool → exit.
 - **Docker dev setup**: `make db` starts PostgreSQL 16 Alpine container. Default DSN: `postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable`.
+- **APNs HTTP/2**: Go `net/http` automatically negotiates HTTP/2 over TLS via ALPN. Apple requires long-lived connections — use a single shared `http.Client` instance.
+- **APNs JWT**: ES256 (ECDSA P-256) signed with `.p8` key. Cache token for ~50 minutes. All signing uses Go stdlib (`crypto/ecdsa`, `crypto/sha256`, `encoding/pem`).
+- **FCM OAuth2**: RS256 JWT exchanged for access token at Google's token endpoint. Cache token until near expiry (~55 minutes). All signing uses Go stdlib (`crypto/rsa`, `crypto/sha256`).
+- **Async push dispatch**: Send notifications in a goroutine after recording the sighting. Push failures MUST NOT affect the plates endpoint response.
