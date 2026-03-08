@@ -419,3 +419,28 @@ Then the app logcat shows FrameAnalyzer detected plates from the test image
 And the server log shows the plate hash was matched
 And the sightings table contains a row with plate_id, seen_at, and hardware_id
 ```
+
+### TS-E2E-5: Subscribe returns nearby sightings
+
+```
+Given TS-E2E-3 has passed (a target plate sighting exists in the database)
+When POST /api/v1/subscribe is called with coordinates near the sighting and radius_miles=500
+Then the response status is "ok"
+And recent_sightings contains at least one entry
+```
+
+### TS-E2E-6: Subscribe returns empty for distant location
+
+```
+Given a target plate sighting exists in the database
+When POST /api/v1/subscribe is called with coordinates on the opposite side of the globe and radius_miles=1
+Then recent_sightings is an empty array
+```
+
+### TS-E2E-7: App AlertClient subscribes on startup
+
+```
+Given the Android app is installed and launched in test mode with a target plate image
+And the batch flush interval elapses
+Then the app logcat contains AlertClient log entries showing the subscribe timer fired
+```
