@@ -1,6 +1,8 @@
 package com.cameras.app
 
 import android.app.Application
+import android.content.Context
+import android.os.PowerManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cameras.app.camera.FrameAnalyzer
@@ -50,10 +52,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onPlatesDetected(plates)
     }
 
+    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
+        val throttled = status >= PowerManager.THERMAL_STATUS_SEVERE
+        frameAnalyzer.frameSkipCount = if (throttled) {
+            AppConfig.THROTTLED_FRAME_SKIP_COUNT
+        } else {
+            AppConfig.FRAME_SKIP_COUNT
+        }
+    }
+
     init {
         connectivityMonitor.onReconnected = {
             apiClient.flushQueue()
         }
+        val powerManager = application.getSystemService(Context.POWER_SERVICE) as PowerManager
+        powerManager.addThermalStatusListener(thermalListener)
     }
 
     fun onPlatesDetected(plates: List<ProcessedPlate>) {
