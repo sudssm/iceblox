@@ -51,3 +51,4 @@ models/CHANGELOG.md
 
 # Deployed model files in ios/ and android/ ARE committed so clones work immediately.
 # Intermediate exports are ignored via models/exports/ above.
+.claude/worktrees/
