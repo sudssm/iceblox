@@ -11,6 +11,9 @@
 		A1B2C3D4E5F60001000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000002 /* ContentView.swift */; };
 		A1B2C3D4E5F60001000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000003 /* Assets.xcassets */; };
 		A1B2C3D4E5F60001000004 /* CamerasAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000004 /* CamerasAppTests.swift */; };
+		A1B2C3D4E5F60001000010 /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000010 /* CameraManager.swift */; };
+		A1B2C3D4E5F60001000011 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */; };
+		A1B2C3D4E5F60001000012 /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000012 /* StatusBarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,6 +33,9 @@
 		A1B2C3D4E5F60002000004 /* CamerasAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamerasAppTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60006000001 /* CamerasApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CamerasApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60006000002 /* CamerasAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamerasAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F60002000010 /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000012 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +70,9 @@
 			children = (
 				A1B2C3D4E5F60002000001 /* CamerasApp.swift */,
 				A1B2C3D4E5F60002000002 /* ContentView.swift */,
+				A1B2C3D4E5F60002000010 /* CameraManager.swift */,
+				A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */,
+				A1B2C3D4E5F60002000012 /* StatusBarView.swift */,
 				A1B2C3D4E5F60002000003 /* Assets.xcassets */,
 			);
 			path = CamerasApp;
@@ -179,6 +188,9 @@
 			files = (
 				A1B2C3D4E5F60001000001 /* CamerasApp.swift in Sources */,
 				A1B2C3D4E5F60001000002 /* ContentView.swift in Sources */,
+				A1B2C3D4E5F60001000010 /* CameraManager.swift in Sources */,
+				A1B2C3D4E5F60001000011 /* CameraPreviewView.swift in Sources */,
+				A1B2C3D4E5F60001000012 /* StatusBarView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,8 +345,9 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_NSCameraUsageDescription = "CamerasApp needs camera access to detect license plates";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -361,8 +374,9 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_NSCameraUsageDescription = "CamerasApp needs camera access to detect license plates";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
