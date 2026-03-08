@@ -18,8 +18,17 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             if cameraManager.permissionGranted {
+                #if targetEnvironment(simulator)
+                if let image = cameraManager.simulatorImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .ignoresSafeArea()
+                }
+                #else
                 CameraPreviewView(session: cameraManager.session)
                     .ignoresSafeArea()
+                #endif
             } else {
                 Color.black
                     .ignoresSafeArea()
