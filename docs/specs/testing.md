@@ -210,6 +210,40 @@ scripts/simulator/screenshot.sh ios
 - `adb shell input text` does not handle all special characters. Stick to alphanumeric text and basic punctuation.
 - `uiautomator dump` may not capture all Jetpack Compose elements — add `Modifier.testTag()` and `Modifier.semantics {}` to make elements discoverable.
 
+### test_mode.sh
+
+Launch the Android app in test mode, feeding test images through the full detection pipeline instead of using the camera.
+
+```bash
+scripts/simulator/test_mode.sh                        # use images bundled in APK
+scripts/simulator/test_mode.sh --push-dir ./plates/   # push images from local dir first
+```
+
+- Installs the debug APK and launches with `--ez test_mode true`
+- Test images are loaded from two sources (in priority order):
+  1. `android/app/src/debug/assets/test_images/` — bundled in the debug APK
+  2. `filesDir/test_images/` — pushed at runtime via `--push-dir`
+- `--push-dir` pushes images to the app's private storage using `adb push` + `run-as` (works on debuggable builds)
+- The app skips the splash screen and camera permission in test mode
+- Images cycle through the detection pipeline on a 500ms interval
+- The UI shows each test image with a `[TEST MODE]` banner instead of the camera preview
+
+#### Android Test Mode Architecture
+
+When launched with the `test_mode` intent extra:
+
+1. `MainActivity` reads the extra, skips splash screen and camera permission
+2. `CameraScreen` renders `TestImagePreview` instead of `CameraPreview`
+3. `MainViewModel.startPipeline(isTestMode=true)` creates a `TestFrameFeeder`
+4. `TestFrameFeeder` loads images, then cycles them through `FrameAnalyzer.analyzeBitmap()` on a coroutine timer
+5. The full pipeline executes: detect → OCR → normalize → deduplicate → hash → queue → batch upload
+
+This exercises the entire end-to-end path without a physical camera.
+
+#### Adding Test Images
+
+Drop `.png`, `.jpg`, `.jpeg`, or `.bmp` files into `android/app/src/debug/assets/test_images/`. These are included only in debug builds (the `src/debug/` source set is merged automatically by Gradle). For runtime injection without rebuilding, use the `--push-dir` flag.
+
 ## Future Enhancements
 
 1. **iOS XCUITest interaction runner**: A dedicated UI test target providing reliable tap/type/swipe and UI hierarchy inspection via `XCUIApplication` APIs, replacing the AppleScript approach.

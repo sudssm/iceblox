@@ -159,5 +159,11 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
 - [ ] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
 
+### Test Mode
+- [x] **Test mode intent extra** — `test_mode` boolean extra skips splash screen and camera permission (TS-33)
+- [x] **TestFrameFeeder** — Loads images from `src/debug/assets/test_images/` and `filesDir/test_images/`, feeds through `analyzeBitmap()` on 500ms timer (TS-34)
+- [x] **Test mode UI** — `TestImagePreview` composable replaces camera preview, `[TEST MODE]` banner shown (TS-35)
+- [x] **test_mode.sh script** — Installs APK, optionally pushes images via `--push-dir`, launches with test_mode extra
+
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)

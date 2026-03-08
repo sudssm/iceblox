@@ -505,13 +505,14 @@ android/app/src/main/java/com/cameras/app/
 ├── MainActivity.kt                      # Activity, landscape lock, permission requests, splash→camera flow
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
 │   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
 ├── camera/
 │   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
-│   └── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+│   ├── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+│   └── TestFrameFeeder.kt              # Test mode: loads images, feeds them through analyzeBitmap() on a timer
 ├── detection/
 │   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
 │   └── PlateOCR.kt                      # ML Kit Text Recognition on cropped bitmaps
@@ -536,6 +537,10 @@ android/app/src/main/java/com/cameras/app/
 
 android/app/src/main/
 ├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET
+
+android/app/src/debug/
+└── assets/
+    └── test_images/                     # Test plate images for test mode (debug builds only)
 ```
 
 ### Implementation Order
