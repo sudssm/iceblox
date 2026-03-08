@@ -33,6 +33,13 @@ When the app is opened, it MUST immediately begin camera capture and plate detec
 
 The app MUST lock to landscape orientation. It MUST NOT rotate to portrait.
 
+#### REQ-M-4a: Keep Screen On
+
+The app MUST prevent the device screen from dimming or locking while the app is in the foreground. This is required for unattended dashboard-mounted operation.
+
+- **iOS**: Set `UIApplication.shared.isIdleTimerDisabled = true`
+- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window
+
 ### License Plate Detection
 
 #### REQ-M-5: On-Device Plate Detection
