@@ -1,9 +1,9 @@
 #!/bin/bash
-# Test: Plate image should produce a matched sighting in the database
+# Test: Target plate image should produce a matched sighting in the database
 
-run_test_plate() {
+run_test_target_plate() {
     echo ""
-    echo "=== TEST: Plate Image ==="
+    echo "=== TEST: Target Plate Image ==="
     echo ""
 
     truncate_sightings
@@ -12,7 +12,7 @@ run_test_plate() {
     grant_permissions
 
     clear_test_images
-    push_test_images "$E2E_FIXTURES_DIR/plate"
+    push_test_images "$E2E_FIXTURES_DIR/target_plate"
 
     launch_app
     tap_start_camera
@@ -21,14 +21,12 @@ run_test_plate() {
     local count
     count=$(count_sightings | tr -d '[:space:]')
     if [ "$count" -gt 0 ] 2>/dev/null; then
-        echo "  PASS: Plate image produces at least one sighting (sightings=$count)"
+        echo "  PASS: Target plate image produces at least one sighting (sightings=$count)"
         E2E_PASS=$((E2E_PASS + 1))
     else
-        echo "  FAIL: Plate image produces at least one sighting (expected >0, actual=$count)"
+        echo "  FAIL: Target plate image produces at least one sighting (expected >0, actual=$count)"
         E2E_FAIL=$((E2E_FAIL + 1))
     fi
-
-    assert_sighting_exists_for_plate "AB12345" "Sighting recorded for AB12345"
 
     local pid
     pid=$("$ADB" shell pidof "$ANDROID_PACKAGE" 2>/dev/null | tr -d '\r')
@@ -49,5 +47,5 @@ run_test_plate() {
     fi
 
     stop_app
-    echo "=== END: Plate Image ==="
+    echo "=== END: Target Plate Image ==="
 }

@@ -44,10 +44,11 @@ clear_test_images() {
 }
 
 grant_permissions() {
-    echo "Granting camera and location permissions..."
+    echo "Granting permissions..."
     "$ADB" shell pm grant "$ANDROID_PACKAGE" android.permission.CAMERA
     "$ADB" shell pm grant "$ANDROID_PACKAGE" android.permission.ACCESS_FINE_LOCATION
     "$ADB" shell pm grant "$ANDROID_PACKAGE" android.permission.ACCESS_COARSE_LOCATION
+    "$ADB" shell pm grant "$ANDROID_PACKAGE" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
 }
 
 launch_app() {

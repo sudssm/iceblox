@@ -11,7 +11,8 @@ source "$SCRIPT_DIR/lib/infra.sh"
 source "$SCRIPT_DIR/lib/app.sh"
 source "$SCRIPT_DIR/lib/db_queries.sh"
 source "$SCRIPT_DIR/tests/test_no_plate.sh"
-source "$SCRIPT_DIR/tests/test_plate.sh"
+source "$SCRIPT_DIR/tests/test_non_target_plate.sh"
+source "$SCRIPT_DIR/tests/test_target_plate.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -51,7 +52,8 @@ install_android_app
 echo ""
 echo "--- Step 3: Run Tests ---"
 run_test_no_plate
-run_test_plate
+run_test_non_target_plate
+run_test_target_plate
 
 echo ""
 echo "=========================================="

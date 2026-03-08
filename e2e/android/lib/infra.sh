@@ -38,6 +38,16 @@ e2e_dsn() {
 
 start_go_server() {
     echo "Starting Go server on port $E2E_SERVER_PORT..."
+
+    # Kill any stale process on the port
+    local stale_pid
+    stale_pid=$(lsof -ti :"$E2E_SERVER_PORT" 2>/dev/null || true)
+    if [ -n "$stale_pid" ]; then
+        echo "Killing stale process on port $E2E_SERVER_PORT (PID $stale_pid)..."
+        kill "$stale_pid" 2>/dev/null || true
+        sleep 1
+    fi
+
     cd "$PROJECT_ROOT/server"
     go run ./cmd/server/... \
         --port "$E2E_SERVER_PORT" \

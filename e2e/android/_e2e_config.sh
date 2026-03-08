@@ -5,6 +5,11 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../scripts/simulator/_config.sh"
 
+# Java (needed for Gradle builds)
+if [ -z "$JAVA_HOME" ]; then
+    export JAVA_HOME="$(brew --prefix openjdk@17 2>/dev/null)/libexec/openjdk.jdk/Contents/Home"
+fi
+
 # Ephemeral postgres
 E2E_PG_CONTAINER="cameras-e2e-postgres-$$"
 E2E_PG_PORT=""
