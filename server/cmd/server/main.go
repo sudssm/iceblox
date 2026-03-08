@@ -13,6 +13,7 @@ import (
 
 	"cameras/server/internal/db"
 	"cameras/server/internal/handler"
+	"cameras/server/internal/push"
 	"cameras/server/internal/targets"
 )
 
@@ -21,6 +22,13 @@ func main() {
 	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
 	pepper := flag.String("pepper", "default-pepper-change-me", "HMAC pepper for hashing plates")
 	dbDSN := flag.String("db-dsn", "postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable", "PostgreSQL connection string")
+
+	apnsKeyFile := flag.String("apns-key-file", "", "path to APNs .p8 key file")
+	apnsKeyID := flag.String("apns-key-id", "", "APNs key ID")
+	apnsTeamID := flag.String("apns-team-id", "", "APNs team ID")
+	apnsBundleID := flag.String("apns-bundle-id", "", "APNs bundle ID")
+	apnsProduction := flag.Bool("apns-production", false, "use APNs production endpoint")
+	fcmServiceAccount := flag.String("fcm-service-account", "", "path to FCM service account JSON file")
 	flag.Parse()
 
 	// Environment variables override flags (for Railway / container deployment)
@@ -61,8 +69,35 @@ func main() {
 		log.Fatalf("failed to seed database: %v", err)
 	}
 
+	var apnsClient *push.APNsClient
+	if *apnsKeyFile != "" {
+		var err error
+		apnsClient, err = push.NewAPNsClient(*apnsKeyFile, *apnsKeyID, *apnsTeamID, *apnsBundleID, *apnsProduction)
+		if err != nil {
+			log.Fatalf("failed to create APNs client: %v", err)
+		}
+		log.Println("APNs client initialized")
+	}
+
+	var fcmClient *push.FCMClient
+	if *fcmServiceAccount != "" {
+		var err error
+		fcmClient, err = push.NewFCMClient(*fcmServiceAccount)
+		if err != nil {
+			log.Fatalf("failed to create FCM client: %v", err)
+		}
+		log.Println("FCM client initialized")
+	}
+
+	var notifier handler.PushNotifier
+	if apnsClient != nil || fcmClient != nil {
+		notifier = push.NewNotifier(apnsClient, fcmClient, database)
+		log.Println("push notifier initialized")
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, notifier))
+	mux.HandleFunc("/api/v1/devices", handler.DevicesHandler(database))
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := &http.Server{
