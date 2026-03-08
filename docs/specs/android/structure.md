@@ -49,7 +49,8 @@ android/
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, XOR pepper
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
         │   │   └── ui/
-        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar
+        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar composable)
+        │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       └── theme/
         │   │           ├── Theme.kt        # Material 3 theme
         │   │           ├── Color.kt        # Color definitions

@@ -206,7 +206,7 @@ fun DebugOverlay(
                     val stateColor = when (entry.state) {
                         DetectionState.QUEUED -> Color.White
                         DetectionState.SENT -> Color.Green
-                        DetectionState.MATCHED -> Color(0xFF00FF00)
+                        DetectionState.MATCHED -> Color(0xFFFFD700)
                     }
                     val stateLabel = when (entry.state) {
                         DetectionState.QUEUED -> "QUED"

@@ -3,12 +3,16 @@ import Foundation
 final class DeduplicationCache {
     private var seen: [String: Date] = [:]
     private let window: TimeInterval
+    private let lock = NSLock()
 
     init(window: TimeInterval = AppConfig.deduplicationWindowSeconds) {
         self.window = window
     }
 
     func isDuplicate(_ normalizedPlate: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
         let now = Date()
         evictExpired(now: now)
 
@@ -20,6 +24,8 @@ final class DeduplicationCache {
     }
 
     func reset() {
+        lock.lock()
+        defer { lock.unlock() }
         seen.removeAll()
     }
 
