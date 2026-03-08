@@ -25,6 +25,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private val detector = PlateDetector(context)
     private val ocr = PlateOCR()
 
+    private val rotationMatrix = Matrix()
     private var frameCount = 0
 
     @Volatile var frameSkipCount = AppConfig.FRAME_SKIP_COUNT
@@ -53,8 +54,11 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             val rawBitmap = imageProxy.toBitmap()
             val rotationDegrees = imageProxy.imageInfo.rotationDegrees
             val bitmap = if (rotationDegrees != 0) {
-                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-                Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+                rotationMatrix.reset()
+                rotationMatrix.postRotate(rotationDegrees.toFloat())
+                val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, rotationMatrix, true)
+                rawBitmap.recycle()
+                rotated
             } else {
                 rawBitmap
             }

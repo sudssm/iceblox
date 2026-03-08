@@ -95,14 +95,16 @@ final class CameraManager: NSObject, ObservableObject {
         guard let connection = videoOutput?.connection(with: .video) else { return }
         let orientation = UIDevice.current.orientation
         if #available(iOS 17.0, *) {
-            guard connection.isVideoRotationAngleSupported(0) else { return }
+            let angle: CGFloat
             switch orientation {
-            case .portrait: connection.videoRotationAngle = 90
-            case .portraitUpsideDown: connection.videoRotationAngle = 270
-            case .landscapeLeft: connection.videoRotationAngle = 0
-            case .landscapeRight: connection.videoRotationAngle = 180
-            default: connection.videoRotationAngle = 0
+            case .portrait: angle = 90
+            case .portraitUpsideDown: angle = 270
+            case .landscapeLeft: angle = 0
+            case .landscapeRight: angle = 180
+            default: angle = 0
             }
+            guard connection.isVideoRotationAngleSupported(angle) else { return }
+            connection.videoRotationAngle = angle
         } else {
             guard connection.isVideoOrientationSupported else { return }
             switch orientation {
