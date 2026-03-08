@@ -26,7 +26,8 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [x] **Project scaffold** — `go mod init`, directory structure, `main.go` with flag parsing
 - [x] **Config** — CLI flags (`--port`, `--log-file`)
-- [ ] **Target loader** — Load seed JSON at startup, in-memory hash set, SIGHUP reload (REQ-S-5)
+- [x] **Makefile** — `make setup` (download StopICE ZIP), `make extract` (parse XML → `data/plates.txt`), `make run-server`
+- [x] **Target loader** — Load `data/plates.txt` at startup, compute HMAC hashes, in-memory hash set, SIGHUP reload (REQ-S-5)
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2)
 - [x] **JSONL logger** — Append plate submissions to file (REQ-S-3)
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6)
@@ -34,7 +35,6 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 - [x] **GET /healthz** — Status endpoint (REQ-S-7)
 - [x] **Integration** — Wire handlers, graceful shutdown
 - [x] **Tests** — Unit tests for handler, logger, health; end-to-end smoke test
-- [ ] **Example seed file** — `targets.json` with sample hashed plates for testing
 
 ---
 

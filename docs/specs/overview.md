@@ -64,11 +64,17 @@ License plates have a small keyspace (~2 billion US plates). An attacker with ac
 9. Server logs match details (device_id, timestamp, location, target label)
 10. Non-matching hashes are discarded from server memory
 
+## Target Data Source
+
+Target plates are sourced from the [StopICE Plate Tracker](https://www.stopice.net/platetracker/?data=1), a public database of ICE (Immigration and Customs Enforcement) vehicle license plates. As of March 2026, the database contains ~5,300 vehicle reports comprising ~2,600 unique plate numbers.
+
+The data is published as a nightly-compiled ZIP archive containing XML with plate records. A Makefile in `server/` automates downloading and extracting the plates into a plaintext file that the server loads at startup.
+
 ## Target Scale
 
 | Dimension | Expected Value |
 |---|---|
-| Target plates | ~100 |
+| Target plates | ~2,600 (from StopICE database) |
 | Plates scanned per hour | Varies (urban driving: ~50-200) |
 | Offline cache capacity | 1,000 hashed plates |
 
@@ -76,10 +82,10 @@ License plates have a small keyspace (~2 billion US plates). An attacker with ac
 
 - **iOS**: Swift, AVFoundation, Vision framework, Core ML (YOLOv8-nano)
 - **Android**: Kotlin, CameraX, ML Kit, TFLite (YOLOv8-nano)
-- **Server**: Go (`net/http`), target list from JSON seed file
+- **Server**: Go (`net/http`), target plates from StopICE data (see `server/Makefile`)
 
 ## Future Components
 
 - **Monitoring App** (TBD): Separate application to monitor detected target plates in real-time. Consumes match logs from the server. Will have its own spec.
-- **Third-Party Target API** (TBD): Replace seed file with live target plate source.
+- **Target Data Updates** (TBD): Automate nightly plate data refresh (cron + `make setup extract`).
 - **Privacy Upgrade** (TBD): PSI protocol for cryptographic privacy guarantees. See `docs/specs/privacy-roadmap.md`.
