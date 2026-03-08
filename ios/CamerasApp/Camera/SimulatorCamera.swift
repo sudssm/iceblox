@@ -5,7 +5,7 @@ import UIKit
 
 final class SimulatorCamera {
     let previewImage: UIImage
-    private let pixelBuffer: CVPixelBuffer
+    private let pixelBuffer: CVPixelBuffer?
     private var timer: DispatchSourceTimer?
     private let frameQueue = DispatchQueue(label: "simulator.camera.frames")
     weak var frameProcessor: FrameProcessor?
@@ -20,12 +20,12 @@ final class SimulatorCamera {
     }
 
     func start() {
-        guard timer == nil else { return }
+        guard timer == nil, let pixelBuffer else { return }
         let source = DispatchSource.makeTimerSource(queue: frameQueue)
         source.schedule(deadline: .now(), repeating: .milliseconds(100))
         source.setEventHandler { [weak self] in
             guard let self else { return }
-            self.frameProcessor?.processFrame(self.pixelBuffer, skipCount: 0)
+            self.frameProcessor?.processFrame(pixelBuffer, skipCount: 0)
         }
         source.resume()
         timer = source
@@ -59,24 +59,28 @@ final class SimulatorCamera {
         }
     }
 
-    private static func createPixelBuffer(from image: UIImage) -> CVPixelBuffer {
+    private static func createPixelBuffer(from image: UIImage) -> CVPixelBuffer? {
+        guard let cgImage = image.cgImage else { return nil }
         let width = Int(image.size.width)
         let height = Int(image.size.height)
 
-        var pixelBuffer: CVPixelBuffer!
-        CVPixelBufferCreate(
+        var buffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
             kCFAllocatorDefault,
             width,
             height,
             kCVPixelFormatType_32BGRA,
             [kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary,
-            &pixelBuffer
+            &buffer
         )
+        guard status == kCVReturnSuccess, let pixelBuffer = buffer else { return nil }
 
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
-        let data = CVPixelBufferGetBaseAddress(pixelBuffer)!
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard let data = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let context = CGContext(
+        guard let context = CGContext(
             data: data,
             width: width,
             height: height,
@@ -84,9 +88,8 @@ final class SimulatorCamera {
             bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
             space: colorSpace,
             bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        )!
-        context.draw(image.cgImage!, in: CGRect(x: 0, y: 0, width: width, height: height))
-        CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
+        ) else { return nil }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         return pixelBuffer
     }

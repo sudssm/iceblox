@@ -71,7 +71,7 @@ final class CameraManager: NSObject, ObservableObject {
         #if targetEnvironment(simulator)
         simulatorCamera?.frameProcessor = frameProcessor
         simulatorCamera?.start()
-        DispatchQueue.main.async { self.isRunning = true }
+        DispatchQueue.main.async { [weak self] in self?.isRunning = true }
         #else
         sessionQueue.async { [weak self] in
             guard let self else { return }
@@ -85,7 +85,7 @@ final class CameraManager: NSObject, ObservableObject {
     func stop() {
         #if targetEnvironment(simulator)
         simulatorCamera?.stop()
-        DispatchQueue.main.async { self.isRunning = false }
+        DispatchQueue.main.async { [weak self] in self?.isRunning = false }
         #else
         sessionQueue.async { [weak self] in
             guard let self else { return }
