@@ -1,0 +1,29 @@
+# Environment
+.env
+.env.*
+
+# Context
+.context/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+
+# iOS
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+.DS_Store
