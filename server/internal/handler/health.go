@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -22,8 +23,7 @@ func HealthHandler(targets TargetCounter) http.HandlerFunc {
 			"status":         "ok",
 			"targets_loaded": targets.Count(),
 		}); err != nil {
-			http.Error(w, "encode error", http.StatusInternalServerError)
-			return
+			log.Printf("failed to encode health response: %v", err)
 		}
 	}
 }
