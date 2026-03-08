@@ -37,6 +37,7 @@ ios/
 │   │   └── DeduplicationCache.swift   # Time-windowed set of recently seen plates
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
+│   │   ├── AlertClient.swift          # Subscribe endpoint client, 10-min timer, GPS truncation
 │   │   ├── RetryManager.swift         # Exponential backoff, 429 handling
 │   │   └── ConnectivityMonitor.swift  # NWPathMonitor wrapper, triggers queue flush
 │   ├── Persistence/
@@ -51,7 +52,9 @@ ios/
 │   └── Models/
 │       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
 └── IceBloxAppTests/
-    └── IceBloxAppTests.swift          # Unit tests
+    ├── IceBloxAppTests.swift          # Unit tests
+    ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
+    └── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
 ```
 
 ## Architecture

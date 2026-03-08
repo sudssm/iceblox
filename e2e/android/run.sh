@@ -13,6 +13,7 @@ source "$SCRIPT_DIR/lib/db_queries.sh"
 source "$SCRIPT_DIR/tests/test_no_plate.sh"
 source "$SCRIPT_DIR/tests/test_non_target_plate.sh"
 source "$SCRIPT_DIR/tests/test_target_plate.sh"
+source "$SCRIPT_DIR/tests/test_proximity_alerts.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -54,6 +55,9 @@ echo "--- Step 3: Run Tests ---"
 run_test_no_plate
 run_test_non_target_plate
 run_test_target_plate
+run_test_proximity_subscribe_nearby
+run_test_proximity_subscribe_distant
+run_test_proximity_app_subscribe
 
 echo ""
 echo "=========================================="

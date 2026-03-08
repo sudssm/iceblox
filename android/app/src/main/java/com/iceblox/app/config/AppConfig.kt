@@ -25,6 +25,10 @@ object AppConfig {
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6
 
+    const val SUBSCRIBE_ENDPOINT = "/api/v1/subscribe"
+    const val SUBSCRIBE_INTERVAL_MS = 600_000L // 10 minutes
+    const val DEFAULT_RADIUS_MILES = 100.0
+
     const val TEST_FRAME_INTERVAL_MS = 500L
     const val TEST_IMAGES_ASSET_DIR = "test_images"
     const val TEST_IMAGES_RUNTIME_DIR = "test_images"

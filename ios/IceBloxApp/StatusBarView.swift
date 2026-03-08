@@ -6,6 +6,7 @@ struct StatusBarView: View {
     let plateCount: Int
     let targetCount: Int
     let hasGPS: Bool
+    var nearbySightings: Int = 0
 
     var body: some View {
         HStack(spacing: 16) {
@@ -18,6 +19,10 @@ struct StatusBarView: View {
             Text("Last: \(lastDetectionText)")
             Text("Plates: \(plateCount)")
             Text("Targets: \(targetCount)")
+            if nearbySightings > 0 {
+                Text("Nearby: \(nearbySightings)")
+                    .foregroundStyle(.cyan)
+            }
             if !hasGPS {
                 Text("No GPS")
                     .foregroundStyle(.yellow)

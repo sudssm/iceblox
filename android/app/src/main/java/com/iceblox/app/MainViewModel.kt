@@ -13,6 +13,7 @@ import com.iceblox.app.camera.TestFrameFeeder
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.location.LocationProvider
+import com.iceblox.app.network.AlertClient
 import com.iceblox.app.network.ApiClient
 import com.iceblox.app.network.ConnectivityMonitor
 import com.iceblox.app.network.RetryManager
@@ -55,6 +56,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _detectionFeed = MutableStateFlow<List<DetectionFeedEntry>>(emptyList())
     val detectionFeed: StateFlow<List<DetectionFeedEntry>> = _detectionFeed
+
+    val alertClient = AlertClient(
+        context = application,
+        locationProvider = locationProvider
+    )
 
     val apiClient = ApiClient(
         context = application,
@@ -154,6 +160,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startPipeline(isTestMode: Boolean = false) {
         locationProvider.startUpdates()
         apiClient.startBatchTimer()
+        alertClient.startTimer()
         if (isTestMode) {
             startTestMode()
         } else {
@@ -193,6 +200,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()
         apiClient.flushQueue()
+        alertClient.subscribeOnce()
+        alertClient.stopTimer()
     }
 
     private suspend fun enforceMaxQueueSize() {
@@ -213,5 +222,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         frameAnalyzer.close()
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()
+        alertClient.stopTimer()
     }
 }
