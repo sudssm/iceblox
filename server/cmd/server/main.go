@@ -26,7 +26,7 @@ func main() {
 	// Environment variables override flags (for Railway / container deployment)
 	if v := os.Getenv("PORT"); v != "" {
 		if p, err := fmt.Sscanf(v, "%d", port); p != 1 || err != nil {
-			log.Fatalf("invalid PORT env: %s", v)
+			log.Fatal("invalid PORT env")
 		}
 	}
 	if v := os.Getenv("DATABASE_URL"); v != "" {
