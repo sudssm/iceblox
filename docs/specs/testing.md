@@ -156,7 +156,8 @@ scripts/simulator/test_mode.sh --push-dir ./plates/   # push images from local d
   1. `android/app/src/debug/assets/test_images/` — bundled in the debug APK
   2. `filesDir/test_images/` — pushed at runtime via `--push-dir`
 - `--push-dir` pushes images to the app's private storage using `adb push` + `run-as` (works on debuggable builds)
-- The app skips the splash screen and camera permission in test mode
+- The splash screen is shown normally — tap "Start Camera" to proceed
+- The camera permission check is bypassed in test mode (no real camera needed)
 - Images cycle through the detection pipeline on a 500ms interval
 - The UI shows each test image with a `[TEST MODE]` banner instead of the camera preview
 
@@ -164,7 +165,7 @@ scripts/simulator/test_mode.sh --push-dir ./plates/   # push images from local d
 
 When launched with the `test_mode` intent extra:
 
-1. `MainActivity` reads the extra, skips splash screen and camera permission
+1. `MainActivity` reads the extra, shows splash screen, bypasses camera permission on "Start Camera" tap
 2. `CameraScreen` renders `TestImagePreview` instead of `CameraPreview`
 3. `MainViewModel.startPipeline(isTestMode=true)` creates a `TestFrameFeeder`
 4. `TestFrameFeeder` loads images, then cycles them through `FrameAnalyzer.analyzeBitmap()` on a coroutine timer
@@ -244,8 +245,51 @@ scripts/simulator/screenshot.sh ios
 - `adb shell input text` does not handle all special characters. Stick to alphanumeric text and basic punctuation.
 - `uiautomator dump` may not capture all Jetpack Compose elements — add `Modifier.testTag()` and `Modifier.semantics {}` to make elements discoverable.
 
+## E2E Testing
+
+End-to-end tests validate the full pipeline: Android app detects a plate from an injected image, hashes it, posts to the Go server, and the server persists a sighting in PostgreSQL.
+
+### Entry Point
+
+```bash
+e2e/android/run.sh              # full run: build + infra + tests
+e2e/android/run.sh --skip-build  # reuse existing APK
+```
+
+### How It Works
+
+1. **Infrastructure**: Starts an ephemeral PostgreSQL container (random port) and the Go server with `testdata/test_plates.txt`
+2. **App**: Builds and installs the debug APK on the Android emulator
+3. **Injection**: Pushes fixture images to `filesDir/test_images/` and launches with `--ez test_mode true`
+4. **Verification**: Queries the database directly (via `docker exec psql`) to check for sightings
+5. **Cleanup**: `trap EXIT` stops the app, kills the server, and removes the postgres container
+
+### Test Scenarios
+
+- **No-plate image** (`tests/test_no_plate.sh`): Pushes an image with no license plates. After the batch flush interval, verifies zero sightings in the database.
+- **Non-target plate image** (`tests/test_non_target_plate.sh`): Pushes an image containing a real plate that is NOT in `test_plates.txt`. After the batch flush interval, verifies zero sightings (the app detects and uploads the plate, but the server does not match it).
+- **Target plate image** (`tests/test_target_plate.sh`): Pushes an image containing a known test plate. After the batch flush interval, verifies at least one matched sighting exists in the database.
+
+### Prerequisites
+
+- Docker (for ephemeral PostgreSQL)
+- Android SDK with emulator (`Medium_Phone_API_36.1` AVD configured)
+- Go toolchain (to build and run the server)
+
+### Fixtures
+
+Test images live in `e2e/android/fixtures/`:
+- `no_plate/` — images without license plates
+- `non_target_plate/` — images with real plates not in `test_plates.txt`
+- `target_plate/` — images with known test plates (e.g., AB12345)
+
+### Timing
+
+The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is below `BATCH_SIZE` (10), the tests wait 35 seconds for the timer-based flush.
+
 ## Future Enhancements
 
 1. **iOS XCUITest interaction runner**: A dedicated UI test target providing reliable tap/type/swipe and UI hierarchy inspection via `XCUIApplication` APIs, replacing the AppleScript approach.
 2. **Element-based interaction**: Tap by accessibility label or test tag instead of coordinates.
 3. **Screenshot diff**: Automated visual regression testing.
+4. **E2E in CI**: Run Android E2E tests in GitHub Actions with an emulator and Docker services.

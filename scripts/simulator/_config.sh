@@ -9,7 +9,7 @@ ANDROID_SDK="$HOME/Library/Android/sdk"
 ADB="$ANDROID_SDK/platform-tools/adb"
 EMULATOR_BIN="$ANDROID_SDK/emulator/emulator"
 ANDROID_AVD="Medium_Phone_API_36.1"
-ANDROID_PACKAGE="com.cameras.app"
+ANDROID_PACKAGE="com.iceblox.app"
 ANDROID_ACTIVITY=".MainActivity"
 
 # iOS
