@@ -4,17 +4,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
 import com.cameras.app.debug.DebugLog
-import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
+import org.tensorflow.lite.Interpreter
 
-data class DetectedPlate(
-    val boundingBox: RectF,
-    val confidence: Float
-)
+data class DetectedPlate(val boundingBox: RectF, val confidence: Float)
 
 class PlateDetector(context: Context) {
     private var interpreter: Interpreter? = null
@@ -91,7 +88,10 @@ class PlateDetector(context: Context) {
         )
 
         val result = nms(rawDetections)
-        DebugLog.d(TAG, "detect: ${rawDetections.size} raw -> ${result.size} after NMS (channels=$numChannels, threshold=$confidenceThreshold)")
+        DebugLog.d(
+            TAG,
+            "detect: ${rawDetections.size} raw -> ${result.size} after NMS (channels=$numChannels, threshold=$confidenceThreshold)"
+        )
         return result
     }
 

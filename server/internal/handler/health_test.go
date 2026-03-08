@@ -20,7 +20,9 @@ func TestHealthHandler_ReturnsOK(t *testing.T) {
 	}
 
 	var resp map[string]interface{}
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["status"] != "ok" {
 		t.Fatalf("expected status ok, got %v", resp["status"])
 	}

@@ -27,7 +27,9 @@ func TestJSONLLogger_WritesEntries(t *testing.T) {
 			t.Fatalf("WriteEntry failed: %v", err)
 		}
 	}
-	logger.Close()
+	if err := logger.Close(); err != nil {
+		t.Fatalf("failed to close logger: %v", err)
+	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -40,7 +42,9 @@ func TestJSONLLogger_WritesEntries(t *testing.T) {
 	}
 
 	var parsed PlateLogEntry
-	json.Unmarshal([]byte(lines[0]), &parsed)
+	if err := json.Unmarshal([]byte(lines[0]), &parsed); err != nil {
+		t.Fatalf("failed to unmarshal log entry: %v", err)
+	}
 	if parsed.PlateHash != "aabb" {
 		t.Errorf("expected aabb, got %s", parsed.PlateHash)
 	}
@@ -50,17 +54,26 @@ func TestJSONLLogger_AppendsToExisting(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.jsonl")
 
-	os.WriteFile(path, []byte(`{"existing":"line"}`+"\n"), 0644)
+	if err := os.WriteFile(path, []byte(`{"existing":"line"}`+"\n"), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
 
 	logger, err := NewJSONLLogger(path)
 	if err != nil {
 		t.Fatalf("failed to create logger: %v", err)
 	}
 
-	logger.WriteEntry(PlateLogEntry{PlateHash: "new", ReceivedAt: "2026-01-01T00:00:00Z"})
-	logger.Close()
+	if err := logger.WriteEntry(PlateLogEntry{PlateHash: "new", ReceivedAt: "2026-01-01T00:00:00Z"}); err != nil {
+		t.Fatalf("WriteEntry failed: %v", err)
+	}
+	if err := logger.Close(); err != nil {
+		t.Fatalf("failed to close logger: %v", err)
+	}
 
-	data, _ := os.ReadFile(path)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read log file: %v", err)
+	}
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines (existing + new), got %d", len(lines))

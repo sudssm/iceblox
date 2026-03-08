@@ -13,14 +13,12 @@ abstract class OfflineQueueDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: OfflineQueueDatabase? = null
 
-        fun getInstance(context: Context): OfflineQueueDatabase {
-            return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    OfflineQueueDatabase::class.java,
-                    "offline_queue.db"
-                ).build().also { INSTANCE = it }
-            }
+        fun getInstance(context: Context): OfflineQueueDatabase = INSTANCE ?: synchronized(this) {
+            INSTANCE ?: Room.databaseBuilder(
+                context.applicationContext,
+                OfflineQueueDatabase::class.java,
+                "offline_queue.db"
+            ).build().also { INSTANCE = it }
         }
     }
 }

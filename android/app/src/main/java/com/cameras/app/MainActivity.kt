@@ -53,11 +53,13 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         hasCameraPermission = ContextCompat.checkSelfPermission(
-            this, Manifest.permission.CAMERA
+            this,
+            Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
 
         hasLocationPermission = ContextCompat.checkSelfPermission(
-            this, Manifest.permission.ACCESS_FINE_LOCATION
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!hasCameraPermission) {
@@ -92,10 +94,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PermissionDeniedScreen(
-    onRequestPermission: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun PermissionDeniedScreen(onRequestPermission: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()

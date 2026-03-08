@@ -23,10 +23,7 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun DebugLogPanel(
-    entries: List<LogEntry>,
-    modifier: Modifier = Modifier
-) {
+fun DebugLogPanel(entries: List<LogEntry>, modifier: Modifier = Modifier) {
     val scrollState = rememberScrollState()
 
     LaunchedEffect(entries.size) {

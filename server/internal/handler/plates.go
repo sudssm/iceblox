@@ -65,10 +65,12 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker) http.Handle
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",
 			"matched": matched,
-		})
+		}); err != nil {
+			log.Printf("failed to encode response: %v", err)
+		}
 	}
 }
 
@@ -102,5 +104,7 @@ func parseTimestamp(ts string) time.Time {
 func writeError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": msg}); err != nil {
+		log.Printf("failed to encode error response: %v", err)
+	}
 }

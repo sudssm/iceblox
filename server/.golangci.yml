@@ -1,0 +1,32 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - gosec
+    - misspell
+    - unconvert
+    - unparam
+  settings:
+    gosec:
+      excludes:
+        - G104
+        - G302
+        - G304
+        - G306
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        text: "Error return value of .*Rollback.* is not checked"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

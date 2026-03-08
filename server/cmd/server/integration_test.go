@@ -147,7 +147,9 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 		defer resp.Body.Close()
 
 		var body map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&body)
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
 		if body["targets_loaded"] != float64(5) {
 			t.Fatalf("expected targets_loaded=5, got %v", body["targets_loaded"])
 		}
@@ -204,6 +206,8 @@ func postPlate(t *testing.T, baseURL, hash string, lat, lng float64) plateRespon
 	}
 
 	var pr plateResponse
-	json.NewDecoder(resp.Body).Decode(&pr)
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	return pr
 }

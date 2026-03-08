@@ -23,7 +23,9 @@ func writePlatesFile(t *testing.T, plates []string) string {
 	for _, p := range plates {
 		content += p + "\n"
 	}
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write plates file: %v", err)
+	}
 	return path
 }
 
@@ -95,7 +97,9 @@ func TestReload(t *testing.T) {
 	path := filepath.Join(dir, "plates.txt")
 	pepper := []byte("test-pepper")
 
-	os.WriteFile(path, []byte("ABC123\n"), 0644)
+	if err := os.WriteFile(path, []byte("ABC123\n"), 0644); err != nil {
+		t.Fatalf("failed to write plates file: %v", err)
+	}
 	store, err := New(path, pepper)
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
@@ -105,7 +109,9 @@ func TestReload(t *testing.T) {
 		t.Fatalf("expected 1 target, got %d", store.Count())
 	}
 
-	os.WriteFile(path, []byte("ABC123\nXYZ789\nDEF456\n"), 0644)
+	if err := os.WriteFile(path, []byte("ABC123\nXYZ789\nDEF456\n"), 0644); err != nil {
+		t.Fatalf("failed to write plates file: %v", err)
+	}
 	if err := store.Reload(); err != nil {
 		t.Fatalf("Reload() error: %v", err)
 	}

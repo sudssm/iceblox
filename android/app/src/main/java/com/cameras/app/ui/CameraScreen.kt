@@ -35,10 +35,7 @@ import com.cameras.app.camera.CameraPreview
 import com.cameras.app.debug.DebugLog
 
 @Composable
-fun CameraScreen(
-    modifier: Modifier = Modifier,
-    viewModel: MainViewModel = viewModel()
-) {
+fun CameraScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewModel()) {
     val plateCount by viewModel.plateCount.collectAsState()
     val targetCount by viewModel.targetCount.collectAsState()
     val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
