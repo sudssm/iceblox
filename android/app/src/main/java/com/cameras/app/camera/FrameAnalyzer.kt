@@ -2,6 +2,7 @@ package com.cameras.app.camera
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.RectF
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -24,6 +25,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private val detector = PlateDetector(context)
     private val ocr = PlateOCR()
 
+    private val rotationMatrix = Matrix()
     private var frameCount = 0
 
     @Volatile var frameSkipCount = AppConfig.FRAME_SKIP_COUNT
@@ -49,8 +51,29 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
             updateFps()
 
-            val bitmap = imageProxy.toBitmap()
-            DebugLog.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}")
+            val rawBitmap = imageProxy.toBitmap()
+            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+            val bitmap = if (rotationDegrees != 0) {
+                rotationMatrix.reset()
+                rotationMatrix.postRotate(rotationDegrees.toFloat())
+                val rotated = Bitmap.createBitmap(
+                    rawBitmap,
+                    0,
+                    0,
+                    rawBitmap.width,
+                    rawBitmap.height,
+                    rotationMatrix,
+                    true
+                )
+                rawBitmap.recycle()
+                rotated
+            } else {
+                rawBitmap
+            }
+            DebugLog.d(
+                TAG,
+                "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}, rotation=$rotationDegrees"
+            )
             val detections = detector.detect(bitmap)
             DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
 

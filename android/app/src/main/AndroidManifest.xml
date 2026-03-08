@@ -19,7 +19,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="landscape"
+            android:screenOrientation="fullSensor"
             android:theme="@style/Theme.CamerasApp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

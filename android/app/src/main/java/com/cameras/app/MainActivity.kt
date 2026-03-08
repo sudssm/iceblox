@@ -26,17 +26,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.cameras.app.ui.CameraScreen
+import com.cameras.app.ui.SplashScreen
 import com.cameras.app.ui.theme.CamerasAppTheme
 
 class MainActivity : ComponentActivity() {
     private var hasCameraPermission by mutableStateOf(false)
     private var hasLocationPermission by mutableStateOf(false)
+    private var showCamera by mutableStateOf(false)
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
         if (granted) {
+            showCamera = true
             requestLocationPermission()
         }
     }
@@ -62,20 +65,29 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (!hasCameraPermission) {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        } else if (!hasLocationPermission) {
-            requestLocationPermission()
-        }
-
         setContent {
             CamerasAppTheme {
-                if (hasCameraPermission) {
-                    CameraScreen()
+                if (showCamera) {
+                    if (hasCameraPermission) {
+                        CameraScreen()
+                    } else {
+                        PermissionDeniedScreen(
+                            onRequestPermission = {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        )
+                    }
                 } else {
-                    PermissionDeniedScreen(
-                        onRequestPermission = {
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    SplashScreen(
+                        onStartCamera = {
+                            if (hasCameraPermission) {
+                                showCamera = true
+                                if (!hasLocationPermission) {
+                                    requestLocationPermission()
+                                }
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
                         }
                     )
                 }

@@ -15,11 +15,15 @@ A privacy-focused license plate detection system for private security and commun
 │                     │◀────────│  against targets →  │
 │  On-device only:    │  Result │  Log match/no-match │
 │  - Video frames     │         │                     │
-│  - Plaintext plates │         │  Knows only:        │
-│  - Images (debug)   │         │  - Hashed targets   │
-│                     │         │  - Hashed seen plate │
-│  Offline: queue     │         │  - Match result     │
-│  hashes locally     │         │                     │
+│  - Plaintext plates │   Push  │  On match: push     │
+│  - Images (debug)   │◀ ─ ─ ─ │  notify via         │
+│                     │ (APNs/  │  APNs / FCM         │
+│  Offline: queue     │  FCM)   │                     │
+│  hashes locally     │         │  Knows only:        │
+│                     │         │  - Hashed targets   │
+│                     │         │  - Hashed seen plate│
+│                     │         │  - Match result     │
+│                     │         │  - Device push token│
 └─────────────────────┘         └─────────────────────┘
 ```
 
@@ -62,7 +66,8 @@ License plates have a small keyspace (~2 billion US plates). An attacker with ac
 7. Server compares hash against pre-computed target hashes
 8. Server returns per-plate match boolean to the device
 9. Server logs match details (device_id, timestamp, location, target label)
-10. Non-matching hashes are discarded from server memory
+10. Server sends push notification to all registered devices via APNs (iOS) / FCM (Android)
+11. Non-matching hashes are discarded from server memory
 
 ## Target Data Source
 
@@ -86,6 +91,6 @@ The data is published as a nightly-compiled ZIP archive containing XML with plat
 
 ## Future Components
 
-- **Monitoring App** (TBD): Separate application to monitor detected target plates in real-time. Consumes match logs from the server. Will have its own spec.
+- **Monitoring App** (TBD): Separate application to monitor detected target plates in real-time. Consumes match logs from the server. Will have its own spec. (Push notifications now provide basic real-time alerting — the monitoring app will add geographic filtering and dashboard features.)
 - **Target Data Updates** (TBD): Automate nightly plate data refresh (cron + `make setup extract`).
 - **Privacy Upgrade** (TBD): PSI protocol for cryptographic privacy guarantees. See `docs/specs/privacy-roadmap.md`.

@@ -11,8 +11,9 @@ ios/
 ├── CamerasApp.xcodeproj/          # Xcode project file
 │   └── project.pbxproj
 ├── CamerasApp/
-│   ├── CamerasApp.swift           # App entry point (@main), landscape lock
+│   ├── CamerasApp.swift           # App entry point (@main), landscape lock, splash→camera flow
 │   ├── ContentView.swift          # Root view, wires all managers
+│   ├── SplashScreenView.swift     # Splash screen with app name and Start Camera button
 │   ├── Assets.xcassets/           # Asset catalog (icons, colors)
 │   │   ├── AppIcon.appiconset/    # 1024×1024 app icon
 │   │   ├── AccentColor.colorset/
@@ -58,7 +59,7 @@ ios/
 - **UI Framework**: SwiftUI
 - **Minimum Target**: iOS 17.0
 - **Language**: Swift 5.9+
-- **Orientation**: Landscape only (dashboard-mounted)
+- **Orientation**: All orientations supported (auto-rotation)
 
 ## Key Decisions
 

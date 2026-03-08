@@ -6,7 +6,7 @@ A dashboard-mounted mobile app for private security and community watch that con
 
 ## Environment
 
-- **Mounting**: Dashboard-mounted, landscape orientation, rear camera facing forward through windshield
+- **Mounting**: Dashboard-mounted, rear camera facing forward through windshield. Supports any device orientation (landscape or portrait) with automatic rotation handling.
 - **Power**: Assumed connected to car power (USB/12V) — battery optimization is secondary to performance
 - **Connectivity**: Intermittent — app must handle offline periods gracefully
 - **Lighting**: Variable — daylight, night (headlights/streetlights), rain, glare
@@ -19,19 +19,21 @@ A dashboard-mounted mobile app for private security and community watch that con
 
 #### REQ-M-1: Continuous Camera Capture
 
-The app MUST continuously capture frames from the rear-facing camera at a minimum of 15 fps for processing. The camera preview MUST be displayed on screen in landscape orientation.
+The app MUST continuously capture frames from the rear-facing camera at a minimum of 15 fps for processing. The camera preview MUST be displayed full-screen in the current device orientation.
 
 #### REQ-M-2: Camera Resolution
 
 The app MUST use a resolution sufficient for plate detection at distances of 3–20 meters. A minimum of 1080p capture resolution is REQUIRED. The app MAY downscale frames for the detection model while keeping full resolution available for OCR crops.
 
-#### REQ-M-3: Auto-Start
+#### REQ-M-3: Splash Screen and Camera Start
 
-When the app is opened, it MUST immediately begin camera capture and plate detection without requiring user interaction.
+When the app is opened, it MUST display a splash screen with the app name and a "Start Camera" button. Camera capture and plate detection MUST begin when the user taps the button. This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
-#### REQ-M-4: Camera Orientation Lock
+#### REQ-M-4: Auto-Rotation Support
 
-The app MUST lock to landscape orientation. It MUST NOT rotate to portrait.
+The app MUST support all device orientations (portrait, portrait upside-down, landscape left, landscape right) and rotate the UI automatically. The camera capture pipeline MUST compensate for device orientation so that frames are always correctly oriented for the detection model:
+- **iOS**: Update the `AVCaptureConnection` video orientation/rotation angle when the device orientation changes.
+- **Android**: Apply the `ImageProxy.imageInfo.rotationDegrees` rotation to the bitmap before passing it to the detector.
 
 #### REQ-M-4a: Keep Screen On
 
@@ -163,6 +165,47 @@ If the server responds with `429 Too Many Requests`, the app MUST:
 - Keep plates in the offline queue during the backoff period
 - Resume normal upload behavior after the backoff expires
 
+### Push Notifications
+
+#### REQ-M-60: Push Notification Permission
+
+The app MUST request push notification permission from the user.
+
+**Platform implementations:**
+- **iOS**: Request authorization via `UNUserNotificationCenter.requestAuthorization(options: [.alert, .sound, .badge])`. On grant, call `application.registerForRemoteNotifications()`.
+- **Android**: On API 33+ (Android 13), request `POST_NOTIFICATIONS` runtime permission. Create a notification channel (`plate_alerts`, importance high) on app startup for Android 8.0+.
+
+Push notifications are optional — the app MUST function normally if permission is denied.
+
+#### REQ-M-61: Device Token Registration
+
+After obtaining a push notification token, the app MUST send it to the server:
+
+```
+POST /api/v1/devices
+Content-Type: application/json
+X-Device-ID: <device identifier>
+
+{
+  "token": "<push token>",
+  "platform": "ios" | "android"
+}
+```
+
+The app MUST re-register whenever the token refreshes:
+- **iOS**: `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)` — convert `Data` to hex string (MUST NOT use `.description`)
+- **Android**: `FirebaseMessagingService.onNewToken()` — token is a string
+
+#### REQ-M-62: Notification Display
+
+The app MUST handle incoming push notifications:
+- **Foreground**: Display as a system banner notification (iOS: return `.banner, .sound` from `willPresent`; Android: build and post via `NotificationManager`)
+- **Background / Not running**: Handled automatically by the system (iOS) or built by the app via `onMessageReceived` (Android, data-only messages)
+
+#### REQ-M-63: Notification Privacy
+
+Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Target plate detected") and a sighting reference ID.
+
 ### Debug Mode
 
 #### REQ-M-18: Debug Mode Toggle
@@ -251,7 +294,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 
 ## UI
 
-### Primary Screen (Landscape Only)
+### Primary Screen
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -305,6 +348,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 | Pepper storage | Build-time constant (obfuscated) |
 | Local database | Core Data or SQLite (for offline queue) |
 | Networking | URLSession |
+| Push notifications | UserNotifications (`UNUserNotificationCenter`) |
 
 ### Android (Kotlin)
 
@@ -317,12 +361,13 @@ When foregrounded again, it MUST resume capture within 1 second.
 | Pepper storage | Build-time constant (obfuscated) |
 | Local database | Room (for offline queue) |
 | Networking | OkHttp / Retrofit |
+| Push notifications | Firebase Cloud Messaging (`firebase-messaging`) |
 
 ---
 
 ## Constraints
 
-- C-1: No network calls except to the configured server endpoint
+- C-1: No network calls except to the configured server endpoint and platform push notification services (APNs managed by iOS; FCM managed by Firebase SDK)
 - C-2: No user accounts or authentication in v1. `device_id` is the hardware identifier (`identifierForVendor` on iOS, `Settings.Secure.ANDROID_ID` on Android)
 - C-3: The app does not receive the target plate list. It learns only whether individual submitted plates matched (boolean per plate in server response)
 - C-4: The ML detection model must be bundled with the app (no model downloads)
@@ -364,8 +409,9 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 
 ```
 ios/CamerasApp/
-├── CamerasApp.swift                    # App entry point, landscape lock
+├── CamerasApp.swift                    # App entry point, landscape lock, splash→camera flow
 ├── ContentView.swift                   # Root view, wires all managers
+├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
 ├── Views/
 │   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
 │   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS, detection feed
@@ -400,9 +446,9 @@ ios/CamerasApp/
 
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
-| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Landscape lock, Info.plist permissions (camera, location), min iOS 16 |
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 16 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
-| 3 | UI shell | UI spec | Full-screen camera preview + status bar with placeholder values |
+| 3 | UI shell | REQ-M-3, UI spec | Splash screen with Start Camera button → full-screen camera preview + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | Vision text recognition on cropped plate regions, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper obfuscation, immediate plaintext discard |
@@ -416,6 +462,7 @@ ios/CamerasApp/
 | 14 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
 | 15 | Background/crash | REQ-M-50, REQ-M-51 | Stop capture on background, flush queue, resume on foreground |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
+| 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 
 ### Key Technical Notes
 
@@ -455,10 +502,11 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 
 ```
 android/app/src/main/java/com/cameras/app/
-├── MainActivity.kt                      # Activity, landscape lock, permission requests
+├── MainActivity.kt                      # Activity, landscape lock, permission requests, splash→camera flow
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
 │   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
+│   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
 ├── camera/
@@ -494,9 +542,9 @@ android/app/src/main/
 
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
-| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Landscape lock in manifest, permissions, min API 31 |
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation in manifest, permissions, min API 31 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | CameraX preview + ImageAnalysis, 1080p resolution |
-| 3 | UI shell | UI spec | Compose: full-screen preview + status bar placeholders |
+| 3 | UI shell | REQ-M-3, UI spec | Compose: splash screen with Start Camera button → full-screen preview + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ML Kit on cropped bitmaps, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper obfuscation, plaintext discard |
@@ -510,6 +558,7 @@ android/app/src/main/
 | 14 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
 | 15 | Background/crash | REQ-M-50, REQ-M-51 | Lifecycle-aware: stop analysis on STOPPED, flush queue, resume on STARTED |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
+| 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 
 ### Key Technical Notes
 
