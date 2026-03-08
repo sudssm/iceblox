@@ -347,6 +347,8 @@ server/
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
 ├── Makefile                     # setup, extract, db, run-server targets
+├── Dockerfile                   # Multi-stage build for Railway deployment
+├── railway.toml                 # Railway deployment config
 ├── go.mod
 └── go.sum
 ```
@@ -358,7 +360,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`) |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -385,3 +387,12 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **APNs JWT**: ES256 (ECDSA P-256) signed with `.p8` key. Cache token for ~50 minutes. All signing uses Go stdlib (`crypto/ecdsa`, `crypto/sha256`, `encoding/pem`).
 - **FCM OAuth2**: RS256 JWT exchanged for access token at Google's token endpoint. Cache token until near expiry (~55 minutes). All signing uses Go stdlib (`crypto/rsa`, `crypto/sha256`).
 - **Async push dispatch**: Send notifications in a goroutine after recording the sighting. Push failures MUST NOT affect the plates endpoint response.
+
+### Deployment
+
+The server deploys to [Railway](https://railway.com) via Docker.
+
+- **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
+- **Railway config** (`server/railway.toml`): Configures the build to use the Dockerfile, with a `/healthz` healthcheck and ON_FAILURE restart policy.
+- **CI** (`.github/workflows/deploy.yml`): On push to `main`, deploys to Railway using `railwayapp/deploy@v1` with the `RAILWAY_TOKEN` secret.
+- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. These override the CLI flag defaults.
