@@ -416,6 +416,25 @@ ios/CamerasApp/
 - **Memory**: Reuse `CVPixelBuffer` and avoid UIImage conversions in the hot path.
 - **Pepper obfuscation**: Store as two `[UInt8]` arrays XOR'd together. Reconstruct at runtime: `zip(a, b).map(^)`.
 
+#### Model Invocation Flow (Core ML)
+
+Camera frame to Core ML inference:
+
+1. `CameraManager` receives `CMSampleBuffer` via `captureOutput(_:didOutput:from:)` delegate callback on a dedicated serial `DispatchQueue`
+2. Extract `CVPixelBuffer` from the sample buffer via `CMSampleBufferGetImageBuffer` — no `UIImage` conversion needed
+3. Create a `VNCoreMLModel` wrapping the compiled `PlateDetector.mlmodel` (load once at startup, reuse — `VNCoreMLModel(for:)` is expensive)
+4. Create a `VNCoreMLRequest` with the cached Vision model
+5. Create a `VNImageRequestHandler(cvPixelBuffer:)` — Vision handles resizing to 640x640 internally
+6. Call `handler.perform([request])`
+7. Results are `[VNRecognizedObjectObservation]`, each with:
+   - `boundingBox`: normalized `CGRect` (origin at **bottom-left**, Vision coordinate system — must convert to UIKit top-left origin for cropping)
+   - `confidence`: `Float` — filter at ≥ 0.7 per REQ-M-7
+8. Convert `boundingBox` from Vision coordinates to pixel coordinates on the original frame, then crop the `CVPixelBuffer` at each bounding box for OCR
+
+**NMS**: The Core ML export uses `nms=True` (see `license_plate_detection.md`), so non-max suppression runs inside the model. No manual NMS implementation needed on iOS.
+
+**Coordinate conversion**: Vision's `boundingBox` is normalized with bottom-left origin. To convert to pixel coordinates: `x = boundingBox.origin.x * imageWidth`, `y = (1 - boundingBox.origin.y - boundingBox.height) * imageHeight`, with width/height scaled similarly.
+
 ---
 
 ## Implementation Plan — Android
@@ -486,7 +505,32 @@ android/app/src/main/
 
 ### Key Technical Notes
 
-- **TFLite NMS**: YOLOv8 TFLite export may not include NMS. Implement post-processing: filter by confidence → non-max suppression on bounding boxes.
+- **TFLite NMS**: YOLOv8 TFLite export does **not** include NMS. Must implement post-processing manually: filter by confidence → non-max suppression on bounding boxes.
 - **CameraX frame skipping**: Use `ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)` — automatically drops frames when the analyzer is busy.
 - **Room threading**: Use `suspend` DAO functions with coroutines. Queue insert on the analyzer thread; batch reads on the network thread.
 - **Pepper obfuscation**: Same XOR approach as iOS. Store as two `ByteArray` constants, reconstruct at runtime.
+
+#### Model Invocation Flow (TFLite)
+
+Camera frame to TFLite inference:
+
+1. `FrameAnalyzer.analyze(ImageProxy)` receives the frame from CameraX on a background thread
+2. Convert `ImageProxy` to `Bitmap` (via `ImageProxy.toBitmap()` or manual YUV→RGB conversion for better performance)
+3. Resize the bitmap to 640x640 (model's expected input size)
+4. Normalize pixel values to `[0, 1]` float range and pack into a `ByteBuffer` — shape: `[1, 640, 640, 3]`, `float32`. Use `ByteBuffer.allocateDirect()` with `ByteOrder.nativeOrder()`, allocated once and reused across frames to avoid GC pressure
+5. Allocate output tensor buffer(s) — YOLOv8-nano raw output shape is `[1, 5+num_classes, 8400]` (8400 candidate detections, each with 4 bbox coords + 1 objectness + class scores)
+6. Call `interpreter.run(inputBuffer, outputBuffer)`
+7. Post-process the raw output:
+   a. Transpose output to `[8400, 6]` for easier iteration (single-class: 4 bbox + 1 objectness + 1 class)
+   b. For each candidate, extract `[cx, cy, w, h, confidence]` where `cx/cy/w/h` are in 640x640 model coordinate space
+   c. Filter candidates by confidence ≥ 0.7
+   d. Convert `[cx, cy, w, h]` to `[x1, y1, x2, y2]`: `x1 = cx - w/2`, `y1 = cy - h/2`, `x2 = cx + w/2`, `y2 = cy + h/2`
+   e. Scale coordinates from 640x640 back to original bitmap dimensions
+   f. Apply greedy non-max suppression (IoU threshold ~0.45): sort by confidence descending, accept top box, suppress all boxes with IoU > threshold, repeat
+8. Crop the original (pre-resize) bitmap at each surviving bounding box for OCR
+
+**NMS implementation**: Unlike Core ML, TFLite export does NOT include NMS — this is the biggest platform difference. Implement standard greedy NMS: IoU = area_of_intersection / area_of_union. Typical IoU threshold is 0.45.
+
+**Interpreter setup**: Create the `Interpreter` once at startup. Use `Interpreter.Options()` to set thread count (2–4). Optionally enable GPU delegate (`GpuDelegate`) or NNAPI delegate for hardware acceleration on supported devices.
+
+**Input buffer reuse**: The `ByteBuffer` for model input is ~4.9 MB (640 × 640 × 3 × 4 bytes). Allocate once via `ByteBuffer.allocateDirect()` and call `rewind()` before each frame to avoid repeated allocation.
