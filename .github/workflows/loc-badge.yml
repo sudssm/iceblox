@@ -1,0 +1,47 @@
+name: LOC Badge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Count lines of code
+        id: loc
+        run: |
+          total=$(find . -type f \( -name "*.go" -o -name "*.swift" -o -name "*.kt" -o -name "*.py" \) \
+            ! -path "./.git/*" ! -path "*/build/*" ! -path "*/.build/*" \
+            | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+          total=${total:-0}
+
+          if [ "$total" -ge 1000 ]; then
+            # Format as X.Xk, dropping trailing .0
+            formatted=$(awk -v val="$total" 'BEGIN {v=val/1000; if (v==int(v)) printf "%dk", v; else printf "%.1fk", v}')
+          else
+            formatted="$total"
+          fi
+
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+          echo "formatted=$formatted" >> "$GITHUB_OUTPUT"
+          echo "Lines of code: $total ($formatted)"
+
+      - name: Update README badge
+        run: |
+          formatted="${{ steps.loc.outputs.formatted }}"
+          encoded=$(echo "$formatted" | sed 's/\./%2E/g')
+          sed -i "s|lines%20of%20code-[^-]*-blue|lines%20of%20code-${encoded}-blue|" README.md
+
+      - name: Commit if changed
+        run: |
+          git diff --quiet README.md && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update LOC badge to ${{ steps.loc.outputs.formatted }}"
+          git push

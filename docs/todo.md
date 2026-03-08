@@ -10,13 +10,9 @@ Items are ordered by dependency — earlier items unblock later ones. Within a c
 
 Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_plate_detection.md)
 
-- [x] Create `models/training/` directory and `train.py` script
 - [ ] Download license plate dataset (HuggingFace, 8,823 images)
 - [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
 - [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [x] Export to Core ML (`.mlpackage`) and TFLite (`.tflite`)
-- [x] Copy trained model artifacts to iOS and Android asset directories
-- [x] Create `models/Makefile` with build/export/deploy targets
 - [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
 ---
@@ -25,19 +21,8 @@ Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_p
 
 Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
-- [x] **Project scaffold** — `go mod init`, directory structure, `main.go` with flag parsing
-- [x] **Config** — CLI flags (`--port`, `--plates-file`, `--pepper`, `--db-dsn`)
-- [x] **Database** — PostgreSQL schema (`plates`, `sightings` tables), migrations, pgx driver (REQ-S-8)
-- [x] **Target loader** — Load `plates.txt`, compute HMAC hashes, seed DB, build in-memory hash→plate_id map, SIGHUP reload with DB re-seed (REQ-S-5)
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
-- [x] **Sighting persistence** — Record matched plates to `sightings` table with plate_id, timestamp, GPS, hardware_id (REQ-S-3)
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
-- [x] **POST /api/v1/plates** — Parse plate with timestamp and X-Device-ID header, validate, match, record sighting, return matched boolean (REQ-S-1, REQ-S-4)
-- [x] **GET /healthz** — Status endpoint (REQ-S-7)
-- [x] **Integration** — Wire handlers, DB init, graceful shutdown (fixed: `srv.Shutdown` for graceful drain)
-- [x] **Normalization** — Aligned server, iOS, and Android plate normalization to strip non-alphanumeric and filter ASCII-only per overview spec
-- [x] **Tests** — Unit tests for handler, health; integration tests with mock recorder; DB integration tests for persistence
-- [x] **Example seed file** — `testdata/test_plates.txt` with known plates for E2E testing
 - [ ] **Device token store** — `device_tokens` table, CRUD operations in `db.go` (REQ-S-9)
 - [ ] **POST /api/v1/devices** — Device token registration endpoint with upsert (REQ-S-9)
 - [ ] **APNs client** — HTTP/2 push provider, ES256 JWT signing, `.p8` key loading, token caching (REQ-S-11)
@@ -59,7 +44,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Camera
 - [x] **AVCaptureSession setup** — Rear camera, 1080p preset, video data output delegate (REQ-M-1, REQ-M-2)
 - [x] **Camera preview** — UIViewRepresentable wrapping AVCaptureVideoPreviewLayer (REQ-M-3)
-- [x] **Auto-start** — Begin capture on app launch without user interaction (REQ-M-3)
+- [x] **Splash screen** — SplashScreenView with app name and Start Camera button; camera starts on tap (REQ-M-3)
 
 ### UI
 - [x] **Full-screen camera preview** — Landscape, camera fills screen
@@ -106,18 +91,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **APNs token registration** — Convert device token to hex string, POST to `/api/v1/devices` (REQ-M-61)
 - [ ] **Notification handling** — `UNUserNotificationCenterDelegate`, foreground banner display (REQ-M-62)
 
-### Reliability & Performance
-- [x] **Thermal management** — CameraManager observes `ProcessInfo.thermalState`, increases frame skip (REQ-M-32)
-- [x] **Background behavior** — Stop capture + flush queue on background, resume on foreground (REQ-M-51)
-- [x] **Crash recovery** — SQLite queue persists across restarts (REQ-M-50)
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
-
-### App Store Distribution
-- [x] **Fix orientation** — Changed to landscape per REQ-M-4 (AppDelegate + Info.plist)
 - [ ] **App icon** — Add 1024×1024 PNG to `AppIcon.appiconset`
-- [x] **Privacy manifest** — PrivacyInfo.xcprivacy declaring location data usage
-- [x] **Location usage description** — Added `NSLocationWhenInUseUsageDescription` to build settings
 - [ ] **Development team** — Set `DEVELOPMENT_TEAM` to Apple Team ID (requires Apple Developer account)
 - [ ] **App Store Connect listing** — Screenshots, description, privacy policy URL, category, age rating
 - [ ] **TestFlight build** — Archive and upload for beta testing
@@ -138,7 +114,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Camera
 - [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
 - [x] **Camera preview** — Compose `PreviewView` wrapper (REQ-M-3)
-- [x] **Auto-start** — Begin capture on activity create (REQ-M-3)
+- [x] **Splash screen** — SplashScreen composable with app name and Start Camera button; camera starts on tap (REQ-M-3)
 
 ### UI
 - [x] **Full-screen camera preview** — Landscape Compose layout
@@ -183,9 +159,5 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
 - [ ] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
 
-### Reliability & Performance
-- [x] **Thermal management** — PowerManager thermal status listener, reduce frame skip count (REQ-M-32)
-- [x] **Background behavior** — Lifecycle-aware: stop on STOPPED, resume on STARTED via LifecycleEventObserver (REQ-M-51)
-- [x] **Crash recovery** — Room queue persists across process death (REQ-M-50)
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)

@@ -24,7 +24,7 @@ android/
         ├── main/
         │   ├── AndroidManifest.xml
         │   ├── java/com/cameras/app/
-        │   │   ├── MainActivity.kt         # Activity entry point, permission requests
+        │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow
         │   │   ├── MainViewModel.kt        # Pipeline state coordinator
         │   │   ├── camera/
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
@@ -52,6 +52,7 @@ android/
         │   │   │   └── DebugLog.kt           # Singleton logger: ring buffer + StateFlow for UI
         │   │   └── ui/
         │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar composable)
+        │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay
         │   │       └── theme/

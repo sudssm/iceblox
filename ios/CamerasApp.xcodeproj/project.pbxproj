@@ -32,6 +32,7 @@
 		A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */; };
 		A1B2C3D4E5F60001000036 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000036 /* DebugLog.swift */; };
 		A1B2C3D4E5F60001000037 /* DebugLogPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */; };
+		A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000038 /* SplashScreenView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 		A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = plate_detector.mlpackage; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000036 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogPanel.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000038 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +108,7 @@
 			children = (
 				A1B2C3D4E5F60002000001 /* CamerasApp.swift */,
 				A1B2C3D4E5F60002000002 /* ContentView.swift */,
+				A1B2C3D4E5F60002000038 /* SplashScreenView.swift */,
 				A1B2C3D4E5F60002000012 /* StatusBarView.swift */,
 				A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */,
 				A1B2C3D4E5F60002000003 /* Assets.xcassets */,
@@ -343,6 +346,7 @@
 				A1B2C3D4E5F60001000032 /* FrameProcessor.swift in Sources */,
 				A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */,
 				A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */,
+				A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,8 +503,8 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "CamerasApp needs camera access to detect license plates";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CamerasApp uses your location to tag plate detections with GPS coordinates";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -529,8 +533,8 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "CamerasApp needs camera access to detect license plates";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CamerasApp uses your location to tag plate detections with GPS coordinates";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
