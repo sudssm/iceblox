@@ -23,9 +23,9 @@ jobs:
 
           if [ "$total" -ge 1000 ]; then
             # Format as X.Xk, dropping trailing .0
-            formatted=$(awk "BEGIN {v=$total/1000; if (v==int(v)) printf \"%dk\", v; else printf \"%.1fk\", v}")
+            formatted=$(awk -v val="$total" 'BEGIN {v=val/1000; if (v==int(v)) printf "%dk", v; else printf "%.1fk", v}')
           else
-            formatted=$total
+            formatted="$total"
           fi
 
           echo "total=$total" >> "$GITHUB_OUTPUT"
