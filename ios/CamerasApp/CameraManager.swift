@@ -4,10 +4,12 @@ final class CameraManager: NSObject, ObservableObject {
     let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "camera.session")
     private let frameQueue = DispatchQueue(label: "camera.frames")
+    private let frameProcessor = FrameProcessor()
 
     @Published var isRunning = false
     @Published var permissionGranted = false
     @Published var permissionDenied = false
+    @Published var lastDetectedPlates: [ProcessedPlate] = []
 
     func checkPermissionAndStart() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -76,6 +78,13 @@ final class CameraManager: NSObject, ObservableObject {
 
 extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Frame captured — detection pipeline will be wired here in a future phase
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        let plates = frameProcessor.process(pixelBuffer: pixelBuffer)
+        if !plates.isEmpty {
+            DispatchQueue.main.async { [weak self] in
+                self?.lastDetectedPlates = plates
+            }
+        }
     }
 }

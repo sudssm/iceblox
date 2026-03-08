@@ -1,11 +1,111 @@
 package com.cameras.app
 
+import android.graphics.RectF
+import com.cameras.app.detection.DetectedPlate
+import com.cameras.app.detection.PlateDetector
+import com.cameras.app.processing.PlateNormalizer
 import org.junit.Test
 import org.junit.Assert.*
 
-class ExampleUnitTest {
+class PlateNormalizerTest {
     @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+    fun basicNormalization() {
+        assertEquals("ABC1234", PlateNormalizer.normalize("abc 1234"))
+    }
+
+    @Test
+    fun removesHyphens() {
+        assertEquals("AB1234", PlateNormalizer.normalize("AB-1234"))
+    }
+
+    @Test
+    fun removesWhitespace() {
+        assertEquals("AB1234", PlateNormalizer.normalize("AB  12 34"))
+    }
+
+    @Test
+    fun uppercases() {
+        assertEquals("ABC", PlateNormalizer.normalize("abc"))
+    }
+
+    @Test
+    fun removesNonAlphanumeric() {
+        assertEquals("AB1234", PlateNormalizer.normalize("AB@#1234"))
+    }
+
+    @Test
+    fun truncatesTo8Chars() {
+        assertEquals("ABCDEFGH", PlateNormalizer.normalize("ABCDEFGHIJ"))
+    }
+
+    @Test
+    fun rejectsTooShort() {
+        assertNull(PlateNormalizer.normalize("A"))
+    }
+
+    @Test
+    fun rejectsEmpty() {
+        assertNull(PlateNormalizer.normalize(""))
+    }
+
+    @Test
+    fun rejectsAllSymbols() {
+        assertNull(PlateNormalizer.normalize("@#$"))
+    }
+
+    @Test
+    fun acceptsMinLength() {
+        assertEquals("AB", PlateNormalizer.normalize("AB"))
+    }
+
+    @Test
+    fun acceptsMaxLength() {
+        assertEquals("ABCD1234", PlateNormalizer.normalize("ABCD1234"))
+    }
+}
+
+class NmsTest {
+    @Test
+    fun emptyInput() {
+        assertEquals(emptyList<DetectedPlate>(), PlateDetector.nms(emptyList()))
+    }
+
+    @Test
+    fun singleDetection() {
+        val det = DetectedPlate(RectF(0f, 0f, 100f, 100f), 0.9f)
+        assertEquals(listOf(det), PlateDetector.nms(listOf(det)))
+    }
+
+    @Test
+    fun suppressesOverlapping() {
+        val high = DetectedPlate(RectF(0f, 0f, 100f, 100f), 0.9f)
+        val low = DetectedPlate(RectF(10f, 10f, 110f, 110f), 0.7f)
+        val result = PlateDetector.nms(listOf(low, high))
+        assertEquals(1, result.size)
+        assertEquals(0.9f, result[0].confidence)
+    }
+
+    @Test
+    fun keepsNonOverlapping() {
+        val a = DetectedPlate(RectF(0f, 0f, 50f, 50f), 0.9f)
+        val b = DetectedPlate(RectF(200f, 200f, 300f, 300f), 0.8f)
+        val result = PlateDetector.nms(listOf(a, b))
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun iouCalculation() {
+        val a = RectF(0f, 0f, 100f, 100f)
+        val b = RectF(50f, 50f, 150f, 150f)
+        val iou = PlateDetector.iou(a, b)
+        // intersection = 50*50 = 2500, union = 10000+10000-2500 = 17500
+        assertEquals(2500f / 17500f, iou, 0.001f)
+    }
+
+    @Test
+    fun iouNoOverlap() {
+        val a = RectF(0f, 0f, 50f, 50f)
+        val b = RectF(100f, 100f, 200f, 200f)
+        assertEquals(0f, PlateDetector.iou(a, b), 0.001f)
     }
 }

@@ -518,10 +518,10 @@ Camera frame to TFLite inference:
 2. Convert `ImageProxy` to `Bitmap` (via `ImageProxy.toBitmap()` or manual YUV→RGB conversion for better performance)
 3. Resize the bitmap to 640x640 (model's expected input size)
 4. Normalize pixel values to `[0, 1]` float range and pack into a `ByteBuffer` — shape: `[1, 640, 640, 3]`, `float32`. Use `ByteBuffer.allocateDirect()` with `ByteOrder.nativeOrder()`, allocated once and reused across frames to avoid GC pressure
-5. Allocate output tensor buffer(s) — YOLOv8-nano raw output shape is `[1, 5+num_classes, 8400]` (8400 candidate detections, each with 4 bbox coords + 1 objectness + class scores)
+5. Allocate output tensor buffer(s) — YOLOv8-nano raw output shape is `[1, 4+num_classes, 8400]` (8400 candidate detections, each with 4 bbox coords + class confidence scores). YOLOv8 does **not** have a separate objectness score (unlike YOLOv5).
 6. Call `interpreter.run(inputBuffer, outputBuffer)`
 7. Post-process the raw output:
-   a. Transpose output to `[8400, 6]` for easier iteration (single-class: 4 bbox + 1 objectness + 1 class)
+   a. Transpose output to `[8400, 5]` for easier iteration (single-class: 4 bbox + 1 class confidence)
    b. For each candidate, extract `[cx, cy, w, h, confidence]` where `cx/cy/w/h` are in 640x640 model coordinate space
    c. Filter candidates by confidence ≥ 0.7
    d. Convert `[cx, cy, w, h]` to `[x1, y1, x2, y2]`: `x1 = cx - w/2`, `y1 = cy - h/2`, `x2 = cx + w/2`, `y2 = cy + h/2`
