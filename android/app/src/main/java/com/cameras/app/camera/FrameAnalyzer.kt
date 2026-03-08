@@ -67,6 +67,15 @@ class FrameAnalyzer(
                 )
             }
 
+            _rawDetections.value = detections.map { det ->
+                RawDetectionBox(
+                    boundingBox = det.boundingBox,
+                    confidence = det.confidence,
+                    imageWidth = bitmap.width,
+                    imageHeight = bitmap.height
+                )
+            }
+
             val plates = detections.mapNotNull { detection ->
                 val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
                     ?: return@mapNotNull null
