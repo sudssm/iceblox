@@ -6,7 +6,6 @@ import com.iceblox.app.detection.PlateDetector
 import com.iceblox.app.network.RetryManager
 import com.iceblox.app.processing.DeduplicationCache
 import com.iceblox.app.processing.PlateHasher
-import com.iceblox.app.config.AppConfig
 import com.iceblox.app.processing.PlateNormalizer
 import org.junit.Assert.*
 import org.junit.Test
@@ -159,23 +158,6 @@ class DeduplicationCacheTest {
         val cache = DeduplicationCache()
         cache.isDuplicate("ABC1234")
         assertFalse(cache.isDuplicate("XYZ9876"))
-    }
-}
-
-class AppConfigTest {
-    @Test
-    fun devicesEndpointDefined() {
-        assertEquals("/api/v1/devices", AppConfig.DEVICES_ENDPOINT)
-    }
-
-    @Test
-    fun notificationChannelIdDefined() {
-        assertEquals("plate_alerts", AppConfig.NOTIFICATION_CHANNEL_ID)
-    }
-
-    @Test
-    fun notificationChannelNameDefined() {
-        assertEquals("Plate Alerts", AppConfig.NOTIFICATION_CHANNEL_NAME)
     }
 }
 

@@ -8,15 +8,22 @@ import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
-import kotlin.concurrent.thread
 
 class PushNotificationService : FirebaseMessagingService() {
+
+    private val client = OkHttpClient()
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onNewToken(token: String) {
         DebugLog.d(TAG, "FCM token refreshed")
@@ -42,10 +49,15 @@ class PushNotificationService : FirebaseMessagingService() {
         manager.notify(notificationId, notification)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
+    }
+
     private fun sendTokenToServer(token: String) {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
             ?: "unknown"
-        thread {
+        scope.launch {
             val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.DEVICES_ENDPOINT}"
             val mediaType = "application/json".toMediaType()
             val json = JSONObject().apply {
@@ -59,7 +71,7 @@ class PushNotificationService : FirebaseMessagingService() {
                 .post(json.toString().toRequestBody(mediaType))
                 .build()
             try {
-                OkHttpClient().newCall(request).execute().use { response ->
+                client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         DebugLog.d(TAG, "Token registered via onNewToken")
                     } else {
