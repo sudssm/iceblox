@@ -14,6 +14,10 @@
 		A1B2C3D4E5F60001000010 /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000010 /* CameraManager.swift */; };
 		A1B2C3D4E5F60001000011 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */; };
 		A1B2C3D4E5F60001000012 /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000012 /* StatusBarView.swift */; };
+		A1B2C3D4E5F60001000020 /* PlateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000020 /* PlateDetector.swift */; };
+		A1B2C3D4E5F60001000021 /* PlateOCR.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000021 /* PlateOCR.swift */; };
+		A1B2C3D4E5F60001000022 /* PlateNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000022 /* PlateNormalizer.swift */; };
+		A1B2C3D4E5F60001000023 /* FrameProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000023 /* FrameProcessor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,6 +40,10 @@
 		A1B2C3D4E5F60002000010 /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000012 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000020 /* PlateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateDetector.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000021 /* PlateOCR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateOCR.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000022 /* PlateNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateNormalizer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000023 /* FrameProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameProcessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +81,10 @@
 				A1B2C3D4E5F60002000010 /* CameraManager.swift */,
 				A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */,
 				A1B2C3D4E5F60002000012 /* StatusBarView.swift */,
+				A1B2C3D4E5F60002000020 /* PlateDetector.swift */,
+				A1B2C3D4E5F60002000021 /* PlateOCR.swift */,
+				A1B2C3D4E5F60002000022 /* PlateNormalizer.swift */,
+				A1B2C3D4E5F60002000023 /* FrameProcessor.swift */,
 				A1B2C3D4E5F60002000003 /* Assets.xcassets */,
 			);
 			path = CamerasApp;
@@ -191,6 +203,10 @@
 				A1B2C3D4E5F60001000010 /* CameraManager.swift in Sources */,
 				A1B2C3D4E5F60001000011 /* CameraPreviewView.swift in Sources */,
 				A1B2C3D4E5F60001000012 /* StatusBarView.swift in Sources */,
+				A1B2C3D4E5F60001000020 /* PlateDetector.swift in Sources */,
+				A1B2C3D4E5F60001000021 /* PlateOCR.swift in Sources */,
+				A1B2C3D4E5F60001000022 /* PlateNormalizer.swift in Sources */,
+				A1B2C3D4E5F60001000023 /* FrameProcessor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

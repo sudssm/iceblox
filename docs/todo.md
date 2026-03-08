@@ -58,15 +58,15 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Wire live data** — Connect status bar to real pipeline state
 
 ### Detection Pipeline
-- [ ] **Core ML model loading** — Compile `.mlmodel`, create and cache `VNCoreMLModel` instance at startup (REQ-M-5, REQ-M-6)
-- [ ] **Frame-to-inference bridge** — Extract `CVPixelBuffer` from `CMSampleBuffer`, create `VNImageRequestHandler`, run `VNCoreMLRequest` on a dedicated serial queue (REQ-M-6). NMS is baked into the Core ML export — no manual implementation needed
-- [ ] **Detection result parsing** — Extract `VNRecognizedObjectObservation` bounding boxes, convert Vision coordinates (bottom-left origin, normalized) to pixel coordinates for cropping (REQ-M-6)
-- [ ] **Confidence threshold** — Filter detections with `confidence` below 0.7 (REQ-M-7)
-- [ ] **OCR** — Vision `VNRecognizeTextRequest` on cropped plate regions (REQ-M-9)
-- [ ] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
-- [ ] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
+- [x] **Core ML model loading** — Compile `.mlmodel`, create and cache `VNCoreMLModel` instance at startup (REQ-M-5, REQ-M-6)
+- [x] **Frame-to-inference bridge** — Extract `CVPixelBuffer` from `CMSampleBuffer`, create `VNImageRequestHandler`, run `VNCoreMLRequest` on a dedicated serial queue (REQ-M-6). NMS is baked into the Core ML export — no manual implementation needed
+- [x] **Detection result parsing** — Extract `VNRecognizedObjectObservation` bounding boxes, convert Vision coordinates (bottom-left origin, normalized) to pixel coordinates for cropping (REQ-M-6)
+- [x] **Confidence threshold** — Filter detections with `confidence` below 0.7 (REQ-M-7)
+- [x] **OCR** — Vision `VNRecognizeTextRequest` on cropped plate regions (REQ-M-9)
+- [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
+- [x] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
 - [ ] **Deduplication** — 60-second time-windowed cache (REQ-M-8)
-- [ ] **Frame processor** — Wire full pipeline: frame → detect → OCR → normalize → dedup → hash → queue (REQ-M-30)
+- [x] **Frame processor** — Wire full pipeline: frame → detect → OCR → normalize → dedup → hash → queue (REQ-M-30)
 
 ### Hashing & Privacy
 - [ ] **HMAC-SHA256** — CryptoKit `HMAC<SHA256>`, obfuscated pepper (REQ-M-12, REQ-M-42)
@@ -103,7 +103,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
 - [x] **Manifest permissions** — CAMERA (ACCESS_FINE_LOCATION, INTERNET still pending)
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)
-- [ ] **Dependencies** — ~~CameraX~~ done, ML Kit, Room, OkHttp, TFLite still needed
+- [ ] **Dependencies** — ~~CameraX~~ done, ~~ML Kit~~ done, ~~TFLite~~ done, Room, OkHttp still needed
 
 ### Camera
 - [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
@@ -116,15 +116,15 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Wire ViewModel** — Connect status bar to pipeline state via StateFlow
 
 ### Detection Pipeline
-- [ ] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
-- [ ] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
-- [ ] **Raw output parsing** — Parse `[1, 6, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
-- [ ] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7). TFLite export does NOT include NMS — this must be implemented manually (unlike iOS Core ML)
-- [ ] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
-- [ ] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
-- [ ] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
+- [x] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
+- [x] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
+- [x] **Raw output parsing** — Parse `[1, 5, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
+- [x] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7). TFLite export does NOT include NMS — this must be implemented manually (unlike iOS Core ML)
+- [x] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
+- [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
+- [x] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
 - [ ] **Deduplication** — 60-second time-windowed cache (REQ-M-8)
-- [ ] **Frame analyzer** — Wire pipeline in ImageAnalysis.Analyzer (REQ-M-30)
+- [x] **Frame analyzer** — Wire pipeline in ImageAnalysis.Analyzer (REQ-M-30)
 
 ### Hashing & Privacy
 - [ ] **HMAC-SHA256** — `javax.crypto.Mac`, obfuscated pepper (REQ-M-12, REQ-M-42)
