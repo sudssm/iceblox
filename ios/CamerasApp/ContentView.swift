@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var offlineQueue = OfflineQueue()
     @State private var frameProcessor: FrameProcessor?
     @State private var apiClient: APIClient?
+    @State private var alertClient: AlertClient?
     @State private var debugMode = false
     @ObservedObject private var debugLog = DebugLog.shared
     @State private var lastStatusUpdate = Date()
@@ -62,7 +63,8 @@ struct ContentView: View {
                 lastDetection: frameProcessor?.lastDetectionTime,
                 plateCount: frameProcessor?.totalPlates ?? 0,
                 targetCount: apiClient?.totalTargets ?? 0,
-                hasGPS: locationManager.hasPermission
+                hasGPS: locationManager.hasPermission,
+                nearbySightings: alertClient?.nearbySightings ?? 0
             )
         }
         #if DEBUG
@@ -86,10 +88,13 @@ struct ContentView: View {
                     cameraManager.start()
                 }
                 apiClient?.startBatchTimer()
+                alertClient?.startTimer()
             case .background:
                 cameraManager.stop()
                 apiClient?.flushQueue()
                 apiClient?.stopBatchTimer()
+                alertClient?.subscribe()
+                alertClient?.stopTimer()
             default:
                 break
             }
@@ -115,6 +120,10 @@ struct ContentView: View {
         cameraManager.frameProcessor = processor
         self.frameProcessor = processor
         self.apiClient = client
+
+        let alerts = AlertClient(locationManager: locationManager)
+        self.alertClient = alerts
+        alerts.startTimer()
 
         client.startBatchTimer()
     }
