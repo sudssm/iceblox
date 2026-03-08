@@ -46,7 +46,7 @@ final class SimulatorCamera {
             let text = "SIMULATOR" as NSString
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 80, weight: .bold),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.3),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.3)
             ]
             let textSize = text.size(withAttributes: attrs)
             let textRect = CGRect(
