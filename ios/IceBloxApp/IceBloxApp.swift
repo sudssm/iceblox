@@ -118,7 +118,7 @@ enum DeviceTokenHelper {
 @main
 struct IceBloxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var showCamera = false
+    @State private var showCamera = AppConfig.autoStartCamera
 
     var body: some Scene {
         WindowGroup {

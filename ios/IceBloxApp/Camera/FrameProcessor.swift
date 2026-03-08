@@ -88,46 +88,56 @@ final class FrameProcessor: ObservableObject {
 
             guard let rawText = PlateOCR.recognizeText(in: cropped) else { continue }
             guard let normalized = PlateNormalizer.normalize(rawText) else { continue }
-
-            if dedupCache.isDuplicate(normalized) { continue }
-
-            let hash = PlateHasher.hash(normalizedPlate: normalized)
-            DebugLog.shared.d("FrameProcessor", "Plate: \(normalized) hash=\(String(hash.prefix(8)))")
-
-            // Immediately discard normalized text from further use (privacy: REQ-M-13)
-            let entry = OfflineQueueEntry(
-                plateHash: hash,
-                latitude: locationManager.latitude,
-                longitude: locationManager.longitude
-            )
-            offlineQueue.enqueue(entry)
-
-            let feedEntry = DetectionFeedEntry(
-                plateText: normalized,
-                hashPrefix: String(hash.prefix(8)),
-                state: .queued,
-                timestamp: Date()
-            )
-            addFeedEntry(feedEntry)
-
-            results.append(FrameResult(
-                plateText: rawText,
-                hash: hash,
+            guard let result = recordPlate(
+                rawText: rawText,
+                normalizedText: normalized,
                 boundingBox: detection.boundingBox,
                 confidence: detection.confidence
-            ))
-
-            DispatchQueue.main.async { [weak self] in
-                self?.totalPlates += 1
-                self?.lastDetectionTime = Date()
+            ) else {
+                continue
             }
-
-            apiClient.checkAndFlush()
+            results.append(result)
         }
 
         DispatchQueue.main.async { [weak self] in
             self?.currentDetections = results
             self?.rawDetections = rawBoxes
+        }
+    }
+
+    func processSimulatedPlate(_ plateText: String, imageWidth: Int, imageHeight: Int) {
+        updateFPS()
+
+        guard let normalized = PlateNormalizer.normalize(plateText) else { return }
+
+        let boundingBox = CGRect(
+            x: CGFloat(imageWidth) * 0.2,
+            y: CGFloat(imageHeight) * 0.4,
+            width: CGFloat(imageWidth) * 0.6,
+            height: CGFloat(imageHeight) * 0.2
+        )
+
+        guard let result = recordPlate(
+            rawText: plateText,
+            normalizedText: normalized,
+            boundingBox: boundingBox,
+            confidence: 1.0
+        ) else {
+            return
+        }
+
+        DebugLog.shared.d("FrameProcessor", "Simulated plate: \(normalized) hash=\(String(result.hash.prefix(8)))")
+
+        DispatchQueue.main.async { [weak self] in
+            self?.currentDetections = [result]
+            self?.rawDetections = [
+                RawDetectionBox(
+                    boundingBox: boundingBox,
+                    confidence: 1.0,
+                    imageWidth: imageWidth,
+                    imageHeight: imageHeight
+                )
+            ]
         }
     }
 
@@ -173,5 +183,46 @@ final class FrameProcessor: ObservableObject {
             fpsFrameCount = 0
             fpsTimer = now
         }
+    }
+
+    private func recordPlate(
+        rawText: String,
+        normalizedText: String,
+        boundingBox: CGRect,
+        confidence: Float
+    ) -> FrameResult? {
+        if dedupCache.isDuplicate(normalizedText) { return nil }
+
+        let hash = PlateHasher.hash(normalizedPlate: normalizedText)
+        DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(hash.prefix(8)))")
+
+        let entry = OfflineQueueEntry(
+            plateHash: hash,
+            latitude: locationManager.latitude,
+            longitude: locationManager.longitude
+        )
+        offlineQueue.enqueue(entry)
+
+        let feedEntry = DetectionFeedEntry(
+            plateText: normalizedText,
+            hashPrefix: String(hash.prefix(8)),
+            state: .queued,
+            timestamp: Date()
+        )
+        addFeedEntry(feedEntry)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.totalPlates += 1
+            self?.lastDetectionTime = Date()
+        }
+
+        apiClient.checkAndFlush()
+
+        return FrameResult(
+            plateText: rawText,
+            hash: hash,
+            boundingBox: boundingBox,
+            confidence: confidence
+        )
     }
 }

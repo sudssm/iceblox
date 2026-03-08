@@ -1,17 +1,27 @@
 import Foundation
 
 enum AppConfig {
-    static let serverBaseURL = URL(string: "http://localhost:8080")!
+    static let serverBaseURL: URL = {
+        let rawURL = stringEnv("E2E_SERVER_BASE_URL") ?? stringEnv("SERVER_BASE_URL") ?? "http://localhost:8080"
+        return URL(string: rawURL)!
+    }()
     static let platesEndpoint = "/api/v1/plates"
 
-    static let detectionConfidenceThreshold: Float = 0.7
-    static let ocrConfidenceThreshold: Float = 0.6
+    static let autoStartCamera = boolEnv("E2E_AUTOSTART_CAMERA", defaultValue: false)
+    static let requestLocationPermission = boolEnv("E2E_REQUEST_LOCATION_PERMISSION", defaultValue: true)
+    static let useSplashTrigger = boolEnv("E2E_USE_SPLASH_TRIGGER", defaultValue: false)
+    static let splashTriggerFilename = stringEnv("E2E_SPLASH_TRIGGER_FILENAME") ?? "e2e_start_camera.trigger"
+    static let simulatorTestImagesDirectoryName = stringEnv("SIMULATOR_TEST_IMAGES_DIRNAME") ?? "test_images"
+    static let simulatorFrameIntervalMilliseconds = intEnv("SIMULATOR_FRAME_INTERVAL_MS", defaultValue: 100)
+
+    static let detectionConfidenceThreshold = floatEnv("E2E_DETECTION_CONFIDENCE_THRESHOLD", defaultValue: 0.7)
+    static let ocrConfidenceThreshold = floatEnv("E2E_OCR_CONFIDENCE_THRESHOLD", defaultValue: 0.6)
     static let deduplicationWindowSeconds: TimeInterval = 60
     static let minPlateLength = 2
     static let maxPlateLength = 8
 
     static let batchSize = 10
-    static let batchIntervalSeconds: TimeInterval = 30
+    static let batchIntervalSeconds = timeIntervalEnv("E2E_BATCH_INTERVAL_SECONDS", defaultValue: 30)
     static let maxQueueSize = 1000
 
     static let retryInitialDelay: TimeInterval = 5
@@ -25,4 +35,47 @@ enum AppConfig {
     static let subscribeEndpoint = "/api/v1/subscribe"
     static let subscribeIntervalSeconds: TimeInterval = 600
     static let defaultRadiusMiles: Double = 100
+
+    static var splashTriggerURL: URL? {
+        guard useSplashTrigger else { return nil }
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        return appSupport.appendingPathComponent(splashTriggerFilename)
+    }
+
+    private static func stringEnv(_ key: String) -> String? {
+        guard let value = ProcessInfo.processInfo.environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+
+    private static func boolEnv(_ key: String, defaultValue: Bool) -> Bool {
+        guard let value = stringEnv(key)?.lowercased() else { return defaultValue }
+        switch value {
+        case "1", "true", "yes", "on":
+            return true
+        case "0", "false", "no", "off":
+            return false
+        default:
+            return defaultValue
+        }
+    }
+
+    private static func intEnv(_ key: String, defaultValue: Int) -> Int {
+        guard let value = stringEnv(key), let parsed = Int(value) else { return defaultValue }
+        return parsed
+    }
+
+    private static func floatEnv(_ key: String, defaultValue: Float) -> Float {
+        guard let value = stringEnv(key), let parsed = Float(value) else { return defaultValue }
+        return parsed
+    }
+
+    private static func timeIntervalEnv(_ key: String, defaultValue: TimeInterval) -> TimeInterval {
+        guard let value = stringEnv(key), let parsed = TimeInterval(value) else { return defaultValue }
+        return parsed
+    }
 }

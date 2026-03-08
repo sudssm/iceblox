@@ -88,7 +88,9 @@ struct ContentView: View {
             UIApplication.shared.isIdleTimerDisabled = true
             setupPipeline()
             cameraManager.checkPermissionAndStart()
-            locationManager.requestPermission()
+            if AppConfig.requestLocationPermission {
+                locationManager.requestPermission()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
