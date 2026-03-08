@@ -54,7 +54,9 @@ class FrameAnalyzer(
             updateFps()
 
             val bitmap = imageProxy.toBitmap()
+            Log.d(TAG, "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}")
             val detections = detector.detect(bitmap)
+            Log.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
 
             _rawDetections.value = detections.map { det ->
                 RawDetectionBox(
@@ -92,7 +94,7 @@ class FrameAnalyzer(
                 onPlatesDetected(plates)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Frame analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
+            Log.e(TAG, "Frame analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
         } finally {
             imageProxy.close()
         }
