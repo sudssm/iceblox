@@ -46,7 +46,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation Plan — iOS
 
 ### Project Setup
-- [x] **Landscape lock** — Set `UISupportedInterfaceOrientations` to landscape only + AppDelegate enforcement (REQ-M-4)
+- [x] **Auto-rotation support** — Set `UISupportedInterfaceOrientations` to all orientations + AppDelegate returns `.all`, CameraManager updates video orientation on device rotation (REQ-M-4)
 - [x] **Keep screen on** — `isIdleTimerDisabled = true` in ContentView `onAppear` (REQ-M-4a)
 - [x] **Info.plist permissions** — Camera + location usage descriptions
 - [x] **Min deployment target** — iOS 17.0 (exceeds C-5 requirement of iOS 16)
@@ -104,7 +104,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 
 ### App Store Distribution
-- [x] **Fix orientation** — Changed to landscape per REQ-M-4 (AppDelegate + Info.plist)
+- [x] **Fix orientation** — Changed to all orientations with auto-rotation per REQ-M-4 (AppDelegate + Info.plist + CameraManager orientation observer)
 - [ ] **App icon** — Add 1024×1024 PNG to `AppIcon.appiconset`
 - [x] **Privacy manifest** — PrivacyInfo.xcprivacy declaring location data usage
 - [x] **Location usage description** — Added `NSLocationWhenInUseUsageDescription` to build settings
@@ -119,7 +119,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation Plan — Android
 
 ### Project Setup
-- [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
+- [x] **Auto-rotation support** — `android:screenOrientation="fullSensor"` in manifest, FrameAnalyzer applies `rotationDegrees` to bitmap before detection (REQ-M-4)
 - [x] **Keep screen on** — `FLAG_KEEP_SCREEN_ON` in MainActivity `onCreate` (REQ-M-4a)
 - [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)

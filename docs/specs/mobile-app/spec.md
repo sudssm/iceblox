@@ -6,7 +6,7 @@ A dashboard-mounted mobile app for private security and community watch that con
 
 ## Environment
 
-- **Mounting**: Dashboard-mounted, landscape orientation, rear camera facing forward through windshield
+- **Mounting**: Dashboard-mounted, rear camera facing forward through windshield. Supports any device orientation (landscape or portrait) with automatic rotation handling.
 - **Power**: Assumed connected to car power (USB/12V) — battery optimization is secondary to performance
 - **Connectivity**: Intermittent — app must handle offline periods gracefully
 - **Lighting**: Variable — daylight, night (headlights/streetlights), rain, glare
@@ -19,7 +19,7 @@ A dashboard-mounted mobile app for private security and community watch that con
 
 #### REQ-M-1: Continuous Camera Capture
 
-The app MUST continuously capture frames from the rear-facing camera at a minimum of 15 fps for processing. The camera preview MUST be displayed on screen in landscape orientation.
+The app MUST continuously capture frames from the rear-facing camera at a minimum of 15 fps for processing. The camera preview MUST be displayed full-screen in the current device orientation.
 
 #### REQ-M-2: Camera Resolution
 
@@ -29,9 +29,11 @@ The app MUST use a resolution sufficient for plate detection at distances of 3�
 
 When the app is opened, it MUST immediately begin camera capture and plate detection without requiring user interaction.
 
-#### REQ-M-4: Camera Orientation Lock
+#### REQ-M-4: Auto-Rotation Support
 
-The app MUST lock to landscape orientation. It MUST NOT rotate to portrait.
+The app MUST support all device orientations (portrait, portrait upside-down, landscape left, landscape right) and rotate the UI automatically. The camera capture pipeline MUST compensate for device orientation so that frames are always correctly oriented for the detection model:
+- **iOS**: Update the `AVCaptureConnection` video orientation/rotation angle when the device orientation changes.
+- **Android**: Apply the `ImageProxy.imageInfo.rotationDegrees` rotation to the bitmap before passing it to the detector.
 
 #### REQ-M-4a: Keep Screen On
 
@@ -251,7 +253,7 @@ When foregrounded again, it MUST resume capture within 1 second.
 
 ## UI
 
-### Primary Screen (Landscape Only)
+### Primary Screen
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -364,7 +366,7 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 
 ```
 ios/CamerasApp/
-├── CamerasApp.swift                    # App entry point, landscape lock
+├── CamerasApp.swift                    # App entry point, orientation support
 ├── ContentView.swift                   # Root view, wires all managers
 ├── Views/
 │   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
@@ -400,7 +402,7 @@ ios/CamerasApp/
 
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
-| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Landscape lock, Info.plist permissions (camera, location), min iOS 16 |
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 16 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
 | 3 | UI shell | UI spec | Full-screen camera preview + status bar with placeholder values |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
@@ -455,7 +457,7 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 
 ```
 android/app/src/main/java/com/cameras/app/
-├── MainActivity.kt                      # Activity, landscape lock, permission requests
+├── MainActivity.kt                      # Activity, orientation support, permission requests
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
 │   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
@@ -494,7 +496,7 @@ android/app/src/main/
 
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
-| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Landscape lock in manifest, permissions, min API 31 |
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation in manifest, permissions, min API 31 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | CameraX preview + ImageAnalysis, 1080p resolution |
 | 3 | UI shell | UI spec | Compose: full-screen preview + status bar placeholders |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
