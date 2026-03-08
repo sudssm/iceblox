@@ -221,6 +221,12 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md) REQ-S-13 through REQ-S-16, 
 
 ---
 
+## Future
+
+- [ ] **Investigate backgrounding iOS** — Revisit whether any App Store-safe, user-visible iOS mode can relax the foreground-only camera requirement without violating Apple's background camera restrictions.
+
+---
+
 ## Productionizing
 
 - [ ] **Change the pepper** — Replace `default-pepper-change-me` with a secure random value (`openssl rand -hex 32`). Update server env var (`PEPPER`), iOS `PlateHasher.swift` pepperPartA/B, and Android `PlateHasher.kt` pepperPartA/B to match.

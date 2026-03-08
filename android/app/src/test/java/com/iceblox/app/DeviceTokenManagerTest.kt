@@ -69,7 +69,7 @@ class DeviceTokenManagerTest {
     fun requestBodyContainsTokenAndPlatform() {
         val request = manager.buildRegistrationRequest("fcm-token-123", "android")
         val buffer = okio.Buffer()
-        val requestBody = request.body ?: fail("expected non-null request body")
+        val requestBody = requireNotNull(request.body) { "expected non-null request body" }
         requestBody.writeTo(buffer)
         val body = buffer.readUtf8()
 

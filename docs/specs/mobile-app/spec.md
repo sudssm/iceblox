@@ -320,12 +320,12 @@ On restart after a crash, the app MUST:
 
 #### REQ-M-51: Background Behavior
 
-When the app is backgrounded, it MUST:
-- Stop camera capture and detection immediately
-- Attempt to flush the offline queue (send pending hashes)
-- Not consume CPU for frame processing
+Background behavior is platform-specific:
 
-When foregrounded again, it MUST resume capture within 1 second.
+- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground.
+- **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
+
+When foregrounded again, the app MUST resume the visible camera preview within 1 second.
 
 ---
 
@@ -440,7 +440,7 @@ None — all questions resolved. See `Resolved Decisions` above.
 
 ### Architecture
 
-Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a background queue. Processing pipeline uses a serial `DispatchQueue` to avoid frame contention. Offline queue is backed by a lightweight SQLite store (via SwiftData or raw SQLite — no Core Data overhead needed for this simple schema).
+Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a background queue. Processing pipeline uses a serial `DispatchQueue` to avoid frame contention. Offline queue is backed by a lightweight SQLite store (via SwiftData or raw SQLite — no Core Data overhead needed for this simple schema). iOS capture is foreground-only: if the app is backgrounded, the camera session stops and only brief queue flush / subscription refresh work may continue under normal iOS lifecycle rules.
 
 ### Project Structure
 
@@ -499,7 +499,7 @@ ios/IceBloxApp/
 | 12 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, targets count |
 | 13 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
 | 14 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
-| 15 | Background/crash | REQ-M-50, REQ-M-51 | Stop capture on background, flush queue, resume on foreground |
+| 15 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
 | 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 | 18 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
@@ -538,14 +538,17 @@ Camera frame to Core ML inference:
 
 ### Architecture
 
-Single-activity Jetpack Compose app. CameraX provides the preview and frame analysis. TFLite runs on a background thread via `ImageAnalysis.Analyzer`. Room database for the offline queue. MVVM with a `MainViewModel` coordinating the pipeline.
+Single-activity Jetpack Compose app. CameraX provides the preview and frame analysis. TFLite runs on a background thread via `ImageAnalysis.Analyzer`. Room database for the offline queue. A foreground capture service owns background camera analysis when the app is not visible, while the foreground activity binds the preview UI to the same shared pipeline state.
 
 ### Project Structure
 
 ```
 android/app/src/main/java/com/iceblox/app/
+├── IceBloxApplication.kt               # Application-scoped capture repository
 ├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
+├── capture/
+│   └── CaptureRepository.kt             # Shared pipeline state used by UI + service
 ├── ui/
 │   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
 │   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
@@ -577,6 +580,8 @@ android/app/src/main/java/com/iceblox/app/
 │   └── LocationProvider.kt              # FusedLocationProviderClient, permission handling
 ├── config/
 │   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL, notification config
+├── service/
+│   └── BackgroundCaptureService.kt      # Foreground service for background camera capture
 └── assets/
     └── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
 
@@ -606,12 +611,12 @@ android/app/src/debug/
 | 12 | Status bar | UI spec | Wire ViewModel state to Compose UI |
 | 13 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
 | 14 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
-| 15 | Background/crash | REQ-M-50, REQ-M-51 | Lifecycle-aware: stop analysis on STOPPED, flush queue, resume on STARTED |
+| 15 | Background/crash | REQ-M-50, REQ-M-51 | Start camera foreground service on background, keep analysis/upload running, and reattach preview on foreground |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
 | 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 | 18 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
 | 19 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
-| 20 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer in startPipeline(), subscribe+cancel in stopPipeline() (refresh TTL) |
+| 20 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer with the foreground/background capture lifecycle and subscribe on stop to refresh TTL |
 
 ### Key Technical Notes
 

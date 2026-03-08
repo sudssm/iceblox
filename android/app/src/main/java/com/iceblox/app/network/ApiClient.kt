@@ -27,7 +27,8 @@ class ApiClient(
     private val queueDao: OfflineQueueDao,
     private val retryManager: RetryManager,
     private val onTargetMatched: () -> Unit,
-    private val onPlateSent: (hash: String, matched: Boolean) -> Unit = { _, _ -> }
+    private val onPlateSent: (hash: String, matched: Boolean) -> Unit = { _, _ -> },
+    private val onQueueDepthChanged: (Int) -> Unit = { }
 ) {
     private val client = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -132,6 +133,7 @@ class ApiClient(
                         200 -> {
                             retryManager.reset()
                             queueDao.deleteByIds(listOf(entry.id))
+                            onQueueDepthChanged(queueDao.count())
                             response.body?.string()?.let { body ->
                                 try {
                                     val responseJson = JSONObject(body)
