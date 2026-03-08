@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,11 +11,35 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"cameras/server/internal/handler"
 	"cameras/server/internal/targets"
 )
+
+type testRecorder struct {
+	mu        sync.Mutex
+	sightings []testSighting
+}
+
+type testSighting struct {
+	PlateID    int64
+	SeenAt     time.Time
+	Lat, Lng   float64
+	HardwareID string
+}
+
+func (r *testRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sightings = append(r.sightings, testSighting{
+		PlateID: plateID, SeenAt: seenAt,
+		Lat: lat, Lng: lng, HardwareID: hardwareID,
+	})
+	return nil
+}
 
 // clientHMAC computes HMAC-SHA256 the same way a mobile client would,
 // independent of the server's implementation.
@@ -30,7 +55,6 @@ func clientHMAC(plate string, pepper []byte) string {
 func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 	pepper := []byte("integration-test-pepper")
 
-	// Simulate plates.txt as it would come from `make extract`
 	dir := t.TempDir()
 	platesPath := filepath.Join(dir, "plates.txt")
 	err := os.WriteFile(platesPath, []byte(strings.Join([]string{
@@ -53,15 +77,10 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 		t.Fatalf("expected 5 targets loaded, got %d", store.Count())
 	}
 
-	logPath := filepath.Join(dir, "test.jsonl")
-	logger, err := handler.NewJSONLLogger(logPath)
-	if err != nil {
-		t.Fatalf("NewJSONLLogger: %v", err)
-	}
-	defer logger.Close()
+	recorder := &testRecorder{}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(logger, store))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(recorder, store))
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := httptest.NewServer(mux)
@@ -103,7 +122,6 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 	})
 
 	t.Run("client normalization matches server normalization", func(t *testing.T) {
-		// A client scanning "brd 1385" or "brd-1385" should match "BRD1385" in the file
 		variants := []string{"brd1385", "brd 1385", "BRD-1385", "  BRD1385  "}
 		for _, v := range variants {
 			hash := clientHMAC(v, pepper)
@@ -128,34 +146,30 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 		}
 	})
 
-	t.Run("matches are logged to JSONL", func(t *testing.T) {
-		logger.Close()
-		data, err := os.ReadFile(logPath)
-		if err != nil {
-			t.Fatalf("read log: %v", err)
-		}
-		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-		if len(lines) == 0 {
-			t.Fatal("expected log entries")
-		}
+	t.Run("matched plates are recorded as sightings", func(t *testing.T) {
+		recorder.mu.Lock()
+		count := len(recorder.sightings)
+		recorder.mu.Unlock()
 
-		var foundMatch, foundNonMatch bool
-		for _, line := range lines {
-			var entry map[string]interface{}
-			json.Unmarshal([]byte(line), &entry)
-			if matched, ok := entry["matched"].(bool); ok {
-				if matched {
-					foundMatch = true
-				} else {
-					foundNonMatch = true
-				}
-			}
+		if count == 0 {
+			t.Fatal("expected sightings to be recorded for matched plates")
 		}
-		if !foundMatch {
-			t.Error("expected at least one matched=true log entry")
-		}
-		if !foundNonMatch {
-			t.Error("expected at least one matched=false log entry")
+	})
+
+	t.Run("non-matched plates are not recorded", func(t *testing.T) {
+		recorder.mu.Lock()
+		before := len(recorder.sightings)
+		recorder.mu.Unlock()
+
+		hash := clientHMAC("NONEXIST", pepper)
+		postPlate(t, srv.URL, hash, 0, 0)
+
+		recorder.mu.Lock()
+		after := len(recorder.sightings)
+		recorder.mu.Unlock()
+
+		if after != before {
+			t.Errorf("expected no new sightings for non-match, got %d new", after-before)
 		}
 	})
 }

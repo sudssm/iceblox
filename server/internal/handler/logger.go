@@ -6,6 +6,18 @@ import (
 	"sync"
 )
 
+type PlateLogEntry struct {
+	PlateHash  string  `json:"plate_hash"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
+	ReceivedAt string  `json:"received_at"`
+	Matched    bool    `json:"matched"`
+}
+
+type LogWriter interface {
+	WriteEntry(entry PlateLogEntry) error
+}
+
 type JSONLLogger struct {
 	mu   sync.Mutex
 	file *os.File

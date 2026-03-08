@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -12,25 +14,19 @@ type PlateRequest struct {
 	PlateHash string  `json:"plate_hash"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
-}
-
-type PlateLogEntry struct {
-	PlateHash  string  `json:"plate_hash"`
-	Latitude   float64 `json:"latitude"`
-	Longitude  float64 `json:"longitude"`
-	ReceivedAt string  `json:"received_at"`
-	Matched    bool    `json:"matched"`
-}
-
-type LogWriter interface {
-	WriteEntry(entry PlateLogEntry) error
+	Timestamp string  `json:"timestamp,omitempty"`
 }
 
 type TargetChecker interface {
 	Contains(hash string) bool
+	PlateID(hash string) (int64, bool)
 }
 
-func PlatesHandler(logger LogWriter, targets TargetChecker) http.HandlerFunc {
+type SightingRecorder interface {
+	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error
+}
+
+func PlatesHandler(recorder SightingRecorder, targets TargetChecker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -51,17 +47,19 @@ func PlatesHandler(logger LogWriter, targets TargetChecker) http.HandlerFunc {
 
 		matched := targets.Contains(req.PlateHash)
 
-		entry := PlateLogEntry{
-			PlateHash:  req.PlateHash,
-			Latitude:   req.Latitude,
-			Longitude:  req.Longitude,
-			ReceivedAt: time.Now().UTC().Format(time.RFC3339),
-			Matched:    matched,
-		}
+		if matched {
+			plateID, _ := targets.PlateID(req.PlateHash)
+			seenAt := parseTimestamp(req.Timestamp)
+			hardwareID := r.Header.Get("X-Device-ID")
+			if hardwareID == "" {
+				hardwareID = "unknown"
+			}
 
-		if err := logger.WriteEntry(entry); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to log entry")
-			return
+			if err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID); err != nil {
+				log.Printf("failed to record sighting: %v", err)
+				writeError(w, http.StatusInternalServerError, "failed to record sighting")
+				return
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -87,6 +85,17 @@ func validatePlateRequest(req PlateRequest) error {
 		return fmt.Errorf("longitude must be in range [-180, 180]")
 	}
 	return nil
+}
+
+func parseTimestamp(ts string) time.Time {
+	if ts == "" {
+		return time.Now().UTC()
+	}
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return time.Now().UTC()
+	}
+	return t
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
