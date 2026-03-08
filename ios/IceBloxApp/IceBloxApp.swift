@@ -8,7 +8,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 @main
-struct CamerasApp: App {
+struct IceBloxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var showCamera = false
 

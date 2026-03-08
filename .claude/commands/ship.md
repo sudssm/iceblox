@@ -45,7 +45,7 @@ Skip linters for areas with no code changes. If a linter fails, fix the issues a
 Look at the files changed in the diff from step 1 and run ONLY the test suites for areas that were modified. Run whichever apply in parallel:
 
 - If any `server/**` files changed: `cd server && go test ./...`
-- If any `ios/**` files changed: `cd ios && xcodebuild test -project CamerasApp.xcodeproj -scheme CamerasApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
+- If any `ios/**` files changed: `cd ios && xcodebuild test -project IceBloxApp.xcodeproj -scheme IceBloxApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet 2>&1 | tail -20`
 - If any `android/**` files changed: `cd android && ./gradlew test --quiet 2>&1 | tail -20`
 
 Skip test suites for areas with no code changes. If a test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.

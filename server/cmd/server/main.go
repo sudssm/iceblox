@@ -11,16 +11,16 @@ import (
 	"syscall"
 	"time"
 
-	"cameras/server/internal/db"
-	"cameras/server/internal/handler"
-	"cameras/server/internal/targets"
+	"iceblox/server/internal/db"
+	"iceblox/server/internal/handler"
+	"iceblox/server/internal/targets"
 )
 
 func main() {
 	port := flag.Int("port", 8080, "server listen port")
 	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
 	pepper := flag.String("pepper", "default-pepper-change-me", "HMAC pepper for hashing plates")
-	dbDSN := flag.String("db-dsn", "postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable", "PostgreSQL connection string")
+	dbDSN := flag.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
 	flag.Parse()
 
 	// Environment variables override flags (for Railway / container deployment)

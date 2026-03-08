@@ -1,6 +1,6 @@
 included:
-  - CamerasApp
-  - CamerasAppTests
+  - IceBloxApp
+  - IceBloxAppTests
 
 excluded:
   - build

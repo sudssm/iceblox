@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	"cameras/server/internal/db"
-	"cameras/server/internal/handler"
-	"cameras/server/internal/targets"
+	"iceblox/server/internal/db"
+	"iceblox/server/internal/handler"
+	"iceblox/server/internal/targets"
 )
 
 func TestEndToEnd_WithDatabase(t *testing.T) {

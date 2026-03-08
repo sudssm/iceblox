@@ -39,7 +39,7 @@ struct ContentView: View {
                             if cameraManager.permissionDenied {
                                 Text("Camera access denied")
                                     .font(.headline)
-                                Text("Enable in Settings → CamerasApp → Camera")
+                                Text("Enable in Settings → IceBlox → Camera")
                                     .font(.subheadline)
                             } else {
                                 Text("Requesting camera access…")

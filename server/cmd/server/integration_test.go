@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"cameras/server/internal/handler"
-	"cameras/server/internal/targets"
+	"iceblox/server/internal/handler"
+	"iceblox/server/internal/targets"
 )
 
 type testRecorder struct {

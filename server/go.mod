@@ -1,4 +1,4 @@
-module cameras/server
+module iceblox/server
 
 go 1.26.1
 

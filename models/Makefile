@@ -27,7 +27,7 @@ BEST_MODEL     := $(RUNS_DIR)/plate-detector-v1/weights/best.pt
 EXPORT_DIR     := exports
 
 # App model destinations
-IOS_MODEL_DIR  := ../ios/CamerasApp/Models
+IOS_MODEL_DIR  := ../ios/IceBloxApp/Models
 ANDROID_ASSETS := ../android/app/src/main/assets
 
 .PHONY: all setup download train validate export deploy clean help
