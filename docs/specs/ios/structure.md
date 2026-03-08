@@ -2,7 +2,7 @@
 
 ## Overview
 
-The iOS app is built with **SwiftUI** targeting **iOS 17+**, using the standard Xcode project layout. It follows Apple's recommended app architecture with SwiftUI's declarative UI framework.
+The iOS app is built with **SwiftUI** targeting **iOS 17+**, using the standard Xcode project layout. It follows Apple's recommended app architecture with SwiftUI's declarative UI framework. Camera capture is explicitly foreground-only: the app may flush queued hashes and refresh alert subscriptions when backgrounded, but camera capture stops until the app returns to the foreground.
 
 ## Project Layout
 
@@ -73,6 +73,7 @@ ios/
 | Offline Queue | Raw SQLite | Lightweight, no Core Data overhead for simple schema |
 | Detection Model | Core ML `.mlpackage` (YOLOv8-nano) | Platform-native, NMS baked into export |
 | OCR | Vision framework | On-device, no network required |
+| Background camera behavior | Foreground-only | Standard iOS apps cannot keep this camera pipeline running after backgrounding |
 
 ## Build & Run
 

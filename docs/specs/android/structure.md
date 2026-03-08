@@ -25,9 +25,13 @@ android/
         ├── main/
         │   ├── AndroidManifest.xml
         │   ├── java/com/iceblox/app/
-        │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow, notification channel
-        │   │   ├── MainViewModel.kt        # Pipeline state coordinator
+        │   │   ├── IceBloxApplication.kt   # Application-scoped capture repository
+        │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow, notification channel, service handoff
+        │   │   ├── MainViewModel.kt        # Foreground UI state wrapper around shared capture repository
+        │   │   ├── capture/
+        │   │   │   └── CaptureRepository.kt # Shared pipeline state used by UI + background service
         │   │   ├── camera/
+        │   │   │   ├── CameraCaptureBinder.kt # Shared CameraX bind/unbind helper for UI + service
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
         │   │   │   ├── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
         │   │   │   └── TestFrameFeeder.kt  # Test mode: loads images, feeds them through analyzeBitmap() on a timer
@@ -52,6 +56,8 @@ android/
         │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, XOR pepper
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
+        │   │   ├── service/
+        │   │   │   └── BackgroundCaptureService.kt # Foreground service that keeps analysis running when app backgrounds
         │   │   ├── debug/
         │   │   │   └── DebugLog.kt           # Singleton logger: ring buffer + StateFlow for UI
         │   │   └── ui/
@@ -79,7 +85,7 @@ android/
 
 ## Architecture
 
-- **Pattern**: MVVM (Model-View-ViewModel)
+- **Pattern**: MVVM with an application-scoped shared repository
 - **UI Framework**: Jetpack Compose with Material 3
 - **Minimum SDK**: 28 (Android 9.0)
 - **Target SDK**: 35 (Android 15)
@@ -90,7 +96,7 @@ android/
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | UI Framework | Jetpack Compose | Modern declarative UI, Google's recommended approach |
-| Architecture | MVVM | Works well with Compose state and ViewModels |
+| Architecture | MVVM + shared repository | Keeps preview UI and background service on the same capture/session state |
 | Min SDK | 28 | Covers 95%+ of active devices |
 | Build System | Gradle with Kotlin DSL | Type-safe build scripts, version catalogs |
 | Dependency Management | Version Catalogs | Centralized dependency versions in `libs.versions.toml` |
@@ -162,6 +168,7 @@ Release builds enable R8 minification and resource shrinking. ProGuard rules for
 | Topic | Detail |
 |-------|--------|
 | **No local Java runtime** | This dev machine has no system Java. Android builds (`./gradlew assembleDebug`) require a JDK. Android Studio bundles one at `/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/`. For CI or CLI builds, install via `brew install openjdk`. |
+| **Background capture** | Android background capture runs in a `LifecycleService` foreground service with `foregroundServiceType="camera"`. The activity stops that service on foreground so CameraX preview can rebind cleanly without competing for the camera. |
 | **DebugLog replaces android.util.Log** | All `Log.d/w/e` calls are replaced with `DebugLog.d/w/e`. This routes logs through both `android.util.Log` (for logcat) and a 50-entry ring buffer (for the in-app panel). Throwable overloads (`d/w/e(tag, msg, throwable)`) append the exception message. |
 | **Thread safety for StateFlow** | `DebugLog` uses `@Synchronized` on the buffer mutation and emits via `MutableStateFlow`. Compose collects via `collectAsState()` — no main-thread dispatch needed since Compose recomposition handles the thread hop. |
 | **Debug gating** | Debug overlay is gated behind `BuildConfig.DEBUG` — stripped from release builds by ProGuard/R8. |
@@ -173,6 +180,7 @@ Release builds enable R8 minification and resource shrinking. ProGuard rules for
 Core dependencies (managed via version catalog in `gradle/libs.versions.toml`):
 - `androidx.core:core-ktx` — Kotlin extensions for Android
 - `androidx.lifecycle:lifecycle-runtime-ktx` — Lifecycle-aware components
+- `androidx.lifecycle:lifecycle-service` — `LifecycleService` for the background capture foreground service
 - `androidx.lifecycle:lifecycle-viewmodel-compose` — ViewModel integration with Compose
 - `androidx.activity:activity-compose` — Compose integration with Activity
 - `androidx.compose.*` — Compose UI toolkit
