@@ -10,11 +10,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct CamerasApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var showCamera = false
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .preferredColorScheme(.dark)
+            if showCamera {
+                ContentView()
+                    .preferredColorScheme(.dark)
+            } else {
+                SplashScreenView(onStartCamera: { showCamera = true })
+                    .preferredColorScheme(.dark)
+            }
         }
     }
 }
