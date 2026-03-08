@@ -15,8 +15,8 @@ ANDROID_ACTIVITY=".MainActivity"
 # iOS
 IOS_DEVICE_UDID="C06D96F6-6AE3-4B73-874F-C8324A15B0B9"
 IOS_BUNDLE_ID="com.cameras.app"
-IOS_DEVICE_PIXEL_W=1179
-IOS_DEVICE_PIXEL_H=2556
+IOS_DEVICE_PIXEL_W=1206
+IOS_DEVICE_PIXEL_H=2622
 IOS_PROJECT="$PROJECT_ROOT/ios/CamerasApp.xcodeproj"
 IOS_SCHEME="CamerasApp"
 IOS_BUILD_DIR="$PROJECT_ROOT/ios/build"
@@ -57,8 +57,8 @@ ensure_ios_simulator() {
 }
 
 # iOS device logical dimensions (points) for iPhone 16 Pro
-IOS_DEVICE_POINTS_W=393
-IOS_DEVICE_POINTS_H=852
+IOS_DEVICE_POINTS_W=402
+IOS_DEVICE_POINTS_H=874
 IOS_RETINA_SCALE=3
 
 # Map iOS device pixel coordinates to absolute macOS screen coordinates.

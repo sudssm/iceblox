@@ -17,7 +17,11 @@ final class PlateDetector {
     func loadModel() {
         do {
             let config = MLModelConfiguration()
+            #if targetEnvironment(simulator)
+            config.computeUnits = .cpuOnly
+            #else
             config.computeUnits = .all
+            #endif
             let model = try plate_detector(configuration: config).model
             visionModel = try VNCoreMLModel(for: model)
             DebugLog.shared.d("PlateDetector", "Model loaded successfully")

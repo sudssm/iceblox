@@ -10,7 +10,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct CamerasApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var showCamera = false
+    @State private var showCamera = AppConfig.autoStartCamera
 
     var body: some Scene {
         WindowGroup {
