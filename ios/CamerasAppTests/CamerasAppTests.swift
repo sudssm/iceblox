@@ -7,12 +7,131 @@ final class CamerasAppTests: XCTestCase {
         XCTAssertFalse(manager.isRunning)
         XCTAssertFalse(manager.permissionGranted)
         XCTAssertFalse(manager.permissionDenied)
+        XCTAssertFalse(manager.isThrottled)
     }
 
     func testCameraSessionStartsEmpty() throws {
         let manager = CameraManager()
         XCTAssertTrue(manager.session.inputs.isEmpty)
         XCTAssertTrue(manager.session.outputs.isEmpty)
+    }
+
+    // MARK: - PlateHasher
+
+    func testHashProduces64CharHex() {
+        let hash = PlateHasher.hash(normalizedPlate: "ABC1234")
+        XCTAssertEqual(hash.count, 64)
+        XCTAssertTrue(hash.allSatisfy { $0.isHexDigit })
+    }
+
+    func testHashDeterministic() {
+        let h1 = PlateHasher.hash(normalizedPlate: "ABC1234")
+        let h2 = PlateHasher.hash(normalizedPlate: "ABC1234")
+        XCTAssertEqual(h1, h2)
+    }
+
+    func testHashDifferentInputs() {
+        let h1 = PlateHasher.hash(normalizedPlate: "ABC1234")
+        let h2 = PlateHasher.hash(normalizedPlate: "XYZ9999")
+        XCTAssertNotEqual(h1, h2)
+    }
+
+    // MARK: - DeduplicationCache
+
+    func testDedupFirstSeen() {
+        let cache = DeduplicationCache()
+        XCTAssertFalse(cache.isDuplicate("ABC1234"))
+    }
+
+    func testDedupSecondSeen() {
+        let cache = DeduplicationCache()
+        _ = cache.isDuplicate("ABC1234")
+        XCTAssertTrue(cache.isDuplicate("ABC1234"))
+    }
+
+    func testDedupDifferentPlates() {
+        let cache = DeduplicationCache()
+        _ = cache.isDuplicate("ABC1234")
+        XCTAssertFalse(cache.isDuplicate("XYZ9999"))
+    }
+
+    func testDedupReset() {
+        let cache = DeduplicationCache()
+        _ = cache.isDuplicate("ABC1234")
+        cache.reset()
+        XCTAssertFalse(cache.isDuplicate("ABC1234"))
+    }
+
+    // MARK: - RetryManager
+
+    func testRetryInitialState() {
+        let rm = RetryManager()
+        XCTAssertFalse(rm.isRateLimited)
+    }
+
+    func testRetryExponentialBackoff() {
+        let rm = RetryManager()
+        let first = rm.handleFailure()
+        let second = rm.handleFailure()
+        XCTAssertNotNil(first)
+        XCTAssertNotNil(second)
+        XCTAssertEqual(second!, first! * 2, accuracy: 0.01)
+    }
+
+    func testRetryReset() {
+        let rm = RetryManager()
+        _ = rm.handleFailure()
+        _ = rm.handleFailure()
+        rm.reset()
+        let delay = rm.handleFailure()
+        XCTAssertEqual(delay, AppConfig.retryInitialDelay, accuracy: 0.01)
+    }
+
+    func testRetryRateLimit() {
+        let rm = RetryManager()
+        rm.handleRateLimit(retryAfter: 60)
+        XCTAssertTrue(rm.isRateLimited)
+    }
+
+    // MARK: - OfflineQueue
+
+    func testQueueEnqueueAndDequeue() {
+        let queue = OfflineQueue()
+        let entry = OfflineQueueEntry(plateHash: "abc123", latitude: 40.0, longitude: -74.0)
+        queue.enqueue(entry)
+
+        let entries = queue.dequeue(limit: 10)
+        XCTAssertGreaterThanOrEqual(entries.count, 1)
+        XCTAssertTrue(entries.contains { $0.plateHash == "abc123" })
+
+        let ids = entries.compactMap(\.id)
+        queue.remove(ids: ids)
+    }
+
+    // MARK: - LocationManager
+
+    func testLocationManagerInitialState() {
+        let lm = LocationManager()
+        XCTAssertNil(lm.latitude)
+        XCTAssertNil(lm.longitude)
+        XCTAssertFalse(lm.hasPermission)
+    }
+
+    // MARK: - ConnectivityMonitor
+
+    func testConnectivityMonitorInitialState() {
+        let cm = ConnectivityMonitor()
+        XCTAssertTrue(cm.isConnected)
+    }
+
+    // MARK: - AppConfig
+
+    func testAppConfigDefaults() {
+        XCTAssertEqual(AppConfig.detectionConfidenceThreshold, 0.7)
+        XCTAssertEqual(AppConfig.ocrConfidenceThreshold, 0.6)
+        XCTAssertEqual(AppConfig.deduplicationWindowSeconds, 60)
+        XCTAssertEqual(AppConfig.batchSize, 10)
+        XCTAssertEqual(AppConfig.maxQueueSize, 1000)
     }
 }
 
