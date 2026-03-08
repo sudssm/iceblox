@@ -29,6 +29,6 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /server /server
 COPY --from=builder /app/data /data
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["/server"]
 CMD ["--plates-file", "/data/plates.txt"]
