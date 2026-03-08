@@ -18,7 +18,6 @@ ios/
 │   │   ├── AccentColor.colorset/
 │   │   └── Contents.json
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
-│   ├── StatusBarView.swift             # Bottom status bar (connectivity, last detected, counts)
 │   ├── Views/
 │   │   ├── StatusBarView.swift        # Bottom status bar (connectivity, last detected, counts)
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
