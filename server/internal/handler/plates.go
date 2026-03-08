@@ -23,10 +23,14 @@ type TargetChecker interface {
 }
 
 type SightingRecorder interface {
-	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error
+	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error)
 }
 
-func PlatesHandler(recorder SightingRecorder, targets TargetChecker) http.HandlerFunc {
+type PushNotifier interface {
+	NotifyAsync(sightingID int64, lat, lng float64)
+}
+
+func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier PushNotifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -56,10 +60,15 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker) http.Handle
 				hardwareID = "unknown"
 			}
 
-			if err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID); err != nil {
+			sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID)
+			if err != nil {
 				log.Printf("failed to record sighting: %v", err)
 				writeError(w, http.StatusInternalServerError, "failed to record sighting")
 				return
+			}
+
+			if notifier != nil {
+				notifier.NotifyAsync(sightingID, req.Latitude, req.Longitude)
 			}
 		}
 

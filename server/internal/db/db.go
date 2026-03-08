@@ -18,6 +18,25 @@ type PlateRecord struct {
 	Hash  string
 }
 
+// Sighting represents a plate sighting joined with its plate text.
+type Sighting struct {
+	ID         int64
+	PlateID    int64
+	Plate      string
+	SeenAt     time.Time
+	Latitude   float64
+	Longitude  float64
+	HardwareID string
+}
+
+type DeviceToken struct {
+	ID         int64
+	HardwareID string
+	Token      string
+	Platform   string
+	UpdatedAt  time.Time
+}
+
 func Connect(dsn string) (*DB, error) {
 	pool, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -85,12 +104,76 @@ func (d *DB) LoadPlateIDs(ctx context.Context) (map[string]int64, error) {
 	return mapping, rows.Err()
 }
 
-func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error {
-	_, err := d.pool.ExecContext(ctx,
+func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error) {
+	var id int64
+	err := d.pool.QueryRowContext(ctx,
 		`INSERT INTO sightings (plate_id, seen_at, latitude, longitude, hardware_id)
-		 VALUES ($1, $2, $3, $4, $5)`,
-		plateID, seenAt, lat, lng, hardwareID)
+		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		plateID, seenAt, lat, lng, hardwareID).Scan(&id)
+	return id, err
+}
+
+func (d *DB) UpsertDeviceToken(ctx context.Context, hardwareID, token, platform string) error {
+	_, err := d.pool.ExecContext(ctx,
+		`INSERT INTO device_tokens (hardware_id, token, platform, updated_at)
+		 VALUES ($1, $2, $3, NOW())
+		 ON CONFLICT (hardware_id, platform) DO UPDATE
+		 SET token = EXCLUDED.token, updated_at = NOW()`,
+		hardwareID, token, platform)
 	return err
+}
+
+func (d *DB) AllDeviceTokens(ctx context.Context) ([]DeviceToken, error) {
+	rows, err := d.pool.QueryContext(ctx,
+		`SELECT id, hardware_id, token, platform, updated_at FROM device_tokens`)
+	if err != nil {
+		return nil, fmt.Errorf("query device_tokens: %w", err)
+	}
+	defer rows.Close()
+
+	var tokens []DeviceToken
+	for rows.Next() {
+		var dt DeviceToken
+		if err := rows.Scan(&dt.ID, &dt.HardwareID, &dt.Token, &dt.Platform, &dt.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan device_token: %w", err)
+		}
+		tokens = append(tokens, dt)
+	}
+	return tokens, rows.Err()
+}
+
+func (d *DB) DeleteDeviceToken(ctx context.Context, id int64) error {
+	_, err := d.pool.ExecContext(ctx, `DELETE FROM device_tokens WHERE id = $1`, id)
+	return err
+}
+
+// RecentSightings returns sightings within a bounding box since the given time,
+// joined with plate text. The bounding box is defined by min/max lat/lng for
+// fast SQL pre-filtering before precise haversine calculation in Go.
+func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]Sighting, error) {
+	rows, err := d.pool.QueryContext(ctx,
+		`SELECT s.id, s.plate_id, p.plate, s.seen_at, s.latitude, s.longitude, s.hardware_id
+		 FROM sightings s
+		 JOIN plates p ON p.id = s.plate_id
+		 WHERE s.seen_at >= $1
+		   AND s.latitude BETWEEN $2 AND $3
+		   AND s.longitude BETWEEN $4 AND $5
+		 ORDER BY s.seen_at DESC`,
+		since, minLat, maxLat, minLng, maxLng)
+	if err != nil {
+		return nil, fmt.Errorf("query recent sightings: %w", err)
+	}
+	defer rows.Close()
+
+	var sightings []Sighting
+	for rows.Next() {
+		var s Sighting
+		if err := rows.Scan(&s.ID, &s.PlateID, &s.Plate, &s.SeenAt, &s.Latitude, &s.Longitude, &s.HardwareID); err != nil {
+			return nil, fmt.Errorf("scan sighting: %w", err)
+		}
+		sightings = append(sightings, s)
+	}
+	return sightings, rows.Err()
 }
 
 // Pool returns the underlying *sql.DB for direct queries (e.g., in tests).
@@ -118,6 +201,16 @@ CREATE TABLE IF NOT EXISTS sightings (
 	hardware_id TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+	id SERIAL PRIMARY KEY,
+	hardware_id TEXT NOT NULL,
+	token TEXT NOT NULL,
+	platform TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	UNIQUE(hardware_id, platform)
+);
+
 CREATE INDEX IF NOT EXISTS idx_sightings_plate_id ON sightings(plate_id);
 CREATE INDEX IF NOT EXISTS idx_sightings_seen_at ON sightings(seen_at);
+CREATE INDEX IF NOT EXISTS idx_sightings_location ON sightings(latitude, longitude);
 `

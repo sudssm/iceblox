@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"cameras/server/internal/handler"
-	"cameras/server/internal/targets"
+	"iceblox/server/internal/handler"
+	"iceblox/server/internal/targets"
 )
 
 type testRecorder struct {
@@ -31,14 +31,14 @@ type testSighting struct {
 	HardwareID string
 }
 
-func (r *testRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) error {
+func (r *testRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.sightings = append(r.sightings, testSighting{
 		PlateID: plateID, SeenAt: seenAt,
 		Lat: lat, Lng: lng, HardwareID: hardwareID,
 	})
-	return nil
+	return int64(len(r.sightings)), nil
 }
 
 // clientHMAC computes HMAC-SHA256 the same way a mobile client would,
@@ -87,7 +87,7 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 	recorder := &testRecorder{}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(recorder, store))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(recorder, store, nil))
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := httptest.NewServer(mux)

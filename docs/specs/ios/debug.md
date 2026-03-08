@@ -78,10 +78,10 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 
 #### Files
 
-- `ios/CamerasApp/Debug/DebugLog.swift` — Singleton with `LogEntry` model, `LogLevel` enum, ring buffer
-- `ios/CamerasApp/Views/DebugLogPanel.swift` — SwiftUI view with `ScrollViewReader` + `LazyVStack`
-- `ios/CamerasApp/Views/DebugOverlayView.swift` — Hosts `DebugLogPanel` in `VStack { Spacer(); panel }` at bottom
-- `ios/CamerasApp/ContentView.swift` — Passes `debugLog.entries` to overlay
+- `ios/IceBloxApp/Debug/DebugLog.swift` — Singleton with `LogEntry` model, `LogLevel` enum, ring buffer
+- `ios/IceBloxApp/Views/DebugLogPanel.swift` — SwiftUI view with `ScrollViewReader` + `LazyVStack`
+- `ios/IceBloxApp/Views/DebugOverlayView.swift` — Hosts `DebugLogPanel` in `VStack { Spacer(); panel }` at bottom
+- `ios/IceBloxApp/ContentView.swift` — Passes `debugLog.entries` to overlay
 
 #### Build Notes
 
@@ -91,7 +91,7 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 
 ### Step 1: Add raw detections and detection feed to FrameProcessor
 
-**File:** `ios/CamerasApp/Camera/FrameProcessor.swift`
+**File:** `ios/IceBloxApp/Camera/FrameProcessor.swift`
 
 - Add `RawDetectionBox` struct with boundingBox, confidence, imageWidth, imageHeight
 - Add `DetectionState` enum (queued, sent, matched) and `DetectionFeedEntry` struct
@@ -102,13 +102,13 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 
 ### Step 2: Add upload callback to APIClient
 
-**File:** `ios/CamerasApp/Networking/APIClient.swift`
+**File:** `ios/IceBloxApp/Networking/APIClient.swift`
 
 Add `var onPlateSent: ((String, Bool) -> Void)?` callback. Call it after each successful 200 response with the plate hash and matched boolean.
 
 ### Step 3: Update DebugOverlayView
 
-**File:** `ios/CamerasApp/Views/DebugOverlayView.swift`
+**File:** `ios/IceBloxApp/Views/DebugOverlayView.swift`
 
 - Accept `rawDetections` and `feedEntries` as new parameters
 - Draw yellow bounding boxes for raw detections (with confidence label)
@@ -118,7 +118,7 @@ Add `var onPlateSent: ((String, Bool) -> Void)?` callback. Call it after each su
 
 ### Step 4: Wire new data through ContentView
 
-**File:** `ios/CamerasApp/ContentView.swift`
+**File:** `ios/IceBloxApp/ContentView.swift`
 
 - Set `apiClient.onPlateSent` to call `frameProcessor.onPlateSent` in `setupPipeline()`
 - Pass `rawDetections` and `detectionFeed` from FrameProcessor to DebugOverlayView

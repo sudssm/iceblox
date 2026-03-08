@@ -2,7 +2,7 @@
 # iOS app lifecycle for E2E tests
 
 find_ios_app_path() {
-    find "$IOS_BUILD_DIR" -name "CamerasApp.app" -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -1
+    find "$IOS_BUILD_DIR" -name "${IOS_SCHEME}.app" -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -1
 }
 
 build_ios_app() {

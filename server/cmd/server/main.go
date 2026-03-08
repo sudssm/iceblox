@@ -11,16 +11,24 @@ import (
 	"syscall"
 	"time"
 
-	"cameras/server/internal/db"
-	"cameras/server/internal/handler"
-	"cameras/server/internal/targets"
+	"iceblox/server/internal/db"
+	"iceblox/server/internal/handler"
+	"iceblox/server/internal/push"
+	"iceblox/server/internal/subscribers"
+	"iceblox/server/internal/targets"
 )
 
 func main() {
 	port := flag.Int("port", 8080, "server listen port")
 	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
 	pepper := flag.String("pepper", "default-pepper-change-me", "HMAC pepper for hashing plates")
-	dbDSN := flag.String("db-dsn", "postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable", "PostgreSQL connection string")
+	apnsKeyFile := flag.String("apns-key-file", "", "path to APNs .p8 key file")
+	apnsKeyID := flag.String("apns-key-id", "", "APNs key ID")
+	apnsTeamID := flag.String("apns-team-id", "", "APNs team ID")
+	apnsBundleID := flag.String("apns-bundle-id", "", "APNs bundle ID")
+	apnsProduction := flag.Bool("apns-production", false, "use APNs production endpoint")
+	fcmServiceAccount := flag.String("fcm-service-account", "", "path to FCM service account JSON file")
+	dbDSN := flag.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
 	flag.Parse()
 
 	// Environment variables override flags (for Railway / container deployment)
@@ -61,8 +69,39 @@ func main() {
 		log.Fatalf("failed to seed database: %v", err)
 	}
 
+	subStore := subscribers.New()
+	defer subStore.Close()
+
+	var apnsClient *push.APNsClient
+	if *apnsKeyFile != "" {
+		var err error
+		apnsClient, err = push.NewAPNsClient(*apnsKeyFile, *apnsKeyID, *apnsTeamID, *apnsBundleID, *apnsProduction)
+		if err != nil {
+			log.Fatalf("failed to create APNs client: %v", err)
+		}
+		log.Println("APNs client initialized")
+	}
+
+	var fcmClient *push.FCMClient
+	if *fcmServiceAccount != "" {
+		var err error
+		fcmClient, err = push.NewFCMClient(*fcmServiceAccount)
+		if err != nil {
+			log.Fatalf("failed to create FCM client: %v", err)
+		}
+		log.Println("FCM client initialized")
+	}
+
+	var notifier handler.PushNotifier
+	if apnsClient != nil || fcmClient != nil {
+		notifier = push.NewNotifier(apnsClient, fcmClient, database, subStore)
+		log.Println("push notifier initialized")
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, notifier))
+	mux.HandleFunc("/api/v1/devices", handler.DevicesHandler(database))
+	mux.HandleFunc("/api/v1/subscribe", handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}))
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := &http.Server{
@@ -102,6 +141,28 @@ func main() {
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+// dbSightingQuerier adapts db.DB to the handler.SightingQuerier interface.
+type dbSightingQuerier struct {
+	db *db.DB
+}
+
+func (q *dbSightingQuerier) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]handler.SightingResult, error) {
+	rows, err := q.db.RecentSightings(ctx, minLat, maxLat, minLng, maxLng, since)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]handler.SightingResult, len(rows))
+	for i, r := range rows {
+		results[i] = handler.SightingResult{
+			Plate:     r.Plate,
+			Latitude:  r.Latitude,
+			Longitude: r.Longitude,
+			SeenAt:    r.SeenAt,
+		}
+	}
+	return results, nil
 }
 
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {

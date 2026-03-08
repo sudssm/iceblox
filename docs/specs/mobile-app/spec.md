@@ -231,14 +231,14 @@ Each subscription request MUST include:
 #### REQ-M-67: Recent Sightings Display
 
 The app MUST process the `recent_sightings` array in the subscribe response. For v1:
-- Log each sighting to `DebugLog` (plate, location, timestamp)
+- Log each sighting's location and timestamp to `DebugLog` without including plaintext plate text
 - Maintain a counter of nearby sightings visible in the status bar or debug overlay
 
 Full UI for displaying a sighting list/map is deferred to a future spec.
 
 #### REQ-M-68: Background Subscription Persistence
 
-When the app enters background, it MUST perform a final subscribe call to refresh the server-side Redis TTL. Combined with REQ-M-60/REQ-M-62 (push notification infrastructure), this ensures that:
+When the app enters background, it MUST perform a final subscribe call to refresh the server-side subscription TTL. Combined with REQ-M-60/REQ-M-62 (push notification infrastructure), this ensures that:
 - Users receive push notifications for nearby ICE vehicle detections even after closing the app
 - The subscription persists for 1 hour after the last subscribe call
 - No background processing or wake-ups are required on the device
@@ -445,8 +445,8 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ### Project Structure
 
 ```
-ios/CamerasApp/
-├── CamerasApp.swift                    # App entry point, landscape lock, splash→camera flow
+ios/IceBloxApp/
+├── IceBloxApp.swift                    # App entry point, landscape lock, splash→camera flow
 ├── ContentView.swift                   # Root view, wires all managers
 ├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
 ├── Views/

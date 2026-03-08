@@ -23,7 +23,7 @@ if [ "$PLATFORM" = "android" ]; then
 elif [ "$PLATFORM" = "ios" ]; then
     ensure_ios_simulator
 
-    APP_PATH=$(find "$IOS_BUILD_DIR" -name "CamerasApp.app" -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -1)
+    APP_PATH=$(find "$IOS_BUILD_DIR" -name "IceBloxApp.app" -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -1)
     if [ -z "$APP_PATH" ]; then
         echo "Error: App not found. Run 'build.sh ios' first."
         exit 1

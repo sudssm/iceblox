@@ -39,10 +39,13 @@ android/
         │   │   ├── location/
         │   │   │   └── LocationProvider.kt # FusedLocationProviderClient, permission handling
         │   │   ├── network/
+        │   │   │   ├── AlertClient.kt      # Subscribe endpoint client, coroutine timer, GPS truncation
         │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates + /api/v1/devices, batch, 429 handling
         │   │   │   ├── ConnectivityMonitor.kt # ConnectivityManager.NetworkCallback
+        │   │   │   ├── DeviceTokenManager.kt # FCM token registration with retry
         │   │   │   └── RetryManager.kt     # Exponential backoff, rate limit tracking
         │   │   ├── notification/
+        │   │   │   ├── NotificationHelper.kt # Notification channel creation, alert display
         │   │   │   └── PushNotificationService.kt # FirebaseMessagingService: onNewToken, onMessageReceived
         │   │   ├── persistence/
         │   │   │   ├── OfflineQueueDao.kt  # Room DAO: insert, dequeue, delete, count
@@ -74,7 +77,10 @@ android/
         │       └── test_images/             # Test plate images for test mode (debug builds only)
         └── test/
             └── java/com/iceblox/app/
-                └── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry, AppConfig
+                ├── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry, AppConfig
+                ├── AlertClientTest.kt      # AlertClient GPS truncation, timer, subscribe tests
+                ├── DeviceTokenManagerTest.kt # Token registration request tests
+                └── NotificationHelperTest.kt # Notification channel and display tests
 ```
 
 ## Architecture
@@ -127,7 +133,7 @@ Release builds are signed using a keystore configured in `app/build.gradle.kts`.
 ```properties
 RELEASE_STORE_FILE=../release.keystore
 RELEASE_STORE_PASSWORD=...
-RELEASE_KEY_ALIAS=cameras-release
+RELEASE_KEY_ALIAS=iceblox-release
 RELEASE_KEY_PASSWORD=...
 ```
 
@@ -136,7 +142,7 @@ To generate the keystore:
 ```bash
 keytool -genkeypair -v \
   -keystore android/release.keystore \
-  -alias cameras-release \
+  -alias iceblox-release \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -storepass <password> -keypass <password> \
   -dname "CN=IceBlox, O=IceBlox, L=, ST=, C=US"
@@ -192,5 +198,7 @@ Build plugins:
 
 Testing:
 - `junit` — Unit testing
+- `org.robolectric:robolectric` — Android unit testing without emulator
+- `com.squareup.okhttp3:mockwebserver` — Mock HTTP server for network tests
 - `androidx.test.ext:junit` — AndroidX test extensions
 - `androidx.compose.ui:ui-test-junit4` — Compose UI testing

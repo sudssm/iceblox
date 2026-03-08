@@ -10,7 +10,7 @@ struct DetectedPlate {
 }
 
 final class PlateDetector {
-    private static let logger = Logger(subsystem: "com.cameras.app", category: "PlateDetector")
+    private static let logger = Logger(subsystem: "com.iceblox.app", category: "PlateDetector")
     private var visionModel: VNCoreMLModel?
     private let detectionQueue = DispatchQueue(label: "detection.inference")
 

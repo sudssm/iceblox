@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasLocationPermission = permissions.values.any { it }
+        requestNotificationPermission()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
