@@ -164,6 +164,37 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ---
 
+## Proximity Alerts
+
+Spec: [`specs/server/spec.md`](specs/server/spec.md) REQ-S-13 through REQ-S-16, [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) REQ-M-64 through REQ-M-68
+
+### Server
+
+- [ ] **Geo package** — Haversine distance calculation + bounding box utility, pure functions (REQ-S-15)
+- [ ] **Subscriber store** — Redis-backed subscriber location storage with SET/SCAN and 1-hour TTL (REQ-S-14)
+- [ ] **Recent sightings query** — DB method with bounding-box SQL pre-filter, `Sighting` struct, composite geo index (REQ-S-15)
+- [ ] **Subscribe handler** — `POST /api/v1/subscribe` endpoint: validate, store subscriber, query+filter sightings, respond (REQ-S-13)
+- [ ] **Proximity fan-out** — Enhance push dispatch with subscriber location filtering via haversine (REQ-S-16)
+- [ ] **PlateText lookup** — Add `PlateText(hash)` method to targets.Store for notification content (REQ-S-16)
+- [ ] **Wire in main.go** — `--redis-addr` flag, Redis client init, subscribe handler registration
+- [ ] **Makefile** — Add `redis` / `redis-stop` Docker targets
+
+### iOS
+
+- [ ] **AlertClient** — Subscribe endpoint client with 10-minute timer, GPS truncation to 2 decimal places (REQ-M-64, REQ-M-65, REQ-M-66)
+- [ ] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
+- [ ] **Lifecycle integration** — Start timer on active, subscribe+stop on background to refresh TTL (REQ-M-64, REQ-M-68)
+- [ ] **AppConfig** — Add `subscribeEndpoint`, `subscribeIntervalSeconds`, `defaultRadiusMiles` constants
+
+### Android
+
+- [ ] **AlertClient** — Subscribe endpoint client with coroutine timer (600s delay), GPS truncation (REQ-M-64, REQ-M-65, REQ-M-66)
+- [ ] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
+- [ ] **Lifecycle integration** — Start/stop with pipeline lifecycle, subscribe on stop to refresh TTL (REQ-M-64, REQ-M-68)
+- [ ] **AppConfig** — Add `SUBSCRIBE_ENDPOINT`, `SUBSCRIBE_INTERVAL_MS`, `DEFAULT_RADIUS_MILES` constants
+
+---
+
 ## Productionizing
 
 - [ ] **Change the pepper** — Replace `default-pepper-change-me` with a secure random value (`openssl rand -hex 32`). Update server env var (`PEPPER`), iOS `PlateHasher.swift` pepperPartA/B, and Android `PlateHasher.kt` pepperPartA/B to match.

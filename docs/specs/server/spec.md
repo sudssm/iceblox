@@ -276,6 +276,80 @@ The server MUST support sending push notifications to Android devices via the Fi
 
 **Implementation:** Go stdlib `net/http`, `crypto/rsa`, `crypto/sha256`, `encoding/json`. No external dependencies.
 
+### REQ-S-13: Subscribe Endpoint
+
+The server MUST expose an HTTP endpoint for devices to register their location for proximity alerts and retrieve recent nearby sightings.
+
+```
+POST /api/v1/subscribe
+Content-Type: application/json
+X-Device-ID: <device identifier>
+
+{
+  "latitude": number,
+  "longitude": number,
+  "radius_miles": number
+}
+```
+
+**Field validation:**
+- `latitude`: Required. MUST be in range [-90, 90]. Clients SHOULD truncate to 2 decimal places before sending (~1.1 km / ~0.7 mile precision).
+- `longitude`: Required. MUST be in range [-180, 180]. Clients SHOULD truncate to 2 decimal places.
+- `radius_miles`: Required. MUST be in range [1, 500]. Default suggested by clients: 100.
+
+**Headers:**
+- `X-Device-ID`: Required. Identifies the subscribing device.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "recent_sightings": [
+    {
+      "plate": "ABC1234",
+      "latitude": 34.05,
+      "longitude": -118.24,
+      "seen_at": "2026-03-08T14:30:00Z"
+    }
+  ]
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — malformed JSON or failed field validation. Body: `{"error": "description"}`.
+- `405 Method Not Allowed` — non-POST request to this endpoint.
+- `500 Internal Server Error` — Redis or database failure. Body: `{"error": "description"}`.
+
+### REQ-S-14: Redis Subscriber Storage
+
+The server MUST store subscriber location data in Redis with:
+- **Key**: `subscriber:{device_id}`
+- **Value**: JSON string `{"lat": number, "lng": number, "radius_miles": number}`
+- **TTL**: 3600 seconds (1 hour)
+
+When a device re-subscribes, the existing key MUST be overwritten (SET with EX), refreshing the TTL. Subscriber entries are automatically cleaned up if a device stops sending updates for more than 1 hour.
+
+The Redis connection MUST be configured via a `--redis-addr` CLI flag (default: `localhost:6379`).
+
+### REQ-S-15: Recent Sightings Query
+
+When handling a subscribe request, the server MUST query the `sightings` table joined with the `plates` table for sightings where:
+- `seen_at` is within the last 1 hour
+- Location is within the subscriber's requested radius
+
+The query MUST use a bounding-box pre-filter in SQL (latitude/longitude range computed from the subscriber's location and radius) for efficiency, then apply haversine distance calculation in Go for precision filtering.
+
+The response MUST include the plaintext plate identifier (from the `plates` table), the GPS coordinates of the sighting, and the timestamp. These are ICE vehicle plates from public StopICE data — returning plaintext is consistent with the privacy model (which protects non-target plates only).
+
+### REQ-S-16: Proximity-Filtered Fan-Out on Match
+
+When a new target plate match is detected via `POST /api/v1/plates`, the existing push notification dispatch (REQ-S-10) MUST be enhanced to filter by proximity:
+1. Query all subscribers from Redis (using `SCAN` with the `subscriber:*` key pattern)
+2. Compute haversine distance between the sighting location and each subscriber's registered location
+3. Only send push notifications (via the existing APNs/FCM infrastructure from REQ-S-11/REQ-S-12) to devices whose sighting falls within their requested radius
+
+This proximity filtering MUST NOT block the plates handler HTTP response. It MUST run in the existing async notification goroutine.
+
 ## Out of Scope (v1)
 
 - Admin dashboard
@@ -301,7 +375,7 @@ The server MUST support sending push notifications to Android devices via the Fi
 |---|---|
 | Language / framework | Go with `net/http` |
 | Target list source | StopICE plate tracker data (plaintext `plates.txt` extracted via Makefile) |
-| Alert delivery | Push notifications to all registered devices on match (APNs for iOS, FCM for Android) |
+| Alert delivery | Push notifications to registered devices on match, filtered by proximity (APNs for iOS, FCM for Android, Redis for subscriber locations) |
 | Match results to device | Yes — per-plate boolean only, no target details |
 | Storage | PostgreSQL — `plates` table for targets, `sightings` table for matched observations |
 | Monitoring app data source | REST API querying `sightings` table |
@@ -339,8 +413,13 @@ server/
 │   │   ├── apns.go              # APNs HTTP/2 client, ES256 JWT auth
 │   │   ├── fcm.go               # FCM HTTP v1 client, OAuth2 auth
 │   │   └── notifier.go          # Dispatch to all registered devices
+│   ├── geo/
+│   │   └── haversine.go         # Haversine distance, bounding box calculation
+│   ├── subscribers/
+│   │   └── store.go             # Redis subscriber store (SET/SCAN with TTL)
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
+│       ├── subscribe.go         # POST /api/v1/subscribe handler
 │       ├── health.go            # GET /healthz handler
 │       ├── devices.go           # POST /api/v1/devices handler
 │       └── logger.go            # JSONL file writer (legacy, optional)
@@ -373,6 +452,11 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 12 | APNs client | REQ-S-11 | HTTP/2 provider, ES256 JWT auth, `.p8` key loading, token caching |
 | 13 | FCM client | REQ-S-12 | HTTP v1 API client, RS256 JWT, OAuth2 token exchange, token caching |
 | 14 | Notifier | REQ-S-10 | Match → push dispatch to all devices, async goroutine, stale token cleanup |
+| 15 | Geo package | REQ-S-15 | Haversine distance calculation, bounding box utility (pure functions, no deps) |
+| 16 | Subscriber store | REQ-S-14 | Redis-backed subscriber location storage with SET/SCAN and 1-hour TTL |
+| 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, Sighting struct, composite geo index |
+| 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in Redis, query+filter recent sightings, respond |
+| 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
 
 ### Key Technical Notes
 
@@ -387,6 +471,10 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **APNs JWT**: ES256 (ECDSA P-256) signed with `.p8` key. Cache token for ~50 minutes. All signing uses Go stdlib (`crypto/ecdsa`, `crypto/sha256`, `encoding/pem`).
 - **FCM OAuth2**: RS256 JWT exchanged for access token at Google's token endpoint. Cache token until near expiry (~55 minutes). All signing uses Go stdlib (`crypto/rsa`, `crypto/sha256`).
 - **Async push dispatch**: Send notifications in a goroutine after recording the sighting. Push failures MUST NOT affect the plates endpoint response.
+- **Redis dependency**: `github.com/redis/go-redis/v9` for subscriber location storage. `make redis` starts Redis 7 Alpine container. Default address: `localhost:6379`.
+- **Haversine distance**: Pure Go implementation in `internal/geo/`. Used for both subscribe response filtering and proximity fan-out. Bounding-box pre-filter in SQL narrows candidates before precise haversine calculation.
+- **Proximity fan-out**: Enhances the existing push notification goroutine. After recording a sighting, SCAN Redis subscribers, compute haversine distance, and only notify devices within their requested radius.
+- **PlateText lookup**: `targets.Store` exposes `PlateText(hash)` to resolve hash → plaintext plate for subscribe response and notification content.
 
 ### Deployment
 
