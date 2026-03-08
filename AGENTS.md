@@ -6,6 +6,8 @@ Specs are the source of truth. Humans review specs, not code. All code is a deri
 
 **Workflow:** Always update specs first, then make the code conform to what the specs say.
 
+When writing or revising specs, make as few assumptions as possible about feature intent. If expected behavior, edge cases, or acceptance criteria are not explicit, stop and ask clarifying questions instead of filling the gaps with inferred requirements.
+
 - Methodology: [`docs/development-philosophy.md`](docs/development-philosophy.md)
 - System architecture: [`docs/specs/overview.md`](docs/specs/overview.md)
 - Mobile app spec: [`docs/specs/mobile-app/spec.md`](docs/specs/mobile-app/spec.md)
