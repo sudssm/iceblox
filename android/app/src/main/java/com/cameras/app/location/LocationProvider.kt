@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
-import com.cameras.app.debug.DebugLog
 import androidx.core.content.ContextCompat
+import com.cameras.app.debug.DebugLog
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
