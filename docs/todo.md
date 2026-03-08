@@ -43,18 +43,18 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation Plan — iOS
 
 ### Project Setup
-- [ ] **Landscape lock** — Set `UISupportedInterfaceOrientations` to landscape only (REQ-M-4)
-- [ ] **Info.plist permissions** — Camera usage description, location usage description
-- [ ] **Min deployment target** — iOS 16 (C-5)
+- [x] **Portrait lock** — Set `UISupportedInterfaceOrientations` to portrait only + AppDelegate enforcement
+- [x] **Info.plist permissions** — Camera usage description (location usage description pending)
+- [x] **Min deployment target** — iOS 17.0 (exceeds C-5 requirement of iOS 16)
 
 ### Camera
-- [ ] **AVCaptureSession setup** — Rear camera, 1080p preset, video data output delegate (REQ-M-1, REQ-M-2)
-- [ ] **Camera preview** — UIViewRepresentable wrapping AVCaptureVideoPreviewLayer (REQ-M-3)
-- [ ] **Auto-start** — Begin capture on app launch without user interaction (REQ-M-3)
+- [x] **AVCaptureSession setup** — Rear camera, 1080p preset, video data output delegate (REQ-M-1, REQ-M-2)
+- [x] **Camera preview** — UIViewRepresentable wrapping AVCaptureVideoPreviewLayer (REQ-M-3)
+- [x] **Auto-start** — Begin capture on app launch without user interaction (REQ-M-3)
 
 ### UI
-- [ ] **Full-screen camera preview** — Landscape, camera fills screen
-- [ ] **Status bar** — Connectivity, last detected, plates count, targets count (always visible)
+- [x] **Full-screen camera preview** — Portrait, camera fills screen
+- [x] **Status bar** — Connectivity, last detected, plates count, targets count (always visible, placeholder values)
 - [ ] **Wire live data** — Connect status bar to real pipeline state
 
 ### Detection Pipeline
@@ -86,7 +86,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### Reliability & Performance
 - [ ] **Thermal management** — Monitor `ProcessInfo.thermalState`, reduce FPS when throttled (REQ-M-32)
-- [ ] **Background behavior** — Stop capture on background, flush queue, resume on foreground (REQ-M-51)
+- [x] **Background behavior** — Stop capture on background, resume on foreground (REQ-M-51, queue flush pending)
 - [ ] **Crash recovery** — Queue persists across restarts (REQ-M-50)
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
