@@ -147,7 +147,9 @@ class PlateDetector(context: Context) {
 
             val intersectArea =
                 maxOf(0f, intersectRight - intersectLeft) * maxOf(0f, intersectBottom - intersectTop)
-            val unionArea = a.width() * a.height() + b.width() * b.height() - intersectArea
+            val aArea = (a.right - a.left) * (a.bottom - a.top)
+            val bArea = (b.right - b.left) * (b.bottom - b.top)
+            val unionArea = aArea + bArea - intersectArea
 
             return if (unionArea > 0f) intersectArea / unionArea else 0f
         }
