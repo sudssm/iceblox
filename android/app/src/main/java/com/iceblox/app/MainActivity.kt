@@ -71,7 +71,6 @@ class MainActivity : ComponentActivity() {
         val isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
         if (isTestMode) {
             DebugLog.d("MainActivity", "TEST MODE enabled via intent extra")
-            showCamera = true
         }
 
         hasCameraPermission = ContextCompat.checkSelfPermission(
