@@ -108,7 +108,7 @@ class ApiClient(
                                     }
                                     onPlateSent(entry.plateHash, matched)
                                 } catch (e: Exception) {
-                                    Log.w(TAG, "Failed to parse response: ${e.message}")
+                                    DebugLog.w(TAG, "Failed to parse response: ${e.message}")
                                 }
                             }
                         }

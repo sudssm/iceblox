@@ -74,6 +74,7 @@ struct ContentView: View {
             lastStatusUpdate = Date()
         }
         .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
             setupPipeline()
             cameraManager.checkPermissionAndStart()
             locationManager.requestPermission()
