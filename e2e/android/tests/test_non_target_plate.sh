@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test: Non-target plate image should produce zero sightings
-# The image contains a real plate (Idaho 8BAC392) that is NOT in test_plates.txt,
+# The image contains a real plate that is NOT in test_plates.txt,
 # so even though the app detects and uploads it, the server should not store a sighting.
 
 run_test_non_target_plate() {
