@@ -20,9 +20,11 @@ if [ "$PLATFORM" = "android" ]; then
 elif [ "$PLATFORM" = "ios" ]; then
     open -a Simulator
     sleep 0.3
+    # Escape single quotes and backslashes for safe JavaScript string interpolation
+    ESCAPED_TEXT=$(printf '%s' "$TEXT" | sed "s/\\\\/\\\\\\\\/g; s/'/\\\\'/g")
     osascript -l JavaScript <<JSEOF
 ObjC.import('CoreGraphics');
-var text = '$TEXT';
+var text = '$ESCAPED_TEXT';
 var source = $.CGEventSourceCreate(1);
 for (var i = 0; i < text.length; i++) {
     var down = $.CGEventCreateKeyboardEvent(source, 0, true);

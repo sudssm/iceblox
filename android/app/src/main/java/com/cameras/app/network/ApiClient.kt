@@ -18,6 +18,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class ApiClient(
     context: Context,
@@ -77,6 +80,10 @@ class ApiClient(
                 put("plate_hash", entry.plateHash)
                 put("latitude", entry.latitude ?: 0.0)
                 put("longitude", entry.longitude ?: 0.0)
+                val ts = Instant.ofEpochMilli(entry.timestamp)
+                    .atOffset(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ISO_INSTANT)
+                put("timestamp", ts)
             }
 
             val request = Request.Builder()

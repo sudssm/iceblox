@@ -38,7 +38,7 @@ final class OfflineQueue {
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
             defer { sqlite3_finalize(stmt) }
 
-            sqlite3_bind_text(stmt, 1, (entry.plateHash as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 1, (entry.plateHash as NSString).utf8String, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
             sqlite3_bind_double(stmt, 2, entry.timestamp.timeIntervalSince1970)
             if let lat = entry.latitude {
                 sqlite3_bind_double(stmt, 3, lat)
