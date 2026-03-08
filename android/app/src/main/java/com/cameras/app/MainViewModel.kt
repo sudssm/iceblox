@@ -19,6 +19,7 @@ import com.cameras.app.processing.PlateHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -45,7 +46,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         context = application,
         queueDao = queueDao,
         retryManager = retryManager,
-        onTargetMatched = { _targetCount.value++ }
+        onTargetMatched = { _targetCount.update { it + 1 } }
     )
 
     val frameAnalyzer = FrameAnalyzer(application) { plates ->
@@ -61,11 +62,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val powerManager = application.getSystemService(Context.POWER_SERVICE) as PowerManager
+
     init {
         connectivityMonitor.onReconnected = {
             apiClient.flushQueue()
         }
-        val powerManager = application.getSystemService(Context.POWER_SERVICE) as PowerManager
         powerManager.addThermalStatusListener(thermalListener)
     }
 
@@ -89,7 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _queueDepth.value = queueDao.count()
             }
 
-            _plateCount.value++
+            _plateCount.update { it + 1 }
             _lastDetectionTime.value = System.currentTimeMillis()
         }
 
@@ -116,6 +118,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        powerManager.removeThermalStatusListener(thermalListener)
         frameAnalyzer.close()
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()

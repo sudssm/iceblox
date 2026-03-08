@@ -6,7 +6,7 @@ enum PlateNormalizer {
             .uppercased()
             .replacingOccurrences(of: "\\s", with: "", options: .regularExpression)
             .replacingOccurrences(of: "-", with: "")
-            .filter { $0.isLetter || $0.isNumber }
+            .filter { ($0.isLetter || $0.isNumber) && $0.isASCII }
 
         let trimmed = String(cleaned.prefix(AppConfig.maxPlateLength))
         guard trimmed.count >= AppConfig.minPlateLength else {

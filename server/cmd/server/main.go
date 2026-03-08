@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"cameras/server/internal/db"
 	"cameras/server/internal/handler"
@@ -69,8 +70,13 @@ func main() {
 				}
 				continue
 			}
-			log.Println("shutting down")
-			srv.Close()
+			log.Println("shutting down gracefully")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				log.Printf("graceful shutdown failed: %v, forcing close", err)
+				srv.Close()
+			}
 			return
 		}
 	}()
