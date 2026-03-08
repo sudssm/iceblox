@@ -1,5 +1,7 @@
 package com.iceblox.app.ui
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -20,8 +23,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,7 +41,7 @@ import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.debug.DebugLog
 
 @Composable
-fun CameraScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewModel()) {
+fun CameraScreen(modifier: Modifier = Modifier, isTestMode: Boolean = false, viewModel: MainViewModel = viewModel()) {
     val plateCount by viewModel.plateCount.collectAsState()
     val targetCount by viewModel.targetCount.collectAsState()
     val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
@@ -48,13 +54,16 @@ fun CameraScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewM
     val detectionFeed by viewModel.detectionFeed.collectAsState()
     val logEntries by DebugLog.entries.collectAsState()
 
+    val testBitmap by viewModel.testBitmap.collectAsState()
+    val testStatus by viewModel.testStatus.collectAsState()
+
     var debugMode by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> viewModel.startPipeline()
+                Lifecycle.Event.ON_START -> viewModel.startPipeline(isTestMode)
                 Lifecycle.Event.ON_STOP -> viewModel.stopPipeline()
                 else -> {}
             }
@@ -89,10 +98,33 @@ fun CameraScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewM
     }
 
     Box(modifier = modifier.fillMaxSize().then(tripleTapModifier)) {
-        CameraPreview(
-            modifier = Modifier.fillMaxSize(),
-            analyzer = viewModel.frameAnalyzer
-        )
+        if (isTestMode) {
+            TestImagePreview(
+                bitmap = testBitmap,
+                status = testStatus,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            CameraPreview(
+                modifier = Modifier.fillMaxSize(),
+                analyzer = viewModel.frameAnalyzer
+            )
+        }
+
+        if (isTestMode) {
+            Text(
+                text = "TEST MODE $testStatus",
+                color = Color.Yellow,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 48.dp)
+                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        }
 
         if (BuildConfig.DEBUG && debugMode) {
             DebugOverlay(
@@ -116,6 +148,29 @@ fun CameraScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewM
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
         )
+    }
+}
+
+@Composable
+fun TestImagePreview(bitmap: Bitmap?, status: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Test image: $status",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Text(
+                text = "Loading test images...",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        }
     }
 }
 

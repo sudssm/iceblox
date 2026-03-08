@@ -67,6 +67,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        val isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
+        if (isTestMode) {
+            DebugLog.d("MainActivity", "TEST MODE enabled via intent extra")
+            showCamera = true
+        }
+
         hasCameraPermission = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
@@ -84,8 +90,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             IceBloxTheme {
                 if (showCamera) {
-                    if (hasCameraPermission) {
-                        CameraScreen()
+                    if (hasCameraPermission || isTestMode) {
+                        CameraScreen(isTestMode = isTestMode)
                     } else {
                         PermissionDeniedScreen(
                             onRequestPermission = {

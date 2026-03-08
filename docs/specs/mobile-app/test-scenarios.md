@@ -335,3 +335,43 @@ Given the app throttled to 5 fps due to thermal pressure
 When the device cools below the thermal threshold
 Then the frame processing rate returns to the normal rate (15+ fps)
 ```
+
+## Test Mode (Android)
+
+### TS-33: Test mode skips splash and camera permission
+
+```
+Given the app is launched with intent extra test_mode=true
+Then the splash screen is not shown
+And the camera permission is not requested
+And the camera screen is displayed immediately
+```
+
+### TS-34: Test images fed through pipeline
+
+```
+Given the app is in test mode
+And test images exist in debug assets or filesDir
+When the pipeline starts
+Then images are loaded and fed through FrameAnalyzer.analyzeBitmap() on a 500ms interval
+And the detection pipeline runs (detect → OCR → normalize → deduplicate → hash → queue)
+```
+
+### TS-35: Test mode UI shows current image
+
+```
+Given the app is in test mode
+When images are being fed
+Then the current test image is displayed instead of the camera preview
+And a "TEST MODE" banner is visible at the top of the screen
+```
+
+### TS-36: Test mode with no images
+
+```
+Given the app is in test mode
+And no test images exist in debug assets or filesDir
+When the pipeline starts
+Then a "No test images found" status is logged
+And the UI shows "Loading test images..." indefinitely
+```

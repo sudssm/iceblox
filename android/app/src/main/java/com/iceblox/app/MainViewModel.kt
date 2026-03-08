@@ -2,12 +2,14 @@ package com.iceblox.app
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.PowerManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.iceblox.app.camera.FrameAnalyzer
 import com.iceblox.app.camera.ProcessedPlate
+import com.iceblox.app.camera.TestFrameFeeder
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.location.LocationProvider
@@ -23,7 +25,11 @@ import com.iceblox.app.ui.DetectionState
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -57,6 +63,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onTargetMatched = { _targetCount.update { it + 1 } },
         onPlateSent = { hash, matched -> onPlateSent(hash, matched) }
     )
+
+    private val _testFrameFeeder = MutableStateFlow<TestFrameFeeder?>(null)
+    val testFrameFeeder: StateFlow<TestFrameFeeder?> = _testFrameFeeder
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val testBitmap: StateFlow<Bitmap?> = _testFrameFeeder
+        .flatMapLatest { it?.currentBitmap ?: flowOf(null) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val testStatus: StateFlow<String> = _testFrameFeeder
+        .flatMapLatest { it?.status ?: flowOf("") }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     val frameAnalyzer = FrameAnalyzer(application) { plates ->
         onPlatesDetected(plates)
@@ -132,10 +151,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _detectionFeed.value = current
     }
 
-    fun startPipeline() {
+    fun startPipeline(isTestMode: Boolean = false) {
         locationProvider.startUpdates()
         apiClient.startBatchTimer()
-        processTestImage()
+        if (isTestMode) {
+            startTestMode()
+        } else {
+            processTestImage()
+        }
+    }
+
+    private fun startTestMode() {
+        val app = getApplication<Application>()
+        val feeder = TestFrameFeeder(app, frameAnalyzer)
+        _testFrameFeeder.value = feeder
+        if (feeder.loadImages()) {
+            DebugLog.d(TAG, "Test mode: ${feeder.imageCount} images loaded, starting feed")
+            feeder.start(viewModelScope)
+        } else {
+            DebugLog.w(TAG, "Test mode: no test images found")
+        }
     }
 
     private fun processTestImage() {
@@ -154,6 +189,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopPipeline() {
+        _testFrameFeeder.value?.stop()
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()
         apiClient.flushQueue()
@@ -172,6 +208,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        _testFrameFeeder.value?.stop()
         powerManager.removeThermalStatusListener(thermalListener)
         frameAnalyzer.close()
         locationProvider.stopUpdates()

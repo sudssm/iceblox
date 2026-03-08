@@ -29,7 +29,8 @@ android/
         │   │   ├── MainViewModel.kt        # Pipeline state coordinator
         │   │   ├── camera/
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
-        │   │   │   └── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
+        │   │   │   ├── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
+        │   │   │   └── TestFrameFeeder.kt  # Test mode: loads images, feeds them through analyzeBitmap() on a timer
         │   │   ├── config/
         │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config
         │   │   ├── detection/
@@ -54,7 +55,7 @@ android/
         │   │   ├── debug/
         │   │   │   └── DebugLog.kt           # Singleton logger: ring buffer + StateFlow for UI
         │   │   └── ui/
-        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar composable)
+        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay
@@ -68,6 +69,9 @@ android/
         │       │   ├── colors.xml
         │       │   └── themes.xml
         │       └── drawable/
+        ├── debug/
+        │   └── assets/
+        │       └── test_images/             # Test plate images for test mode (debug builds only)
         └── test/
             └── java/com/iceblox/app/
                 └── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry, AppConfig

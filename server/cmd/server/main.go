@@ -23,6 +23,22 @@ func main() {
 	dbDSN := flag.String("db-dsn", "postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable", "PostgreSQL connection string")
 	flag.Parse()
 
+	// Environment variables override flags (for Railway / container deployment)
+	if v := os.Getenv("PORT"); v != "" {
+		if p, err := fmt.Sscanf(v, "%d", port); p != 1 || err != nil {
+			log.Fatal("invalid PORT env")
+		}
+	}
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		*dbDSN = v
+	}
+	if v := os.Getenv("PEPPER"); v != "" {
+		*pepper = v
+	}
+	if v := os.Getenv("PLATES_FILE"); v != "" {
+		*platesFile = v
+	}
+
 	ctx := context.Background()
 
 	database, err := db.Connect(*dbDSN)

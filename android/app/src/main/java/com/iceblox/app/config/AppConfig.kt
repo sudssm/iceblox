@@ -24,4 +24,9 @@ object AppConfig {
 
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6
+
+    const val TEST_FRAME_INTERVAL_MS = 500L
+    const val TEST_IMAGES_ASSET_DIR = "test_images"
+    const val TEST_IMAGES_RUNTIME_DIR = "test_images"
+    const val INTENT_EXTRA_TEST_MODE = "test_mode"
 }

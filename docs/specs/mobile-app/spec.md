@@ -206,6 +206,43 @@ The app MUST handle incoming push notifications:
 
 Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Target plate detected") and a sighting reference ID.
 
+### Proximity Alerts
+
+#### REQ-M-64: Proximity Alert Subscription
+
+The app MUST register with the server for proximity alerts by calling `POST /api/v1/subscribe` (see server spec REQ-S-13):
+- On app boot, after location is available
+- Every 10 minutes while the app is in the foreground
+- Once when the app enters background (to refresh the server-side 1-hour TTL)
+
+This ensures push notifications continue to be delivered for up to 1 hour after the app is closed.
+
+#### REQ-M-65: GPS Truncation for Privacy
+
+Before sending location to the subscribe endpoint, the app MUST truncate latitude and longitude to 2 decimal places. This provides approximately 1.1 km (~0.7 mile) location precision, balancing utility with user privacy — the server never learns the device's exact location.
+
+#### REQ-M-66: Subscribe Request Format
+
+Each subscription request MUST include:
+- Truncated latitude and longitude (per REQ-M-65)
+- `radius_miles`: Search radius in miles (default: 100, configured via `AppConfig`)
+- `X-Device-ID` header (same device identifier used for plate uploads)
+
+#### REQ-M-67: Recent Sightings Display
+
+The app MUST process the `recent_sightings` array in the subscribe response. For v1:
+- Log each sighting to `DebugLog` (plate, location, timestamp)
+- Maintain a counter of nearby sightings visible in the status bar or debug overlay
+
+Full UI for displaying a sighting list/map is deferred to a future spec.
+
+#### REQ-M-68: Background Subscription Persistence
+
+When the app enters background, it MUST perform a final subscribe call to refresh the server-side Redis TTL. Combined with REQ-M-60/REQ-M-62 (push notification infrastructure), this ensures that:
+- Users receive push notifications for nearby ICE vehicle detections even after closing the app
+- The subscription persists for 1 hour after the last subscribe call
+- No background processing or wake-ups are required on the device
+
 ### Debug Mode
 
 #### REQ-M-18: Debug Mode Toggle
@@ -418,7 +455,8 @@ ios/CamerasApp/
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
 │   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   └── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+│   ├── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
+│   └── SimulatorCamera.swift           # Timer-driven frame generator for simulator testing (simulator-only)
 ├── Detection/
 │   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
 │   └── PlateOCR.swift                  # Vision VNRecognizeTextRequest on cropped regions
@@ -428,6 +466,7 @@ ios/CamerasApp/
 │   └── DeduplicationCache.swift        # Time-windowed set of recently seen normalized plates
 ├── Networking/
 │   ├── APIClient.swift                 # URLSession POST to server, batch construction
+│   ├── AlertClient.swift               # Subscribe endpoint client, 10-min timer, GPS truncation
 │   ├── RetryManager.swift              # Exponential backoff, 429 handling
 │   └── ConnectivityMonitor.swift       # NWPathMonitor wrapper, triggers queue flush
 ├── Persistence/
@@ -463,6 +502,9 @@ ios/CamerasApp/
 | 15 | Background/crash | REQ-M-50, REQ-M-51 | Stop capture on background, flush queue, resume on foreground |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
 | 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
+| 18 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
+| 19 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
+| 20 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer on active, subscribe+stop on background (refresh TTL for post-close notifications) |
 
 ### Key Technical Notes
 
@@ -505,13 +547,14 @@ android/app/src/main/java/com/iceblox/app/
 ├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
 │   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
 ├── camera/
 │   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
-│   └── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+│   ├── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
+│   └── TestFrameFeeder.kt              # Test mode: loads images, feeds them through analyzeBitmap() on a timer
 ├── detection/
 │   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
 │   └── PlateOCR.kt                      # ML Kit Text Recognition on cropped bitmaps
@@ -521,6 +564,7 @@ android/app/src/main/java/com/iceblox/app/
 │   └── DeduplicationCache.kt            # Time-windowed set
 ├── network/
 │   ├── ApiClient.kt                     # OkHttp, POST /api/v1/plates + /api/v1/devices
+│   ├── AlertClient.kt                   # Subscribe endpoint client, coroutine timer, GPS truncation
 │   ├── RetryManager.kt                  # Exponential backoff, 429 handling
 │   └── ConnectivityMonitor.kt           # ConnectivityManager.NetworkCallback
 ├── notification/
@@ -538,6 +582,10 @@ android/app/src/main/java/com/iceblox/app/
 
 android/app/src/main/
 ├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET, POST_NOTIFICATIONS
+
+android/app/src/debug/
+└── assets/
+    └── test_images/                     # Test plate images for test mode (debug builds only)
 ```
 
 ### Implementation Order
@@ -561,6 +609,9 @@ android/app/src/main/
 | 15 | Background/crash | REQ-M-50, REQ-M-51 | Lifecycle-aware: stop analysis on STOPPED, flush queue, resume on STARTED |
 | 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
 | 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
+| 18 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
+| 19 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
+| 20 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer in startPipeline(), subscribe+cancel in stopPipeline() (refresh TTL) |
 
 ### Key Technical Notes
 
