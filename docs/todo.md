@@ -152,12 +152,12 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Connectivity monitor** — ConnectivityManager.NetworkCallback, flush on reconnect (REQ-M-14)
 
 ### Debug Mode
-- [ ] **Debug toggle** — Triple-tap gesture, debug builds only via `BuildConfig.DEBUG` (REQ-M-18)
-- [ ] **Debug overlay** — Canvas overlay with bounding boxes, text, hash, FPS (REQ-M-19)
+- [x] **Debug toggle** — Triple-tap gesture, debug builds only via `BuildConfig.DEBUG` (REQ-M-18)
+- [x] **Debug overlay** — DebugOverlay.kt: Canvas overlay with bounding boxes, text, hash, FPS, queue depth (REQ-M-19)
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 
 ### Reliability & Performance
-- [ ] **Thermal management** — PowerManager thermal status listener, reduce FPS (REQ-M-32)
+- [x] **Thermal management** — PowerManager thermal status listener, reduce frame skip count (REQ-M-32)
 - [x] **Background behavior** — Lifecycle-aware: stop on STOPPED, resume on STARTED via LifecycleEventObserver (REQ-M-51)
 - [x] **Crash recovery** — Room queue persists across process death (REQ-M-50)
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
