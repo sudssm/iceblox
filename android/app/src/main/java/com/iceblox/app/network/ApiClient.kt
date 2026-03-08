@@ -1,0 +1,174 @@
+package com.iceblox.app.network
+
+import android.content.Context
+import android.provider.Settings
+import com.iceblox.app.config.AppConfig
+import com.iceblox.app.debug.DebugLog
+import com.iceblox.app.persistence.OfflineQueueDao
+import java.io.IOException
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+
+class ApiClient(
+    context: Context,
+    private val queueDao: OfflineQueueDao,
+    private val retryManager: RetryManager,
+    private val onTargetMatched: () -> Unit,
+    private val onPlateSent: (hash: String, matched: Boolean) -> Unit = { _, _ -> }
+) {
+    private val client = OkHttpClient()
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var batchJob: Job? = null
+    private val deviceId: String = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ANDROID_ID
+    ) ?: "unknown"
+
+    fun startBatchTimer() {
+        batchJob?.cancel()
+        batchJob = scope.launch {
+            while (isActive) {
+                delay(AppConfig.BATCH_INTERVAL_MS)
+                sendBatch()
+            }
+        }
+    }
+
+    fun stopBatchTimer() {
+        batchJob?.cancel()
+        batchJob = null
+    }
+
+    fun checkAndFlush() {
+        scope.launch { checkAndFlushInternal() }
+    }
+
+    fun flushQueue() {
+        scope.launch { sendBatch() }
+    }
+
+    fun registerDeviceToken(token: String) {
+        scope.launch {
+            val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.DEVICES_ENDPOINT}"
+            val mediaType = "application/json".toMediaType()
+            val json = JSONObject().apply {
+                put("token", token)
+                put("platform", "android")
+            }
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("X-Device-ID", deviceId)
+                .post(json.toString().toRequestBody(mediaType))
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        DebugLog.d(TAG, "Device token registered")
+                    } else {
+                        DebugLog.w(TAG, "Device token registration failed: ${response.code}")
+                    }
+                }
+            } catch (e: IOException) {
+                DebugLog.w(TAG, "Device token registration failed: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun checkAndFlushInternal() {
+        val count = queueDao.count()
+        if (count >= AppConfig.BATCH_SIZE) {
+            sendBatch()
+        }
+    }
+
+    private suspend fun sendBatch() {
+        if (retryManager.isRateLimited) {
+            DebugLog.w(TAG, "sendBatch: rate limited, skipping")
+            return
+        }
+
+        val entries = queueDao.dequeue(AppConfig.BATCH_SIZE)
+        if (entries.isEmpty()) return
+        DebugLog.d(TAG, "sendBatch: sending ${entries.size} entries")
+
+        val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.PLATES_ENDPOINT}"
+        val mediaType = "application/json".toMediaType()
+
+        for (entry in entries) {
+            val json = JSONObject().apply {
+                put("plate_hash", entry.plateHash)
+                put("latitude", entry.latitude ?: 0.0)
+                put("longitude", entry.longitude ?: 0.0)
+                val ts = Instant.ofEpochMilli(entry.timestamp)
+                    .atOffset(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ISO_INSTANT)
+                put("timestamp", ts)
+            }
+
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("X-Device-ID", deviceId)
+                .post(json.toString().toRequestBody(mediaType))
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    when (response.code) {
+                        200 -> {
+                            retryManager.reset()
+                            queueDao.deleteByIds(listOf(entry.id))
+                            response.body?.string()?.let { body ->
+                                try {
+                                    val responseJson = JSONObject(body)
+                                    val matched = responseJson.optBoolean("matched", false)
+                                    if (matched) {
+                                        onTargetMatched()
+                                    }
+                                    onPlateSent(entry.plateHash, matched)
+                                } catch (e: Exception) {
+                                    DebugLog.w(TAG, "Failed to parse response: ${e.message}")
+                                }
+                            }
+                        }
+
+                        429 -> {
+                            val retryAfter = response.header("Retry-After")?.toLongOrNull() ?: 60
+                            retryManager.handleRateLimit(retryAfter)
+                            return
+                        }
+
+                        else -> {
+                            val delayMs = retryManager.handleFailure() ?: return
+                            delay(delayMs)
+                            return
+                        }
+                    }
+                }
+            } catch (e: IOException) {
+                DebugLog.w(TAG, "Upload failed: ${e.message}")
+                val delayMs = retryManager.handleFailure() ?: return
+                delay(delayMs)
+                return
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "ApiClient"
+    }
+}

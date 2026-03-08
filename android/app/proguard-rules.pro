@@ -1,4 +1,4 @@
-# CamerasApp ProGuard Rules
+# IceBlox ProGuard Rules
 
 # --- Jetpack Compose ---
 -dontwarn androidx.compose.**
