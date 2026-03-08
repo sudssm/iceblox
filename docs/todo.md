@@ -192,3 +192,10 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md) REQ-S-13 through REQ-S-16, 
 - [ ] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
 - [ ] **Lifecycle integration** — Start/stop with pipeline lifecycle, subscribe on stop to refresh TTL (REQ-M-64, REQ-M-68)
 - [ ] **AppConfig** — Add `SUBSCRIBE_ENDPOINT`, `SUBSCRIBE_INTERVAL_MS`, `DEFAULT_RADIUS_MILES` constants
+
+---
+
+## Productionizing
+
+- [ ] **Change the pepper** — Replace `default-pepper-change-me` with a secure random value (`openssl rand -hex 32`). Update server env var (`PEPPER`), iOS `PlateHasher.swift` pepperPartA/B, and Android `PlateHasher.kt` pepperPartA/B to match.
+- [ ] **Enable SSL** — Configure TLS for the server. Railway provides automatic HTTPS via its proxy, but update mobile app `SERVER_BASE_URL` to use `https://` and ensure `DATABASE_URL` uses `sslmode=require` for the Postgres connection.
