@@ -1,3 +1,5 @@
+IMPORTANT: This skill must ONLY be invoked when the user has EXPLICITLY asked to ship, merge, or create a PR using clear language like "/ship", "ship it", "create a PR", "merge it", etc. Do NOT invoke this skill based on inferred intent — e.g., the user saying "looks good" or asking about a merged PR does NOT mean "ship my branch". If you are unsure whether the user wants to ship, ASK first. Never auto-ship.
+
 You are finishing a feature branch and shipping it to main. Follow these steps exactly:
 
 ## Step 1: Understand the changes
