@@ -59,7 +59,8 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Wire live data** — StatusBarView connected to FrameProcessor, APIClient, ConnectivityMonitor, LocationManager
 
 ### Detection Pipeline
-- [x] **Core ML model loading** — PlateDetector.swift: compile `.mlmodel`, cache `VNCoreMLModel` at startup (REQ-M-5, REQ-M-6)
+- [x] **Core ML model bundled** — plate_detector.mlpackage: YOLOv8-nano trained on license plate dataset, exported with NMS pipeline (5.9 MB)
+- [x] **Core ML model loading** — PlateDetector.swift: compile `.mlpackage`, cache `VNCoreMLModel` at startup (REQ-M-5, REQ-M-6)
 - [x] **Frame-to-inference bridge** — Extract `CVPixelBuffer` from `CMSampleBuffer`, `VNImageRequestHandler`, `VNCoreMLRequest` (REQ-M-6)
 - [x] **Detection result parsing** — `VNRecognizedObjectObservation` bounding boxes, Vision→pixel coordinate conversion (REQ-M-6)
 - [x] **Confidence threshold** — Filter detections below 0.7 (REQ-M-7)
@@ -68,6 +69,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Plate normalization** — PlateNormalizer.swift: uppercase, strip, validate 2-8 chars (REQ-M-10)
 - [x] **Deduplication** — DeduplicationCache.swift: 60-second time-windowed set (REQ-M-8)
 - [x] **Frame processor** — FrameProcessor.swift: frame → detect → OCR → normalize → dedup → hash → queue (REQ-M-30)
+- [x] **Build verification** — Full pipeline compiles and all 28 unit tests pass
 
 ### Hashing & Privacy
 - [x] **HMAC-SHA256** — PlateHasher.swift: CryptoKit `HMAC<SHA256>`, XOR-obfuscated pepper (REQ-M-12, REQ-M-42)

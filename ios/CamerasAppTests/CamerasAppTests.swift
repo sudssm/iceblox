@@ -84,7 +84,8 @@ final class CamerasAppTests: XCTestCase {
         _ = rm.handleFailure()
         rm.reset()
         let delay = rm.handleFailure()
-        XCTAssertEqual(delay, AppConfig.retryInitialDelay, accuracy: 0.01)
+        XCTAssertNotNil(delay)
+        XCTAssertEqual(delay!, AppConfig.retryInitialDelay, accuracy: 0.01)
     }
 
     func testRetryRateLimit() {
