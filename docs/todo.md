@@ -98,19 +98,19 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation Plan — Android
 
 ### Project Setup
-- [ ] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
-- [ ] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, INTERNET
-- [ ] **Min SDK** — API 31 / Android 12 (C-5)
-- [ ] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite
+- [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
+- [x] **Manifest permissions** — CAMERA (ACCESS_FINE_LOCATION, INTERNET still pending)
+- [x] **Min SDK** — API 28 / Android 9.0 (C-5)
+- [ ] **Dependencies** — ~~CameraX~~ done, ML Kit, Room, OkHttp, TFLite still needed
 
 ### Camera
-- [ ] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
-- [ ] **Camera preview** — Compose `PreviewView` wrapper (REQ-M-3)
-- [ ] **Auto-start** — Begin capture on activity create (REQ-M-3)
+- [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
+- [x] **Camera preview** — Compose `PreviewView` wrapper (REQ-M-3)
+- [x] **Auto-start** — Begin capture on activity create (REQ-M-3)
 
 ### UI
-- [ ] **Full-screen camera preview** — Landscape Compose layout
-- [ ] **Status bar** — Connectivity, last detected, plates count, targets count
+- [x] **Full-screen camera preview** — Landscape Compose layout
+- [x] **Status bar** — Capture status and frame count (placeholder; connectivity, plates, targets pending)
 - [ ] **Wire ViewModel** — Connect status bar to pipeline state via StateFlow
 
 ### Detection Pipeline
