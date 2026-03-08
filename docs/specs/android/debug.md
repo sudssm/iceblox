@@ -60,6 +60,30 @@ State transitions are driven by callbacks from `ApiClient` to `MainViewModel`.
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+### DBG-4: Debug Log Panel
+
+The debug overlay MUST display a translucent log panel at the bottom of the screen showing recent device logs when debug mode is active.
+
+- Panel: `fillMaxWidth()`, `heightIn(max = 150.dp)`, `background(Color.Black.copy(alpha = 0.75f))`, rounded top corners
+- Entries: 8.sp monospace, `maxLines = 2`, color-coded by level
+  - DEBUG: LightGray
+  - WARNING: Yellow
+  - ERROR: Red
+- Each entry formatted as: `HH:mm:ss D/Tag: message`
+- Auto-scrolls via `LaunchedEffect(entries.size)` + `scrollState.animateScrollTo()`
+- Backed by a `DebugLog` singleton (`object DebugLog`) with a 50-entry `ArrayDeque` ring buffer
+- Thread safety: `@Synchronized` on add, exposed as `StateFlow<List<LogEntry>>`
+- `DebugLog.d/w/e(tag, message)` methods delegate to `android.util.Log` AND append to ring buffer
+- Throwable overloads: `d/w/e(tag, message, throwable)` — appends exception message to the log entry
+- All existing `Log.d/w/e` calls replaced with `DebugLog.d/w/e` to route through the panel
+
+#### Files
+
+- `android/.../debug/DebugLog.kt` — Singleton with `LogEntry` data class, `LogLevel` enum, ring buffer, `StateFlow`
+- `android/.../ui/DebugLogPanel.kt` — Composable with `Column` + `verticalScroll` + auto-scroll
+- `android/.../ui/DebugOverlay.kt` — Hosts `DebugLogPanel` at `Alignment.BottomCenter`
+- `android/.../ui/CameraScreen.kt` — Collects `DebugLog.entries` via `collectAsState()`, passes to overlay
+
 ## Implementation Plan
 
 ### Step 1: Add raw detection StateFlow to FrameAnalyzer

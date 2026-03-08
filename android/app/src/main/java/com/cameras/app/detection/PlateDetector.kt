@@ -3,7 +3,7 @@ package com.cameras.app.detection
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
-import android.util.Log
+import com.cameras.app.debug.DebugLog
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -29,23 +29,23 @@ class PlateDetector(context: Context) {
 
     init {
         try {
-            Log.d(TAG, "Loading model from assets...")
+            DebugLog.d(TAG, "Loading model from assets...")
             val model = loadModelFile(context, "plate_detector.tflite")
-            Log.d(TAG, "Model file loaded, creating interpreter...")
+            DebugLog.d(TAG, "Model file loaded, creating interpreter...")
             val options = Interpreter.Options().apply {
                 numThreads = 4
             }
             val interp = Interpreter(model, options)
             val outputShape = interp.getOutputTensor(0).shape()
-            Log.d(TAG, "Model output shape: ${outputShape.contentToString()}")
+            DebugLog.d(TAG, "Model output shape: ${outputShape.contentToString()}")
             // YOLOv8 output is [1, num_channels, 8400]
             if (outputShape.size >= 2) {
                 numChannels = outputShape[1]
             }
-            Log.d(TAG, "Interpreter ready, numChannels=$numChannels (default was $NUM_CHANNELS)")
+            DebugLog.d(TAG, "Interpreter ready, numChannels=$numChannels (default was $NUM_CHANNELS)")
             interpreter = interp
         } catch (e: Exception) {
-            Log.e(TAG, "Model init failed: ${e.javaClass.simpleName}: ${e.message}", e)
+            DebugLog.e(TAG, "Model init failed: ${e.javaClass.simpleName}: ${e.message}", e)
         }
     }
 
@@ -65,7 +65,7 @@ class PlateDetector(context: Context) {
     fun detect(bitmap: Bitmap): List<DetectedPlate> {
         val interp = this.interpreter
         if (interp == null) {
-            Log.w(TAG, "detect called but interpreter is null")
+            DebugLog.w(TAG, "detect called but interpreter is null")
             return emptyList()
         }
 
@@ -91,7 +91,7 @@ class PlateDetector(context: Context) {
         )
 
         val result = nms(rawDetections)
-        Log.d(TAG, "detect: ${rawDetections.size} raw -> ${result.size} after NMS (channels=$numChannels, threshold=$confidenceThreshold)")
+        DebugLog.d(TAG, "detect: ${rawDetections.size} raw -> ${result.size} after NMS (channels=$numChannels, threshold=$confidenceThreshold)")
         return result
     }
 
@@ -132,7 +132,7 @@ class PlateDetector(context: Context) {
             )
         }
 
-        Log.d(TAG, "parseDetections: maxConf=%.4f, passed=${detections.size}/$NUM_DETECTIONS".format(maxConfSeen))
+        DebugLog.d(TAG, "parseDetections: maxConf=%.4f, passed=${detections.size}/$NUM_DETECTIONS".format(maxConfSeen))
         return detections
     }
 

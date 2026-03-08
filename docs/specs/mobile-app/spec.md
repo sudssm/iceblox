@@ -359,8 +359,8 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ios/CamerasApp/
 ├── CamerasApp.swift                    # App entry point, landscape lock
 ├── ContentView.swift                   # Root view, wires all managers
-├── StatusBarView.swift                 # Bottom status bar (online, last detected, counts)
 ├── Views/
+│   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
 │   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS, detection feed
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
@@ -451,7 +451,7 @@ android/app/src/main/java/com/cameras/app/
 ├── MainActivity.kt                      # Activity, landscape lock, permission requests
 ├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (StatusBar composable inline)
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar composable)
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
 ├── camera/

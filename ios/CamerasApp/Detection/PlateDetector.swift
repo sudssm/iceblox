@@ -20,8 +20,9 @@ final class PlateDetector {
             config.computeUnits = .all
             let model = try plate_detector(configuration: config).model
             visionModel = try VNCoreMLModel(for: model)
+            DebugLog.shared.d("PlateDetector", "Model loaded successfully")
         } catch {
-            Self.logger.error("Failed to load plate detection model: \(error.localizedDescription)")
+            DebugLog.shared.e("PlateDetector", "Failed to load plate detection model: \(error.localizedDescription)")
         }
     }
 
