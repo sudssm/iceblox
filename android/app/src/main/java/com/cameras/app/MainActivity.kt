@@ -29,11 +29,21 @@ import com.cameras.app.ui.theme.CamerasAppTheme
 
 class MainActivity : ComponentActivity() {
     private var hasCameraPermission by mutableStateOf(false)
+    private var hasLocationPermission by mutableStateOf(false)
 
-    private val permissionLauncher = registerForActivityResult(
+    private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
+        if (granted) {
+            requestLocationPermission()
+        }
+    }
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasLocationPermission = permissions.values.any { it }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,8 +54,14 @@ class MainActivity : ComponentActivity() {
             this, Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
 
+        hasLocationPermission = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
         if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        } else if (!hasLocationPermission) {
+            requestLocationPermission()
         }
 
         setContent {
@@ -55,12 +71,21 @@ class MainActivity : ComponentActivity() {
                 } else {
                     PermissionDeniedScreen(
                         onRequestPermission = {
-                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
                     )
                 }
             }
         }
+    }
+
+    private fun requestLocationPermission() {
+        locationPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
     }
 }
 

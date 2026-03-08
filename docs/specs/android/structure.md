@@ -8,7 +8,7 @@ The Android app is built with **Kotlin** and **Jetpack Compose** targeting **API
 
 ```
 android/
-├── build.gradle.kts               # Root build file
+├── build.gradle.kts               # Root build file (KSP plugin)
 ├── settings.gradle.kts             # Project settings & dependency resolution
 ├── gradle.properties               # Gradle configuration
 ├── gradle/
@@ -24,18 +24,36 @@ android/
         ├── main/
         │   ├── AndroidManifest.xml
         │   ├── java/com/cameras/app/
-        │   │   ├── MainActivity.kt         # Activity entry point
-        │   │   ├── CamerasApp.kt           # Application class
-        │   │   ├── ui/
-        │   │   │   └── theme/
-        │   │   │       ├── Theme.kt        # Material 3 theme
-        │   │   │       ├── Color.kt        # Color definitions
-        │   │   │       └── Type.kt         # Typography
-        │   │   ├── views/                  # Composable screens
-        │   │   ├── models/                 # Data models
-        │   │   ├── viewmodels/             # ViewModels
-        │   │   ├── services/               # API clients, camera services
-        │   │   └── utils/                  # Extensions, helpers
+        │   │   ├── MainActivity.kt         # Activity entry point, permission requests
+        │   │   ├── MainViewModel.kt        # Pipeline state coordinator
+        │   │   ├── camera/
+        │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
+        │   │   │   └── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
+        │   │   ├── config/
+        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL
+        │   │   ├── detection/
+        │   │   │   ├── PlateDetector.kt    # TFLite interpreter, YOLOv8-nano inference, NMS
+        │   │   │   └── PlateOCR.kt         # ML Kit Text Recognition on cropped bitmaps
+        │   │   ├── location/
+        │   │   │   └── LocationProvider.kt # FusedLocationProviderClient, permission handling
+        │   │   ├── network/
+        │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates, batch, 429 handling
+        │   │   │   ├── ConnectivityMonitor.kt # ConnectivityManager.NetworkCallback
+        │   │   │   └── RetryManager.kt     # Exponential backoff, rate limit tracking
+        │   │   ├── persistence/
+        │   │   │   ├── OfflineQueueDao.kt  # Room DAO: insert, dequeue, delete, count
+        │   │   │   ├── OfflineQueueDatabase.kt # Room database singleton
+        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng
+        │   │   ├── processing/
+        │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
+        │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, XOR pepper
+        │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
+        │   │   └── ui/
+        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar
+        │   │       └── theme/
+        │   │           ├── Theme.kt        # Material 3 theme
+        │   │           ├── Color.kt        # Color definitions
+        │   │           └── Type.kt         # Typography
         │   └── res/
         │       ├── values/
         │       │   ├── strings.xml
@@ -44,7 +62,7 @@ android/
         │       └── drawable/
         └── test/
             └── java/com/cameras/app/
-                └── ExampleUnitTest.kt
+                └── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry
 ```
 
 ## Architecture
@@ -129,12 +147,22 @@ Release builds enable R8 minification and resource shrinking. ProGuard rules for
 
 ## Dependencies
 
-Core dependencies (managed via version catalog):
+Core dependencies (managed via version catalog in `gradle/libs.versions.toml`):
 - `androidx.core:core-ktx` — Kotlin extensions for Android
 - `androidx.lifecycle:lifecycle-runtime-ktx` — Lifecycle-aware components
+- `androidx.lifecycle:lifecycle-viewmodel-compose` — ViewModel integration with Compose
 - `androidx.activity:activity-compose` — Compose integration with Activity
 - `androidx.compose.*` — Compose UI toolkit
 - `androidx.compose.material3` — Material Design 3
+- `androidx.camera:camera-*` (1.4.1) — CameraX: camera2, lifecycle, view
+- `org.tensorflow:tensorflow-lite` (2.16.1) — TFLite runtime for YOLOv8-nano inference
+- `com.google.mlkit:text-recognition` (16.0.1) — ML Kit OCR
+- `androidx.room:room-runtime` + `room-ktx` (2.6.1) — SQLite offline queue persistence
+- `com.squareup.okhttp3:okhttp` (4.12.0) — HTTP client for server communication
+- `com.google.android.gms:play-services-location` (21.3.0) — Fused location provider
+
+Build plugins:
+- KSP (2.1.0-1.0.29) — Kotlin Symbol Processing for Room annotation processing
 
 Testing:
 - `junit` — Unit testing

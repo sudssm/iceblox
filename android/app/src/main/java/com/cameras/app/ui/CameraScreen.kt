@@ -11,51 +11,60 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cameras.app.MainViewModel
 import com.cameras.app.camera.CameraPreview
-import com.cameras.app.camera.FrameAnalyzer
 
 @Composable
-fun CameraScreen(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    var plateCount by remember { mutableLongStateOf(0L) }
-    var lastPlateText by remember { mutableStateOf<String?>(null) }
-    var hasReceivedFrame by remember { mutableStateOf(false) }
+fun CameraScreen(
+    modifier: Modifier = Modifier,
+    viewModel: MainViewModel = viewModel()
+) {
+    val plateCount by viewModel.plateCount.collectAsState()
+    val targetCount by viewModel.targetCount.collectAsState()
+    val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
+    val isConnected by viewModel.connectivityMonitor.isConnected.collectAsState()
+    val hasGps by viewModel.locationProvider.hasPermission.collectAsState()
 
-    val frameAnalyzer = remember {
-        FrameAnalyzer(context) { plates ->
-            plateCount += plates.size
-            lastPlateText = plates.firstOrNull()?.normalizedText
-            hasReceivedFrame = true
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.startPipeline()
+                Lifecycle.Event.ON_STOP -> viewModel.stopPipeline()
+                else -> {}
+            }
         }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { frameAnalyzer.close() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         CameraPreview(
             modifier = Modifier.fillMaxSize(),
-            analyzer = frameAnalyzer
+            analyzer = viewModel.frameAnalyzer
         )
 
         StatusBar(
-            isCapturing = hasReceivedFrame,
+            isConnected = isConnected,
             platesDetected = plateCount,
-            lastPlate = lastPlateText,
+            targetCount = targetCount,
+            lastDetectionTime = lastDetectionTime,
+            hasGps = hasGps,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -65,11 +74,20 @@ fun CameraScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun StatusBar(
-    isCapturing: Boolean,
+    isConnected: Boolean,
     platesDetected: Long,
-    lastPlate: String?,
+    targetCount: Int,
+    lastDetectionTime: Long,
+    hasGps: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val lastDetectedText = if (lastDetectionTime > 0) {
+        val elapsed = (System.currentTimeMillis() - lastDetectionTime) / 1000
+        if (elapsed < 60) "Last: ${elapsed}s ago" else "Last: ${elapsed / 60}m ago"
+    } else {
+        "Last: --"
+    }
+
     Row(
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.6f))
@@ -77,7 +95,7 @@ fun StatusBar(
             .testTag("status_bar"),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val indicatorColor = if (isCapturing) Color.Green else Color.Red
+        val indicatorColor = if (isConnected) Color.Green else Color.Red
         Text(
             text = "\u25CF",
             color = indicatorColor,
@@ -86,11 +104,17 @@ fun StatusBar(
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = if (isCapturing) "Capturing" else "Starting...",
+            text = if (isConnected) "Online" else "Offline",
             color = Color.White,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.testTag("status_text")
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = lastDetectedText,
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 12.sp
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
@@ -99,13 +123,21 @@ fun StatusBar(
             fontSize = 12.sp,
             modifier = Modifier.testTag("plate_count")
         )
-        if (lastPlate != null) {
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = "Targets: $targetCount",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 12.sp,
+            modifier = Modifier.testTag("target_count")
+        )
+        if (!hasGps) {
             Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = "Last: $lastPlate",
-                color = Color.White.copy(alpha = 0.7f),
+                text = "No GPS",
+                color = Color(0xFFFF9800),
                 fontSize = 12.sp,
-                modifier = Modifier.testTag("last_plate")
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.testTag("gps_warning")
             )
         }
     }

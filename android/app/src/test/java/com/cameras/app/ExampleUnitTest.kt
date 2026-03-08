@@ -3,6 +3,9 @@ package com.cameras.app
 import android.graphics.RectF
 import com.cameras.app.detection.DetectedPlate
 import com.cameras.app.detection.PlateDetector
+import com.cameras.app.network.RetryManager
+import com.cameras.app.processing.DeduplicationCache
+import com.cameras.app.processing.PlateHasher
 import com.cameras.app.processing.PlateNormalizer
 import org.junit.Test
 import org.junit.Assert.*
@@ -107,5 +110,91 @@ class NmsTest {
         val a = RectF(0f, 0f, 50f, 50f)
         val b = RectF(100f, 100f, 200f, 200f)
         assertEquals(0f, PlateDetector.iou(a, b), 0.001f)
+    }
+}
+
+class PlateHasherTest {
+    @Test
+    fun producesHexString() {
+        val hash = PlateHasher.hash("ABC1234")
+        assertEquals(64, hash.length)
+        assertTrue(hash.all { it in '0'..'9' || it in 'a'..'f' })
+    }
+
+    @Test
+    fun deterministicOutput() {
+        val h1 = PlateHasher.hash("ABC1234")
+        val h2 = PlateHasher.hash("ABC1234")
+        assertEquals(h1, h2)
+    }
+
+    @Test
+    fun differentInputsDifferentHashes() {
+        val h1 = PlateHasher.hash("ABC1234")
+        val h2 = PlateHasher.hash("XYZ9876")
+        assertNotEquals(h1, h2)
+    }
+}
+
+class DeduplicationCacheTest {
+    @Test
+    fun firstOccurrenceNotDuplicate() {
+        val cache = DeduplicationCache()
+        assertFalse(cache.isDuplicate("ABC1234"))
+    }
+
+    @Test
+    fun secondOccurrenceIsDuplicate() {
+        val cache = DeduplicationCache()
+        cache.isDuplicate("ABC1234")
+        assertTrue(cache.isDuplicate("ABC1234"))
+    }
+
+    @Test
+    fun differentPlatesNotDuplicate() {
+        val cache = DeduplicationCache()
+        cache.isDuplicate("ABC1234")
+        assertFalse(cache.isDuplicate("XYZ9876"))
+    }
+}
+
+class RetryManagerTest {
+    @Test
+    fun firstFailureReturnsInitialDelay() {
+        val manager = RetryManager()
+        val delay = manager.handleFailure()
+        assertEquals(5000L, delay)
+    }
+
+    @Test
+    fun exponentialBackoff() {
+        val manager = RetryManager()
+        manager.handleFailure() // 5s
+        val second = manager.handleFailure()
+        assertEquals(10000L, second)
+    }
+
+    @Test
+    fun resetClearsAttempts() {
+        val manager = RetryManager()
+        manager.handleFailure()
+        manager.reset()
+        val delay = manager.handleFailure()
+        assertEquals(5000L, delay)
+    }
+
+    @Test
+    fun maxAttemptsReturnsNull() {
+        val manager = RetryManager()
+        repeat(10) { manager.handleFailure() }
+        assertNull(manager.handleFailure())
+    }
+
+    @Test
+    fun rateLimitSetsDeadline() {
+        val manager = RetryManager()
+        assertFalse(manager.isRateLimited)
+        manager.handleRateLimit(60)
+        assertTrue(manager.isRateLimited)
     }
 }

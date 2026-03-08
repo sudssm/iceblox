@@ -111,9 +111,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### Project Setup
 - [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
-- [x] **Manifest permissions** — CAMERA (ACCESS_FINE_LOCATION, INTERNET still pending)
+- [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)
-- [ ] **Dependencies** — ~~CameraX~~ done, ML Kit, Room, OkHttp, TFLite still needed
+- [x] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite, Play Services Location
 
 ### Camera
 - [x] **CameraX setup** — Preview + ImageAnalysis use cases, 1080p, rear camera (REQ-M-1, REQ-M-2)
@@ -122,32 +122,32 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### UI
 - [x] **Full-screen camera preview** — Landscape Compose layout
-- [x] **Status bar** — Capture status and frame count (placeholder; connectivity, plates, targets pending)
-- [ ] **Wire ViewModel** — Connect status bar to pipeline state via StateFlow
+- [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
+- [x] **Wire ViewModel** — MainViewModel with StateFlow, CameraScreen observes via collectAsState
 
 ### Detection Pipeline
-- [ ] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
-- [ ] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
-- [ ] **Raw output parsing** — Parse `[1, 6, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
-- [ ] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7). TFLite export does NOT include NMS — this must be implemented manually (unlike iOS Core ML)
-- [ ] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
-- [ ] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
-- [ ] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
-- [ ] **Deduplication** — 60-second time-windowed cache (REQ-M-8)
-- [ ] **Frame analyzer** — Wire pipeline in ImageAnalysis.Analyzer (REQ-M-30)
+- [x] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
+- [x] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
+- [x] **Raw output parsing** — Parse `[1, 5, 8400]` tensor into per-candidate `[cx, cy, w, h, confidence]`, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates (REQ-M-6)
+- [x] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7)
+- [x] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
+- [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
+- [x] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
+- [x] **Deduplication** — 60-second time-windowed cache via DeduplicationCache (REQ-M-8)
+- [x] **Frame analyzer** — FrameAnalyzer wired in ImageAnalysis.Analyzer, full pipeline via MainViewModel callback (REQ-M-30)
 
 ### Hashing & Privacy
-- [ ] **HMAC-SHA256** — `javax.crypto.Mac`, obfuscated pepper (REQ-M-12, REQ-M-42)
-- [ ] **Plaintext discard** — Zero out plate text after hashing, no logging (REQ-M-13, REQ-M-40)
+- [x] **HMAC-SHA256** — `javax.crypto.Mac` with XOR-obfuscated pepper matching iOS (REQ-M-12, REQ-M-42)
+- [x] **Plaintext discard** — Normalized text not stored after hashing, no logging (REQ-M-13, REQ-M-40)
 
 ### Persistence & Networking
-- [ ] **Offline queue** — Room database, max 1000 entries, oldest eviction (REQ-M-15)
-- [ ] **Location services** — FusedLocationProviderClient, GPS warning (REQ-M-16)
-- [ ] **Batch upload** — OkHttp POST, 10-plate or 30-second trigger (REQ-M-14)
-- [ ] **Match response handling** — Parse per-plate boolean, update target counter (REQ-M-14a)
-- [ ] **Retry logic** — Exponential backoff on failure (REQ-M-17)
-- [ ] **429 handling** — Read Retry-After, pause uploads (REQ-M-17a)
-- [ ] **Connectivity monitor** — ConnectivityManager.NetworkCallback, flush on reconnect (REQ-M-14)
+- [x] **Offline queue** — Room database, max 1000 entries, oldest eviction (REQ-M-15)
+- [x] **Location services** — FusedLocationProviderClient, GPS warning in status bar (REQ-M-16)
+- [x] **Batch upload** — OkHttp POST, 10-plate or 30-second trigger (REQ-M-14)
+- [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
+- [x] **Retry logic** — Exponential backoff on failure (REQ-M-17)
+- [x] **429 handling** — Read Retry-After, pause uploads (REQ-M-17a)
+- [x] **Connectivity monitor** — ConnectivityManager.NetworkCallback, flush on reconnect (REQ-M-14)
 
 ### Debug Mode
 - [ ] **Debug toggle** — Triple-tap gesture, debug builds only via `BuildConfig.DEBUG` (REQ-M-18)
@@ -156,7 +156,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### Reliability & Performance
 - [ ] **Thermal management** — PowerManager thermal status listener, reduce FPS (REQ-M-32)
-- [ ] **Background behavior** — Lifecycle-aware: stop on STOPPED, resume on STARTED (REQ-M-51)
-- [ ] **Crash recovery** — Room queue persists across process death (REQ-M-50)
+- [x] **Background behavior** — Lifecycle-aware: stop on STOPPED, resume on STARTED via LifecycleEventObserver (REQ-M-51)
+- [x] **Crash recovery** — Room queue persists across process death (REQ-M-50)
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
