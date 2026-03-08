@@ -338,13 +338,14 @@ Then the frame processing rate returns to the normal rate (15+ fps)
 
 ## Test Mode (Android)
 
-### TS-33: Test mode skips splash and camera permission
+### TS-33: Test mode bypasses camera permission
 
 ```
 Given the app is launched with intent extra test_mode=true
-Then the splash screen is not shown
-And the camera permission is not requested
-And the camera screen is displayed immediately
+Then the splash screen is shown normally
+And the user taps "Start Camera"
+And the camera permission check is bypassed (TestFrameFeeder replaces the camera)
+And the camera screen is displayed with test mode active
 ```
 
 ### TS-34: Test images fed through pipeline
@@ -374,4 +375,36 @@ And no test images exist in debug assets or filesDir
 When the pipeline starts
 Then a "No test images found" status is logged
 And the UI shows "Loading test images..." indefinitely
+```
+
+## E2E Tests (Android)
+
+### TS-E2E-1: No-plate image produces zero sightings
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the Android app is installed on the emulator
+When a no-plate image is pushed and the app is launched in test mode
+And the batch flush interval elapses (35 seconds)
+Then zero sightings exist in the database
+```
+
+### TS-E2E-2: Plate image produces matched sighting
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the Android app is installed on the emulator
+When an image containing plate "AB12345" is pushed and the app is launched in test mode
+And the batch flush interval elapses (35 seconds)
+Then at least one sighting exists in the database for plate "AB12345"
+And the server log contains a matched POST response
+```
+
+### TS-E2E-3: Full pipeline verification
+
+```
+Given TS-E2E-2 has passed
+Then the app logcat shows FrameAnalyzer detected plates from the test image
+And the server log shows the plate hash was matched
+And the sightings table contains a row with plate_id, seen_at, and hardware_id
 ```

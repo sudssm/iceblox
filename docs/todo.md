@@ -160,13 +160,30 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
 
 ### Test Mode
-- [x] **Test mode intent extra** — `test_mode` boolean extra skips splash screen and camera permission (TS-33)
+- [x] **Test mode intent extra** — `test_mode` boolean extra bypasses camera permission, splash screen shown normally (TS-33)
 - [x] **TestFrameFeeder** — Loads images from `src/debug/assets/test_images/` and `filesDir/test_images/`, feeds through `analyzeBitmap()` on 500ms timer (TS-34)
 - [x] **Test mode UI** — `TestImagePreview` composable replaces camera preview, `[TEST MODE]` banner shown (TS-35)
 - [x] **test_mode.sh script** — Installs APK, optionally pushes images via `--push-dir`, launches with test_mode extra
 
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
+
+---
+
+## E2E Testing
+
+Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app/test-scenarios.md`](specs/mobile-app/test-scenarios.md) → E2E Tests
+
+### Android
+
+- [x] **Directory structure** — `e2e/android/` with orchestrator, config, lib/, tests/, fixtures/
+- [x] **Infrastructure lifecycle** — Ephemeral postgres + Go server with test plates (TS-E2E-1, TS-E2E-2)
+- [x] **App lifecycle** — Build, install, push images, launch in test mode via `--ez test_mode true`
+- [x] **DB verification** — `docker exec psql` queries for sighting assertions
+- [x] **`analyzeBitmap()` fallback param** — `useFallback` parameter so no-plate test works correctly
+- [ ] **No-plate test scenario** — Verify zero sightings with no-plate image (TS-E2E-1). Needs real no-plate fixture image.
+- [ ] **Plate test scenario** — Verify matched sighting with AB12345 image (TS-E2E-2). Needs real plate fixture image.
+- [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---
 

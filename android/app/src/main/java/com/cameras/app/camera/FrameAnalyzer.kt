@@ -119,7 +119,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
         }
     }
 
-    fun analyzeBitmap(bitmap: Bitmap) {
+    fun analyzeBitmap(bitmap: Bitmap, useFallback: Boolean = true) {
         try {
             val detections = detector.detect(bitmap)
             DebugLog.d(TAG, "Test image: ${detections.size} detections")
@@ -142,13 +142,17 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             if (plates.isNotEmpty()) {
                 DebugLog.d(TAG, "Test image produced ${plates.size} plates")
                 onPlatesDetected(plates)
-            } else {
+            } else if (useFallback) {
                 DebugLog.w(TAG, "Test image: no plates extracted, injecting fallback")
                 onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
+            } else {
+                DebugLog.d(TAG, "Test image: no plates extracted")
             }
         } catch (e: Exception) {
             DebugLog.w(TAG, "Test image analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
-            onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
+            if (useFallback) {
+                onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
+            }
         }
     }
 

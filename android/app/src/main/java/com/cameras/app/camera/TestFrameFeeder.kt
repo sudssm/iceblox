@@ -98,7 +98,7 @@ class TestFrameFeeder(
                 _currentBitmap.value = bitmap
                 _status.value = "[${currentIndex + 1}/${images.size}] $name"
 
-                frameAnalyzer.analyzeBitmap(bitmap)
+                frameAnalyzer.analyzeBitmap(bitmap, useFallback = false)
 
                 currentIndex = (currentIndex + 1) % images.size
                 delay(intervalMs)
