@@ -47,6 +47,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### Project Setup
 - [x] **Landscape lock** — Set `UISupportedInterfaceOrientations` to landscape only + AppDelegate enforcement (REQ-M-4)
+- [x] **Keep screen on** — `isIdleTimerDisabled = true` in ContentView `onAppear` (REQ-M-4a)
 - [x] **Info.plist permissions** — Camera + location usage descriptions
 - [x] **Min deployment target** — iOS 17.0 (exceeds C-5 requirement of iOS 16)
 
@@ -119,6 +120,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### Project Setup
 - [x] **Landscape lock** — `android:screenOrientation="landscape"` in manifest (REQ-M-4)
+- [x] **Keep screen on** — `FLAG_KEEP_SCREEN_ON` in MainActivity `onCreate` (REQ-M-4a)
 - [x] **Manifest permissions** — CAMERA, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET
 - [x] **Min SDK** — API 28 / Android 9.0 (C-5)
 - [x] **Dependencies** — CameraX, ML Kit, Room, OkHttp, TFLite, Play Services Location
