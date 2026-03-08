@@ -49,10 +49,5 @@ models/exports/
 models/CHANGELOG.md
 *.pt
 
-# Model files (large binaries — keep out of git except app bundles)
-*.tflite
-*.mlmodel
-*.mlpackage
-# Allow model files bundled in app directories
-!ios/CamerasApp/Models/**
-!android/app/src/main/assets/*.tflite
+# Deployed model files in ios/ and android/ ARE committed so clones work immediately.
+# Intermediate exports are ignored via models/exports/ above.
