@@ -17,11 +17,27 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 8080, "server listen port")
+	port := flag.Int("port", 80, "server listen port")
 	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
 	pepper := flag.String("pepper", "default-pepper-change-me", "HMAC pepper for hashing plates")
 	dbDSN := flag.String("db-dsn", "postgres://postgres:cameras@localhost:5432/cameras?sslmode=disable", "PostgreSQL connection string")
 	flag.Parse()
+
+	// Environment variables override flags (for Railway / container deployment)
+	if v := os.Getenv("PORT"); v != "" {
+		if p, err := fmt.Sscanf(v, "%d", port); p != 1 || err != nil {
+			log.Fatalf("invalid PORT env: %s", v)
+		}
+	}
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		*dbDSN = v
+	}
+	if v := os.Getenv("PEPPER"); v != "" {
+		*pepper = v
+	}
+	if v := os.Getenv("PLATES_FILE"); v != "" {
+		*platesFile = v
+	}
 
 	ctx := context.Background()
 
