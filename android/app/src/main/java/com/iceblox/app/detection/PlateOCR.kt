@@ -37,7 +37,7 @@ class PlateOCR {
             val allText = result.textBlocks.flatMap { it.lines }.joinToString(" | ") {
                 "${it.text} (${it.confidence ?: -1f})"
             }
-            DebugLog.d(TAG, "OCR raw: [$allText] region=${region.toShortString()} crop=${width}x${height}")
+            DebugLog.d(TAG, "OCR raw: [$allText] region=${region.toShortString()} crop=${width}x$height")
 
             if (bestLine != null) {
                 val confidence = bestLine.confidence ?: 1.0f
