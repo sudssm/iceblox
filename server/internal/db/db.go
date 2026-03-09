@@ -132,7 +132,7 @@ func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time
 		Substitutions: substitutions,
 	}
 	if err := d.gorm.WithContext(ctx).Create(&s).Error; err != nil {
-		return 0, err
+		return 0, fmt.Errorf("insert sighting: %w", err)
 	}
 	return s.ID, nil
 }
@@ -183,8 +183,12 @@ func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng
 }
 
 // Pool returns the underlying *sql.DB for direct queries (e.g., in tests).
+// Panics if the underlying connection pool is unavailable.
 func (d *DB) Pool() *sql.DB {
-	sqlDB, _ := d.gorm.DB()
+	sqlDB, err := d.gorm.DB()
+	if err != nil {
+		panic(fmt.Sprintf("gorm.DB(): %v", err))
+	}
 	return sqlDB
 }
 

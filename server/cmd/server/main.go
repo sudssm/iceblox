@@ -187,7 +187,6 @@ func (q *dbSightingQuerier) RecentSightings(ctx context.Context, minLat, maxLat,
 	return results, nil
 }
 
-
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {
 	records := store.Records()
 	dbRecords := make([]db.PlateRecord, len(records))
