@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,6 +67,7 @@ fun CameraScreen(
     val isConnected by viewModel.connectivityMonitor.isConnected.collectAsState()
     val hasGps by viewModel.locationProvider.hasPermission.collectAsState()
     val queueDepth by viewModel.queueDepth.collectAsState()
+    val pendingPlates by viewModel.pendingPlateCount.collectAsState()
     val fps by viewModel.frameAnalyzer.fps.collectAsState()
     val debugDetections by viewModel.frameAnalyzer.debugDetections.collectAsState()
     val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
@@ -167,11 +172,24 @@ fun CameraScreen(
         }
 
         if (sessionSummary == null) {
+            StatusBar(
+                isConnected = isConnected,
+                platesDetected = plateCount,
+                matchCount = targetCount,
+                pendingCount = pendingPlates,
+                lastDetectionTime = lastDetectionTime,
+                hasGps = hasGps,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+            )
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
             ) {
                 Button(
                     onClick = { viewModel.stopRecordingSession() },
@@ -183,21 +201,12 @@ fun CameraScreen(
                     Text("Stop Recording")
                 }
 
-                if (queueDepth > 0) {
+                if (BuildConfig.DEBUG && debugMode && queueDepth > 0) {
                     UploadQueueBanner(
                         count = queueDepth,
                         onClear = { viewModel.clearUploadQueue() }
                     )
                 }
-
-                StatusBar(
-                    isConnected = isConnected,
-                    platesDetected = plateCount,
-                    targetCount = targetCount,
-                    lastDetectionTime = lastDetectionTime,
-                    hasGps = hasGps,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
 
@@ -334,7 +343,8 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 fun StatusBar(
     isConnected: Boolean,
     platesDetected: Long,
-    targetCount: Int,
+    matchCount: Int,
+    pendingCount: Int,
     lastDetectionTime: Long,
     hasGps: Boolean,
     modifier: Modifier = Modifier
@@ -349,6 +359,7 @@ fun StatusBar(
     Row(
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.6f))
+            .windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .testTag("status_bar"),
         verticalAlignment = Alignment.CenterVertically
@@ -383,11 +394,20 @@ fun StatusBar(
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
-            text = "Targets: $targetCount",
+            text = "Matches: $matchCount",
             color = Color.White.copy(alpha = 0.7f),
             fontSize = 12.sp,
-            modifier = Modifier.testTag("target_count")
+            modifier = Modifier.testTag("match_count")
         )
+        if (pendingCount > 0) {
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Pending: $pendingCount",
+                color = Color(0xFFFFB300),
+                fontSize = 12.sp,
+                modifier = Modifier.testTag("pending_count")
+            )
+        }
         if (!hasGps) {
             Spacer(modifier = Modifier.width(16.dp))
             Text(

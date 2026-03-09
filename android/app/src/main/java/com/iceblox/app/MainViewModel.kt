@@ -34,6 +34,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val targetCount: StateFlow<Int> = repository.targetCount
     val lastDetectionTime: StateFlow<Long> = repository.lastDetectionTime
     val queueDepth: StateFlow<Int> = repository.queueDepth
+    val pendingPlateCount: StateFlow<Int> = repository.pendingPlateCount
     val detectionFeed = repository.detectionFeed
     val alertClient = repository.alertClient
     val apiClient = repository.apiClient

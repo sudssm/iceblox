@@ -49,6 +49,7 @@ final class FrameProcessor: ObservableObject {
     private var fpsFrameCount = 0
     private var fpsTimer = Date()
     private var variantHashMap: [String: String] = [:]
+    private var pendingVariants: [String: Int] = [:]
     private let variantHashQueue = DispatchQueue(label: "com.iceblox.variantHashMap")
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient, sessionID: String) {
@@ -154,23 +155,49 @@ final class FrameProcessor: ObservableObject {
     func onPlateSent(hash: String, matched: Bool) {
         let prefix = String(hash.prefix(8))
         let primaryPrefix = variantHashQueue.sync { variantHashMap[prefix] } ?? prefix
-        let newState: DetectionState = matched ? .matched : .sent
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            var feed = self.detectionFeed
-            let idx: Int? = if matched {
-                feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state != .matched })
-            } else {
-                feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state == .queued })
+
+        if matched {
+            variantHashQueue.sync { pendingVariants.removeValue(forKey: primaryPrefix) }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                var feed = self.detectionFeed
+                if let idx = feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state != .matched }) {
+                    feed[idx] = DetectionFeedEntry(
+                        plateText: feed[idx].plateText,
+                        hashPrefix: feed[idx].hashPrefix,
+                        state: .matched,
+                        timestamp: feed[idx].timestamp
+                    )
+                    self.detectionFeed = feed
+                }
             }
-            if let idx {
-                feed[idx] = DetectionFeedEntry(
-                    plateText: feed[idx].plateText,
-                    hashPrefix: feed[idx].hashPrefix,
-                    state: newState,
-                    timestamp: feed[idx].timestamp
-                )
-                self.detectionFeed = feed
+        } else {
+            let allSent = variantHashQueue.sync { () -> Bool in
+                if var remaining = pendingVariants[primaryPrefix] {
+                    remaining -= 1
+                    if remaining <= 0 {
+                        pendingVariants.removeValue(forKey: primaryPrefix)
+                        return true
+                    }
+                    pendingVariants[primaryPrefix] = remaining
+                    return false
+                }
+                return true
+            }
+            if allSent {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    var feed = self.detectionFeed
+                    if let idx = feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state == .queued }) {
+                        feed[idx] = DetectionFeedEntry(
+                            plateText: feed[idx].plateText,
+                            hashPrefix: feed[idx].hashPrefix,
+                            state: .sent,
+                            timestamp: feed[idx].timestamp
+                        )
+                        self.detectionFeed = feed
+                    }
+                }
             }
         }
     }
@@ -214,6 +241,8 @@ final class FrameProcessor: ObservableObject {
         let primaryPrefix = String(primaryHash.prefix(8))
 
         DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(primaryPrefix) variants=\(variants.count)")
+
+        variantHashQueue.sync { pendingVariants[primaryPrefix] = variants.count }
 
         for (variantText, substitutions) in variants {
             let hash = substitutions == 0 ? primaryHash : PlateHasher.hash(normalizedPlate: variantText)

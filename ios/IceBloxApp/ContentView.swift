@@ -69,6 +69,7 @@ struct ContentView: View {
     @State private var sessionStartedAt = Date()
     @State private var stopRequestedAt: Date?
     @State private var pendingSessionUploads = 0
+    @State private var pendingSessionPlates = 0
     @State private var showingSummary = false
     @State private var e2eStopTask: Task<Void, Never>?
 
@@ -129,6 +130,16 @@ struct ContentView: View {
 
             if !showingSummary, cameraManager.permissionGranted {
                 VStack {
+                    StatusBarView(
+                        isConnected: connectivityMonitor.isConnected,
+                        lastDetection: frameProcessor?.lastDetectionTime,
+                        plateCount: frameProcessor?.totalPlates ?? 0,
+                        matchCount: apiClient?.totalTargets ?? 0,
+                        pendingCount: pendingSessionPlates,
+                        hasGPS: locationManager.hasPermission,
+                        nearbySightings: alertClient?.nearbySightings ?? 0
+                    )
+
                     Spacer()
 
                     Button(action: stopRecordingSession) {
@@ -142,7 +153,8 @@ struct ContentView: View {
                     }
                     .padding(.bottom, 12)
 
-                    if !offlineQueue.isEmpty {
+                    #if DEBUG
+                    if debugMode, !offlineQueue.isEmpty {
                         HStack(spacing: 8) {
                             Text("\(offlineQueue.count) uploads queued")
                                 .font(.system(.caption, design: .monospaced))
@@ -159,15 +171,7 @@ struct ContentView: View {
                         .clipShape(Capsule())
                         .padding(.bottom, 4)
                     }
-
-                    StatusBarView(
-                        isConnected: connectivityMonitor.isConnected,
-                        lastDetection: frameProcessor?.lastDetectionTime,
-                        plateCount: frameProcessor?.totalPlates ?? 0,
-                        targetCount: apiClient?.totalTargets ?? 0,
-                        hasGPS: locationManager.hasPermission,
-                        nearbySightings: alertClient?.nearbySightings ?? 0
-                    )
+                    #endif
                 }
             }
 
@@ -191,6 +195,7 @@ struct ContentView: View {
         .onReceive(statusTimer) { _ in
             lastStatusUpdate = Date()
             pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
+            pendingSessionPlates = offlineQueue.pendingPlateCount(sessionID: sessionID)
             if showingSummary {
                 syncSessionSummaryArtifact()
             }
@@ -209,6 +214,7 @@ struct ContentView: View {
                 locationManager.requestPermission()
             }
             pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
+            pendingSessionPlates = offlineQueue.pendingPlateCount(sessionID: sessionID)
             clearSessionSummaryArtifact()
             startE2EStopWatcher()
         }
