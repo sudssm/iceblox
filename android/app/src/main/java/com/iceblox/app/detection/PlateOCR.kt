@@ -31,16 +31,24 @@ class PlateOCR {
             val result = Tasks.await(recognizer.process(image))
             val bestLine = result.textBlocks
                 .flatMap { it.lines }
-                .maxByOrNull { it.text.length }
+                .filter { (it.confidence ?: 1.0f) >= confidenceThreshold }
+                .maxByOrNull { it.confidence ?: 1.0f }
+
+            val allText = result.textBlocks.flatMap { it.lines }.joinToString(" | ") {
+                "${it.text} (${it.confidence ?: -1f})"
+            }
+            DebugLog.d(TAG, "OCR raw: [$allText] region=${region.toShortString()} crop=${width}x${height}")
 
             if (bestLine != null) {
                 val confidence = bestLine.confidence ?: 1.0f
                 if (confidence >= confidenceThreshold) {
                     OCRResult(text = bestLine.text, confidence = confidence)
                 } else {
+                    DebugLog.d(TAG, "OCR rejected: '${bestLine.text}' conf=$confidence < $confidenceThreshold")
                     null
                 }
             } else {
+                DebugLog.d(TAG, "OCR: no text blocks found")
                 null
             }
         } catch (e: Exception) {

@@ -7,6 +7,7 @@ export PEPPER
 DATA_DIR := data
 PLATES_FILE := $(DATA_DIR)/plates.txt
 ZIP_FILE := $(DATA_DIR)/plates.zip
+ZIP_URL_FILE := $(DATA_DIR)/.zip_url
 TRACKER_URL := https://www.stopice.net/platetracker
 
 DB_DSN ?= postgres://$(USER)@localhost:5432/iceblox?sslmode=disable
@@ -14,18 +15,24 @@ TEST_DB ?= iceblox_test
 
 .PHONY: setup extract run-server run-test-server db db-stop test test-db lint clean
 
-## setup: Download the latest ICE plate data ZIP from StopICE
+## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
-	mkdir -p $(DATA_DIR)
-	@echo "Fetching latest download link from StopICE..."
+	@mkdir -p $(DATA_DIR)
+	@echo "Checking for latest download link from StopICE..."
 	$(eval ZIP_NAME := $(shell curl -sL "$(TRACKER_URL)/?data=1" | sed -n 's/.*href="\(stopice_platetracker_compiled\/[^"]*\.zip\)".*/\1/p' | head -1))
 	@if [ -z "$(ZIP_NAME)" ]; then echo "ERROR: could not find ZIP download link"; exit 1; fi
-	@echo "Downloading $(ZIP_NAME)..."
-	curl -L "$(TRACKER_URL)/$(ZIP_NAME)" -o $(ZIP_FILE)
-	@echo "Downloaded to $(ZIP_FILE) ($$(du -h $(ZIP_FILE) | cut -f1))"
+	@if [ -f $(ZIP_FILE) ] && [ -f $(ZIP_URL_FILE) ] && [ "$$(cat $(ZIP_URL_FILE))" = "$(ZIP_NAME)" ]; then \
+		echo "plates.zip is already up to date ($(ZIP_NAME))"; \
+	else \
+		echo "Downloading $(ZIP_NAME)..."; \
+		curl -L "$(TRACKER_URL)/$(ZIP_NAME)" -o $(ZIP_FILE); \
+		echo "$(ZIP_NAME)" > $(ZIP_URL_FILE); \
+		echo "Downloaded to $(ZIP_FILE) ($$(du -h $(ZIP_FILE) | cut -f1))"; \
+	fi
 
 ## extract: Parse the XML from the ZIP and produce plates.txt (one plate per line, normalized)
-extract: $(ZIP_FILE)
+extract: $(PLATES_FILE)
+$(PLATES_FILE): $(ZIP_FILE)
 	@echo "Extracting plates from XML..."
 	unzip -p $(ZIP_FILE) "*.xml" \
 		| sed -n 's/.*<vehicle_license>\(.*\)<\/vehicle_license>.*/\1/p' \

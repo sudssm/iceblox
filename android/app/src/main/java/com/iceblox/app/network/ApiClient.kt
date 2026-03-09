@@ -33,6 +33,7 @@ class ApiClient(
     private val client = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var batchJob: Job? = null
+    private var deadlineJob: Job? = null
     private val deviceId: String = Settings.Secure.getString(
         context.contentResolver,
         Settings.Secure.ANDROID_ID
@@ -92,11 +93,21 @@ class ApiClient(
     private suspend fun checkAndFlushInternal() {
         val count = queueDao.count()
         if (count >= AppConfig.BATCH_SIZE) {
+            deadlineJob?.cancel()
+            deadlineJob = null
             sendBatch()
+        } else if (count > 0 && deadlineJob == null) {
+            deadlineJob = scope.launch {
+                delay(AppConfig.MAX_BATCH_WAIT_MS)
+                deadlineJob = null
+                sendBatch()
+            }
         }
     }
 
     private suspend fun sendBatch() {
+        deadlineJob?.cancel()
+        deadlineJob = null
         if (retryManager.isRateLimited) {
             DebugLog.w(TAG, "sendBatch: rate limited, skipping")
             return

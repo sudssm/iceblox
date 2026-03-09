@@ -55,6 +55,14 @@ func (m *mockTargets) PlateID(hash string) (int64, bool) {
 	return id, ok
 }
 
+func (m *mockTargets) Plate(hash string) (string, bool) {
+	_, ok := m.hashes[hash]
+	if !ok {
+		return "", false
+	}
+	return "TESTPLATE", true
+}
+
 func (m *mockTargets) Count() int {
 	return len(m.hashes)
 }

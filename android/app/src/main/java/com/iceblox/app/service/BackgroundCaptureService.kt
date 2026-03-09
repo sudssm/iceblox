@@ -15,6 +15,7 @@ import com.iceblox.app.R
 import com.iceblox.app.camera.CameraCaptureBinder
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
+import android.content.pm.ServiceInfo
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -31,7 +32,7 @@ class BackgroundCaptureService : LifecycleService() {
             AppConfig.ACTION_STOP_BACKGROUND_CAPTURE -> stopCapture()
             AppConfig.ACTION_START_BACKGROUND_CAPTURE -> startCapture()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startCapture() {
@@ -42,10 +43,17 @@ class BackgroundCaptureService : LifecycleService() {
         }
 
         ensureNotificationChannel()
-        startForeground(
-            AppConfig.BACKGROUND_CAPTURE_NOTIFICATION_ID,
-            buildNotification()
-        )
+        try {
+            startForeground(
+                AppConfig.BACKGROUND_CAPTURE_NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            )
+        } catch (e: SecurityException) {
+            DebugLog.w(TAG, "Cannot start foreground service: ${e.message}")
+            stopSelf()
+            return
+        }
         repository.setBackgroundActive(true)
 
         if (!captureBound) {

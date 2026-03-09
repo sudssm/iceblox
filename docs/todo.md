@@ -12,6 +12,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
+- [x] **Match detection logging** — Emit structured log line with plaintext plate, hash, and GPS on match (REQ-O-1). Implemented via `Plate()` method on target store.
 
 ---
 
@@ -43,6 +44,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app/test-scenarios.md`](specs/mobile-app/test-scenarios.md) → E2E Tests
 
+- [x] **Background capture E2E test** — Verify app process survives backgrounding and produces sightings while backgrounded (TS-E2E-10)
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---

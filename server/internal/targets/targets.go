@@ -19,7 +19,8 @@ type Record struct {
 
 type Store struct {
 	mu      sync.RWMutex
-	hashes  map[string]int64 // hash → plate_id (0 until DB sync)
+	hashes  map[string]int64  // hash → plate_id (0 until DB sync)
+	plates  map[string]string // hash → plaintext plate
 	records []Record
 	path    string
 	pepper  []byte
@@ -45,6 +46,13 @@ func (s *Store) PlateID(hash string) (int64, bool) {
 	defer s.mu.RUnlock()
 	id, ok := s.hashes[hash]
 	return id, ok
+}
+
+func (s *Store) Plate(hash string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	plate, ok := s.plates[hash]
+	return plate, ok
 }
 
 func (s *Store) Count() int {
@@ -83,6 +91,7 @@ func (s *Store) load() error {
 	defer f.Close()
 
 	hashes := make(map[string]int64)
+	plates := make(map[string]string)
 	var records []Record
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -92,6 +101,7 @@ func (s *Store) load() error {
 		}
 		h := computeHMAC(plate, s.pepper)
 		hashes[h] = 0
+		plates[h] = plate
 		records = append(records, Record{Plate: plate, Hash: h})
 	}
 	if err := scanner.Err(); err != nil {
@@ -100,6 +110,7 @@ func (s *Store) load() error {
 
 	s.mu.Lock()
 	s.hashes = hashes
+	s.plates = plates
 	s.records = records
 	s.mu.Unlock()
 

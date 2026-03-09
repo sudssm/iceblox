@@ -77,7 +77,11 @@ fun CameraScreen(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> viewModel.startForegroundPipeline(isTestMode)
-                Lifecycle.Event.ON_STOP -> viewModel.stopForegroundPipeline()
+                Lifecycle.Event.ON_STOP -> {
+                    if (!isTestMode) {
+                        viewModel.stopForegroundPipeline()
+                    }
+                }
                 else -> {}
             }
         }
