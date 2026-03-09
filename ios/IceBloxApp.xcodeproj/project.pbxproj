@@ -40,6 +40,8 @@
 		A1B2C3D4E5F60001000041 /* AlertClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000041 /* AlertClientTests.swift */; };
 		A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */; };
 		A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000045 /* Pepper.swift */; };
+		A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */; };
+		A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -87,6 +89,8 @@
 		A1B2C3D4E5F60002000041 /* AlertClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClientTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000045 /* Pepper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pepper.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpander.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpanderTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +150,7 @@
 				A1B2C3D4E5F60002000004 /* IceBloxAppTests.swift */,
 				A1B2C3D4E5F60002000041 /* AlertClientTests.swift */,
 				A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */,
+				A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */,
 			);
 			path = IceBloxAppTests;
 			sourceTree = "<group>";
@@ -222,6 +227,7 @@
 				A1B2C3D4E5F60002000021 /* PlateNormalizer.swift */,
 				A1B2C3D4E5F60002000022 /* PlateHasher.swift */,
 				A1B2C3D4E5F60002000023 /* DeduplicationCache.swift */,
+				A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */,
 			);
 			path = Processing;
 			sourceTree = "<group>";
@@ -378,6 +384,7 @@
 				A1B2C3D4E5F60001000039 /* SimulatorCamera.swift in Sources */,
 				A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */,
 				A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */,
+				A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,6 +395,7 @@
 				A1B2C3D4E5F60001000004 /* IceBloxAppTests.swift in Sources */,
 				A1B2C3D4E5F60001000041 /* AlertClientTests.swift in Sources */,
 				A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */,
+				A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

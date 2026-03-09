@@ -129,6 +129,7 @@ class ApiClient(
                     .atOffset(ZoneOffset.UTC)
                     .format(DateTimeFormatter.ISO_INSTANT)
                 put("timestamp", ts)
+                put("substitutions", entry.substitutions)
             }
 
             val request = Request.Builder()

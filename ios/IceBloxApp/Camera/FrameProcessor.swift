@@ -48,6 +48,8 @@ final class FrameProcessor: ObservableObject {
     private var frameCount = 0
     private var fpsFrameCount = 0
     private var fpsTimer = Date()
+    private var variantHashMap: [String: String] = [:]
+    private let variantHashQueue = DispatchQueue(label: "com.iceblox.variantHashMap")
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient, sessionID: String) {
         self.offlineQueue = offlineQueue
@@ -151,11 +153,12 @@ final class FrameProcessor: ObservableObject {
 
     func onPlateSent(hash: String, matched: Bool) {
         let prefix = String(hash.prefix(8))
+        let primaryPrefix = variantHashQueue.sync { variantHashMap[prefix] } ?? prefix
         let newState: DetectionState = matched ? .matched : .sent
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var feed = self.detectionFeed
-            if let idx = feed.lastIndex(where: { $0.hashPrefix == prefix && $0.state == .queued }) {
+            if let idx = feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state == .queued }) {
                 feed[idx] = DetectionFeedEntry(
                     plateText: feed[idx].plateText,
                     hashPrefix: feed[idx].hashPrefix,
@@ -201,20 +204,34 @@ final class FrameProcessor: ObservableObject {
     ) -> FrameResult? {
         if dedupCache.isDuplicate(normalizedText) { return nil }
 
-        let hash = PlateHasher.hash(normalizedPlate: normalizedText)
-        DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(hash.prefix(8)))")
+        let variants = LookalikeExpander.expand(normalizedText)
+        let primaryHash = PlateHasher.hash(normalizedPlate: variants[0].0)
+        let primaryPrefix = String(primaryHash.prefix(8))
 
-        let entry = OfflineQueueEntry(
-            plateHash: hash,
-            latitude: locationManager.latitude,
-            longitude: locationManager.longitude,
-            sessionID: sessionID
-        )
-        offlineQueue.enqueue(entry)
+        DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(primaryPrefix) variants=\(variants.count)")
+
+        for (variantText, substitutions) in variants {
+            let hash = substitutions == 0 ? primaryHash : PlateHasher.hash(normalizedPlate: variantText)
+            let prefix = String(hash.prefix(8))
+            if prefix != primaryPrefix {
+                variantHashQueue.sync { variantHashMap[prefix] = primaryPrefix }
+            }
+            let entry = OfflineQueueEntry(
+                plateHash: hash,
+                latitude: locationManager.latitude,
+                longitude: locationManager.longitude,
+                sessionID: sessionID,
+                substitutions: substitutions
+            )
+            offlineQueue.enqueue(entry)
+        }
+
+        let extraCount = variants.count - 1
+        let feedText = extraCount > 0 ? "\(normalizedText) (+\(extraCount))" : normalizedText
 
         let feedEntry = DetectionFeedEntry(
-            plateText: normalizedText,
-            hashPrefix: String(hash.prefix(8)),
+            plateText: feedText,
+            hashPrefix: primaryPrefix,
             state: .queued,
             timestamp: Date()
         )
@@ -229,7 +246,7 @@ final class FrameProcessor: ObservableObject {
 
         return FrameResult(
             plateText: rawText,
-            hash: hash,
+            hash: primaryHash,
             boundingBox: boundingBox,
             confidence: confidence
         )

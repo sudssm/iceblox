@@ -34,7 +34,8 @@ ios/
 │   ├── Processing/
 │   │   ├── PlateNormalizer.swift      # Uppercase, strip, validate length
 │   │   ├── PlateHasher.swift          # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
-│   │   └── DeduplicationCache.swift   # Time-windowed set of recently seen plates
+│   │   ├── DeduplicationCache.swift   # Time-windowed set of recently seen plates
+│   │   └── LookalikeExpander.swift   # BFS expansion of confusable characters (REQ-M-12a)
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
 │   │   ├── AlertClient.swift          # Subscribe endpoint client, 10-min timer, GPS truncation
@@ -56,7 +57,8 @@ ios/
 └── IceBloxAppTests/
     ├── IceBloxAppTests.swift          # Unit tests
     ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
-    └── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
+    ├── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
+    └── LookalikeExpanderTests.swift   # Lookalike character expansion tests (REQ-M-12a)
 ```
 
 ## Architecture

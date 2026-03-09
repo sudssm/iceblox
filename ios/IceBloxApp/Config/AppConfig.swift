@@ -31,6 +31,8 @@ enum AppConfig {
     static let retryMaxDelay: TimeInterval = 300
     static let retryMaxAttempts = 10
 
+    static let maxLookalikeVariants = 64
+
     static let frameSkipCount = 2
     static let throttledFrameSkipCount = 6
 
