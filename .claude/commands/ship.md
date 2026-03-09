@@ -74,7 +74,7 @@ Push the branch to origin and create a pull request targeting `main` using `gh p
 
 ## Step 9: Merge the PR
 
-After the PR is created, merge it using `gh pr merge --squash --delete-branch`. If merge fails (e.g., due to checks), report the error and stop.
+After the PR is created, merge it using `gh pr merge --squash`. Do NOT use `--delete-branch` — it fails when `main` is checked out in another worktree. If merge fails (e.g., due to checks), report the error and stop.
 
 ## Step 10: Fast-forward local main after merge
 
