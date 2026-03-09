@@ -88,7 +88,8 @@ android/
                 ├── AlertClientTest.kt      # AlertClient GPS truncation, timer, subscribe tests
                 ├── DeviceTokenManagerTest.kt # Token registration request tests
                 ├── NotificationHelperTest.kt # Notification channel and display tests
-                └── LookalikeExpanderTest.kt # Lookalike character expansion tests (REQ-M-12a)
+                ├── LookalikeExpanderTest.kt # Lookalike character expansion tests (REQ-M-12a)
+                └── DetectionFeedUpdateTest.kt # Concurrent StateFlow update tests for detection feed
 ```
 
 ## Architecture
@@ -178,7 +179,7 @@ Release builds enable R8 minification and resource shrinking. ProGuard rules for
 | **No local Java runtime** | This dev machine has no system Java. Android builds (`./gradlew assembleDebug`) require a JDK. Android Studio bundles one at `/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/`. For CI or CLI builds, install via `brew install openjdk`. |
 | **Background capture** | Android background capture runs in a `LifecycleService` foreground service with `foregroundServiceType="camera"`. The activity stops that service on foreground so CameraX preview can rebind cleanly without competing for the camera. |
 | **DebugLog replaces android.util.Log** | All `Log.d/w/e` calls are replaced with `DebugLog.d/w/e`. This routes logs through both `android.util.Log` (for logcat) and a 50-entry ring buffer (for the in-app panel). Throwable overloads (`d/w/e(tag, msg, throwable)`) append the exception message. |
-| **Thread safety for StateFlow** | `DebugLog` uses `@Synchronized` on the buffer mutation and emits via `MutableStateFlow`. Compose collects via `collectAsState()` — no main-thread dispatch needed since Compose recomposition handles the thread hop. |
+| **Thread safety for StateFlow** | `DebugLog` uses `@Synchronized` on the buffer mutation and emits via `MutableStateFlow`. `CaptureRepository` uses `MutableStateFlow.update {}` for atomic read-modify-write on the detection feed (prevents lost updates from concurrent add/markSent calls). Compose collects via `collectAsState()` — no main-thread dispatch needed since Compose recomposition handles the thread hop. |
 | **Debug gating** | Debug overlay is gated behind `BuildConfig.DEBUG` — stripped from release builds by ProGuard/R8. |
 | **TFLite output tensor format** | YOLOv8 TFLite outputs `[1, 5, 8400]` for single-class (not `[1, 8400, 5]`). NMS must be implemented manually — unlike Core ML which bakes NMS into the export. |
 | **keytool location** | System `keytool` may not be in PATH. Use Android Studio's bundled JDK: `/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool`. |

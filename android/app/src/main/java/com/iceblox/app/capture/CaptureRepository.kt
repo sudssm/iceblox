@@ -244,11 +244,15 @@ class CaptureRepository(private val application: Application) {
 
         if (matched) {
             pendingVariants.remove(primaryPrefix)
-            val current = _detectionFeed.value.toMutableList()
-            val idx = current.indexOfLast { it.hashPrefix == primaryPrefix && it.state != DetectionState.MATCHED }
-            if (idx >= 0) {
-                current[idx] = current[idx].copy(state = DetectionState.MATCHED)
-                _detectionFeed.value = current
+            _detectionFeed.update { feed ->
+                val current = feed.toMutableList()
+                val idx = current.indexOfLast { it.hashPrefix == primaryPrefix && it.state != DetectionState.MATCHED }
+                if (idx >= 0) {
+                    current[idx] = current[idx].copy(state = DetectionState.MATCHED)
+                    current
+                } else {
+                    feed
+                }
             }
         } else {
             val counter = pendingVariants[primaryPrefix]
@@ -264,21 +268,29 @@ class CaptureRepository(private val application: Application) {
                 true
             }
             if (allSent) {
-                val current = _detectionFeed.value.toMutableList()
-                val idx = current.indexOfLast { it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED }
-                if (idx >= 0) {
-                    current[idx] = current[idx].copy(state = DetectionState.SENT)
-                    _detectionFeed.value = current
+                _detectionFeed.update { feed ->
+                    val current = feed.toMutableList()
+                    val idx = current.indexOfLast {
+                        it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED
+                    }
+                    if (idx >= 0) {
+                        current[idx] = current[idx].copy(state = DetectionState.SENT)
+                        current
+                    } else {
+                        feed
+                    }
                 }
             }
         }
     }
 
     private fun addFeedEntry(entry: DetectionFeedEntry) {
-        val current = _detectionFeed.value.toMutableList()
-        current.add(0, entry)
-        if (current.size > 20) current.subList(20, current.size).clear()
-        _detectionFeed.value = current
+        _detectionFeed.update { feed ->
+            val current = feed.toMutableList()
+            current.add(0, entry)
+            if (current.size > 20) current.subList(20, current.size).clear()
+            current
+        }
     }
 
     private fun refreshQueueDepth() {
