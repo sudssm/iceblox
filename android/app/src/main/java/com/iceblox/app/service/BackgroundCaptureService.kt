@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -15,7 +16,6 @@ import com.iceblox.app.R
 import com.iceblox.app.camera.CameraCaptureBinder
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
-import android.content.pm.ServiceInfo
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
