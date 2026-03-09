@@ -8,6 +8,9 @@
 #   make export         Export to Core ML (.mlpackage) and TFLite (.tflite)
 #   make deploy         Copy exported models to iOS and Android app directories
 #   make all            Run full pipeline: download → train → export → deploy
+#   make export-ocr     Download + verify CCT-XS ONNX OCR model
+#   make evaluate-ocr   Validate OCR model on real plate images (go/no-go gate)
+#   make deploy-ocr     Copy OCR ONNX model to iOS and Android app directories
 #   make clean          Remove training artifacts (keeps exported models)
 #
 # The trained model detects a single class ("license-plate") using YOLOv8-nano
@@ -30,7 +33,8 @@ EXPORT_DIR     := exports
 IOS_MODEL_DIR  := ../ios/IceBloxApp/Models
 ANDROID_ASSETS := ../android/app/src/main/assets
 
-.PHONY: all setup download train validate export deploy clean help
+.PHONY: all setup download train validate export deploy clean help \
+       download-ocr export-ocr deploy-ocr evaluate-ocr
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -109,6 +113,27 @@ deploy: ## Copy exported models to iOS and Android app directories
 	@echo "  iOS:     $(IOS_MODEL_DIR)/plate_detector.mlpackage"
 	@echo "  Android: $(ANDROID_ASSETS)/plate_detector.tflite"
 
+# ── OCR Model (fast-plate-ocr CCT-XS) ──────────────────────────────────────
+
+download-ocr: setup ## Download CCT-XS ONNX model from fast-plate-ocr
+	$(PYTHON) $(TRAINING_DIR)/export_ocr.py --download-only
+
+export-ocr: setup ## Download + verify CCT-XS ONNX model
+	$(PYTHON) $(TRAINING_DIR)/export_ocr.py
+
+evaluate-ocr: setup ## Validate OCR model on real plate images (go/no-go gate)
+	@test -f $(EXPORT_DIR)/plate_ocr.onnx || (echo "Error: No ONNX model. Run 'make export-ocr' first." && exit 1)
+	$(PYTHON) $(TRAINING_DIR)/evaluate_ocr.py $(if $(TEST_DIR),--test-dir $(TEST_DIR))
+
+deploy-ocr: ## Copy OCR ONNX model to iOS and Android app directories
+	@test -f $(EXPORT_DIR)/plate_ocr.onnx || (echo "Error: No ONNX OCR model. Run 'make export-ocr' first." && exit 1)
+	@mkdir -p $(IOS_MODEL_DIR) $(ANDROID_ASSETS)
+	@echo "Deploying OCR model to app directories..."
+	cp $(EXPORT_DIR)/plate_ocr.onnx $(IOS_MODEL_DIR)/
+	cp $(EXPORT_DIR)/plate_ocr.onnx $(ANDROID_ASSETS)/
+	@echo "  iOS:     $(IOS_MODEL_DIR)/plate_ocr.onnx"
+	@echo "  Android: $(ANDROID_ASSETS)/plate_ocr.onnx"
+
 # ── Detect ───────────────────────────────────────────────────────────────────
 
 detect: setup ## Run detection on images: make detect IMAGES=path/to/images
@@ -121,6 +146,7 @@ clean: ## Remove training runs, dataset cache, and exports
 	rm -rf $(RUNS_DIR) $(DATASET_DIR) $(EXPORT_DIR)
 	rm -f $(TRAINING_DIR)/evaluation_report.json
 	rm -rf $(TRAINING_DIR)/evaluation_results $(TRAINING_DIR)/detection_results
+	rm -rf $(TRAINING_DIR)/ocr_model
 	rm -f CHANGELOG.md
 	@echo "Cleaned training artifacts. Venv preserved (use 'make clean-all' to remove)."
 

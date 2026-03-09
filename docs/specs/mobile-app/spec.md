@@ -121,8 +121,10 @@ The app MUST deduplicate detected plates within a configurable time window (defa
 The app MUST perform OCR on detected plate regions entirely on-device. OCR MUST NOT require network connectivity.
 
 **Platform implementations:**
-- **iOS**: Vision framework (`VNRecognizeTextRequest`) with `.accurate` recognition level
-- **Android**: ML Kit Text Recognition
+- **iOS**: ONNX Runtime CCT-XS recognition model (`.onnx`) with native fixed-slot decoding
+- **Android**: ONNX Runtime CCT-XS recognition model (`.onnx`) with native fixed-slot decoding
+
+See [`license_plate_ocr.md`](./license_plate_ocr.md) for model architecture, conversion pipeline, and validation criteria.
 
 #### REQ-M-10: Plate Text Normalization
 
@@ -137,7 +139,7 @@ If the normalized result is fewer than 2 characters or more than 8 characters, i
 
 #### REQ-M-11: OCR Confidence Threshold
 
-The app MUST apply a configurable confidence threshold (default: 0.6) for OCR results. Results below this threshold MUST be discarded. On iOS, this maps to `VNRecognizedText.confidence`. On Android, this maps to `Text.TextBlock.confidence`.
+The app MUST apply a configurable confidence threshold (default: 0.6) for OCR results. Results below this threshold MUST be discarded. Confidence is computed as the average softmax probability of non-padding characters from the CCT-XS fixed-slot model output.
 
 ### Hashing
 
@@ -462,7 +464,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 |---|---|
 | Camera capture | AVFoundation (`AVCaptureSession`) |
 | Plate detection | Core ML (YOLOv8-nano `.mlpackage`) |
-| OCR | Vision (`VNRecognizeTextRequest`) |
+| OCR | ONNX Runtime (CCT-XS `.onnx` + fixed-slot decode) |
 | Hashing | CryptoKit (`HMAC<SHA256>`) |
 | Pepper storage | Build-time constant (generated from root `.env` by Xcode build phase) |
 | Local database | Core Data or SQLite (for offline queue) |
@@ -475,7 +477,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 |---|---|
 | Camera capture | CameraX |
 | Plate detection | TFLite (YOLOv8-nano `.tflite`) |
-| OCR | ML Kit Text Recognition |
+| OCR | ONNX Runtime (CCT-XS `.onnx` + fixed-slot decode) |
 | Hashing | `javax.crypto.Mac` with `HmacSHA256` |
 | Pepper storage | Build-time constant (injected from root `.env` via `BuildConfig`) |
 | Local database | Room (for offline queue) |
@@ -508,6 +510,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 | Targets counter styling | No special color treatment |
 | Session stop behavior | Stop immediately halts capture/detection, triggers a final flush attempt, then shows a summary |
 | Session summary semantics | Plates = unique queued reads, ICE = confirmed matches attributed to that session, duration = start-to-stop elapsed time |
+| OCR model | fast-plate-ocr CCT-XS (global, 65+ countries), deployed as ONNX to both platforms with native fixed-slot decoding |
 
 ## Open Questions
 
@@ -516,6 +519,7 @@ None — all questions resolved. See `Resolved Decisions` above.
 ## Related Specs
 
 - [`license_plate_detection.md`](./license_plate_detection.md) — Phase 1 model training data, pipeline, and validation criteria
+- [`license_plate_ocr.md`](./license_plate_ocr.md) — CCT-XS OCR model architecture, export pipeline, and validation criteria
 - [`../../future/yolo_model_improvements.md`](../../future/yolo_model_improvements.md) — Phase 2 (expanded data) and Phase 3 (custom collection) plans
 
 ---
@@ -543,7 +547,7 @@ ios/IceBloxApp/
 │   └── SimulatorCamera.swift           # Timer-driven frame generator for simulator testing (simulator-only)
 ├── Detection/
 │   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
-│   └── PlateOCR.swift                  # Vision VNRecognizeTextRequest on cropped regions
+│   └── PlateOCR.swift                  # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped regions
 ├── Processing/
 │   ├── PlateNormalizer.swift           # Uppercase, strip, validate length
 │   ├── PlateHasher.swift              # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
@@ -562,7 +566,8 @@ ios/IceBloxApp/
 │   ├── AppConfig.swift                 # Confidence thresholds, batch size, dedup window, server URL
 │   └── Pepper.swift                    # Generated at build time from root .env (gitignored)
 ├── Models/
-│   └── plate_detector.mlpackage        # YOLOv8-nano Core ML model (bundled)
+│   ├── plate_detector.mlpackage        # YOLOv8-nano Core ML model (bundled)
+│   └── plate_ocr.onnx                 # CCT-XS ONNX OCR model (bundled)
 └── Info.plist                          # Camera, location usage descriptions
 ```
 
@@ -574,7 +579,7 @@ ios/IceBloxApp/
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
 | 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Splash screen with Start Camera button → full-screen camera preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
-| 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | Vision text recognition on cropped plate regions, normalization, validation |
+| 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped plate regions, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper obfuscation, immediate plaintext discard |
 | 7 | Deduplication | REQ-M-8 | Time-windowed cache keyed by normalized text |
 | 8 | Frame processor | REQ-M-30 | Wire pipeline: frame → detect → OCR → normalize → dedup → hash → queue |
@@ -646,7 +651,7 @@ android/app/src/main/java/com/iceblox/app/
 │   └── TestFrameFeeder.kt              # Test mode: loads images, feeds them through analyzeBitmap() on a timer
 ├── detection/
 │   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
-│   └── PlateOCR.kt                      # ML Kit Text Recognition on cropped bitmaps
+│   └── PlateOCR.kt                      # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps
 ├── processing/
 │   ├── PlateNormalizer.kt               # Uppercase, strip, validate
 │   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper from BuildConfig
@@ -669,7 +674,8 @@ android/app/src/main/java/com/iceblox/app/
 ├── service/
 │   └── BackgroundCaptureService.kt      # Foreground service for background camera capture
 └── assets/
-    └── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
+    ├── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
+    └── plate_ocr.onnx                  # CCT-XS ONNX OCR model (bundled)
 
 android/app/src/main/
 ├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET, POST_NOTIFICATIONS
@@ -687,7 +693,7 @@ android/app/src/debug/
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | CameraX preview + ImageAnalysis, 1080p resolution |
 | 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Compose: splash screen with Start Camera button → full-screen preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
-| 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ML Kit on cropped bitmaps, normalization, validation |
+| 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper obfuscation, plaintext discard |
 | 7 | Deduplication | REQ-M-8 | Time-windowed cache |
 | 8 | Frame analyzer | REQ-M-30 | Wire pipeline in ImageAnalysis.Analyzer callback |

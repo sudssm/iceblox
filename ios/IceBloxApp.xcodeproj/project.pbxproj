@@ -30,6 +30,8 @@
 		A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */; };
 		A1B2C3D4E5F60001000034 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */; };
 		A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */; };
+		A1B2C3D4E5F60001000043 /* plate_ocr.onnx in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000043 /* plate_ocr.onnx */; };
+		A1B2C3D4E5F60001000044 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6000D000002 /* onnxruntime */; };
 		A1B2C3D4E5F60001000036 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000036 /* DebugLog.swift */; };
 		A1B2C3D4E5F60001000037 /* DebugLogPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */; };
 		A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000038 /* SplashScreenView.swift */; };
@@ -76,6 +78,7 @@
 		A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugOverlayView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = plate_detector.mlpackage; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000043 /* plate_ocr.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = plate_ocr.onnx; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000036 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogPanel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000038 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
@@ -91,6 +94,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60001000044 /* onnxruntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,6 +247,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */,
+				A1B2C3D4E5F60002000043 /* plate_ocr.onnx */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -265,6 +270,9 @@
 			);
 			name = IceBloxApp;
 			productName = IceBloxApp;
+			packageProductDependencies = (
+				A1B2C3D4E5F6000D000002 /* onnxruntime */,
+			);
 			productReference = A1B2C3D4E5F60006000001 /* IceBloxApp.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -314,6 +322,9 @@
 			);
 			mainGroup = A1B2C3D4E5F60008000001 /* root */;
 			productRefGroup = A1B2C3D4E5F60008000004 /* Products */;
+			packageReferences = (
+				A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -330,6 +341,7 @@
 			files = (
 				A1B2C3D4E5F60001000003 /* Assets.xcassets in Resources */,
 				A1B2C3D4E5F60001000034 /* PrivacyInfo.xcprivacy in Resources */,
+				A1B2C3D4E5F60001000043 /* plate_ocr.onnx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -661,6 +673,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.20.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F6000D000002 /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1B2C3D4E5F60004000001 /* Project object */;
 }

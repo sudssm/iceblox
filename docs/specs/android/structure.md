@@ -39,7 +39,7 @@ android/
         │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config
         │   │   ├── detection/
         │   │   │   ├── PlateDetector.kt    # TFLite interpreter, YOLOv8-nano inference, NMS
-        │   │   │   └── PlateOCR.kt         # ML Kit Text Recognition on cropped bitmaps
+        │   │   │   └── PlateOCR.kt         # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps
         │   │   ├── location/
         │   │   │   └── LocationProvider.kt # FusedLocationProviderClient, permission handling
         │   │   ├── network/
@@ -158,7 +158,7 @@ The keystore file (`release.keystore`) is gitignored. Store it and its credentia
 
 ### R8 / ProGuard
 
-Release builds enable R8 minification and resource shrinking. ProGuard rules for third-party libraries (CameraX, Compose, ML Kit, OkHttp, Room) are maintained in `app/proguard-rules.pro`.
+Release builds enable R8 minification and resource shrinking. ProGuard rules for third-party libraries (CameraX, Compose, ONNX Runtime, OkHttp, Room) are maintained in `app/proguard-rules.pro`.
 
 ### Play Store
 
@@ -193,7 +193,7 @@ Core dependencies (managed via version catalog in `gradle/libs.versions.toml`):
 - `androidx.compose.material3` — Material Design 3
 - `androidx.camera:camera-*` (1.4.1) — CameraX: camera2, lifecycle, view
 - `org.tensorflow:tensorflow-lite` (2.16.1) — TFLite runtime for YOLOv8-nano inference
-- `com.google.mlkit:text-recognition` (16.0.1) — ML Kit OCR
+- `com.microsoft.onnxruntime:onnxruntime-android` (1.20.0) — ONNX Runtime for CCT-XS OCR inference
 - `androidx.room:room-runtime` + `room-ktx` (2.6.1) — SQLite offline queue persistence
 - `com.squareup.okhttp3:okhttp` (4.12.0) — HTTP client for server communication
 - `com.google.android.gms:play-services-location` (21.3.0) — Fused location provider

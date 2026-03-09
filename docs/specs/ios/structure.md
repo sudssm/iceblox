@@ -30,7 +30,7 @@ ios/
 │   │   └── SimulatorCamera.swift      # Timer-driven frame generator for simulator testing (simulator-only)
 │   ├── Detection/
 │   │   ├── PlateDetector.swift        # Core ML inference, bounding box extraction
-│   │   └── PlateOCR.swift             # Vision VNRecognizeTextRequest on cropped regions
+│   │   └── PlateOCR.swift             # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped regions
 │   ├── Processing/
 │   │   ├── PlateNormalizer.swift      # Uppercase, strip, validate length
 │   │   ├── PlateHasher.swift          # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
@@ -51,7 +51,8 @@ ios/
 │   ├── Debug/
 │   │   └── DebugLog.swift             # Singleton logger: ring buffer + @Published entries for UI
 │   └── Models/
-│       └── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
+│       ├── plate_detector.mlpackage   # YOLOv8-nano Core ML model (bundled at build time)
+│       └── plate_ocr.onnx            # CCT-XS ONNX OCR model (bundled at build time)
 └── IceBloxAppTests/
     ├── IceBloxAppTests.swift          # Unit tests
     ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
@@ -76,7 +77,7 @@ ios/
 | Dependency Management | Swift Package Manager | Built into Xcode, no third-party tooling needed |
 | Offline Queue | Raw SQLite | Lightweight, no Core Data overhead for simple schema |
 | Detection Model | Core ML `.mlpackage` (YOLOv8-nano) | Platform-native, NMS baked into export |
-| OCR | Vision framework | On-device, no network required |
+| OCR | ONNX Runtime (CCT-XS `.onnx` + fixed-slot decode) | Specialized plate model, on-device, no network required |
 | Background camera behavior | Foreground-only | Standard iOS apps cannot keep this camera pipeline running after backgrounding |
 
 ## Build & Run
@@ -122,11 +123,14 @@ Prerequisites for App Store submission:
 
 ## Dependencies
 
-None (stdlib + Apple frameworks only):
+Apple frameworks:
 - SwiftUI, UIKit (UI)
 - AVFoundation (camera capture)
-- CoreML, Vision (detection + OCR)
+- CoreML, Vision (plate detection)
 - CryptoKit (HMAC-SHA256)
 - CoreLocation (GPS)
 - Network (NWPathMonitor)
 - SQLite3 (offline queue)
+
+External:
+- `onnxruntime-swift-package-manager` (1.20.0) — ONNX Runtime for CCT-XS OCR inference
