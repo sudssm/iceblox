@@ -53,7 +53,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Build verification** — Full pipeline compiles and all 29 unit tests pass
 
 ### Hashing & Privacy
-- [x] **HMAC-SHA256** — PlateHasher.swift: CryptoKit `HMAC<SHA256>`, XOR-obfuscated pepper (REQ-M-12, REQ-M-42)
+- [x] **HMAC-SHA256** — PlateHasher.swift: CryptoKit `HMAC<SHA256>`, pepper from generated Pepper.swift (REQ-M-12, REQ-M-42)
 - [x] **Plaintext discard** — Normalized text not stored after hashing, no logging (REQ-M-13, REQ-M-40)
 
 ### Persistence & Networking
@@ -120,7 +120,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Frame analyzer** — FrameAnalyzer wired in ImageAnalysis.Analyzer, full pipeline via MainViewModel callback (REQ-M-30)
 
 ### Hashing & Privacy
-- [x] **HMAC-SHA256** — `javax.crypto.Mac` with XOR-obfuscated pepper matching iOS (REQ-M-12, REQ-M-42)
+- [x] **HMAC-SHA256** — `javax.crypto.Mac` with pepper from BuildConfig (REQ-M-12, REQ-M-42)
 - [x] **Plaintext discard** — Normalized text not stored after hashing, no logging (REQ-M-13, REQ-M-40)
 
 ### Persistence & Networking
