@@ -116,6 +116,17 @@ final class OfflineQueue {
         }
     }
 
+    func pendingPlateCount(sessionID: String) -> Int {
+        queue.sync {
+            let sql = "SELECT COUNT(*) FROM queue WHERE session_id = ? AND substitutions = 0"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, (sessionID as NSString).utf8String, -1, SQLITE_TRANSIENT)
+            return sqlite3_step(stmt) == SQLITE_ROW ? Int(sqlite3_column_int(stmt, 0)) : 0
+        }
+    }
+
     func clearAll() {
         queue.sync {
             sqlite3_exec(db, "DELETE FROM queue", nil, nil, nil)

@@ -43,7 +43,7 @@ Tapping "Start Camera" MUST create a new session, reset session-scoped counters,
 
 While a recording session is active, the camera view MUST display a persistent "Stop Recording" button.
 
-- Placement: bottom-center, directly above the status bar
+- Placement: bottom-center
 - Visibility: rendered above the camera preview and not hidden by debug UI
 - Interaction: one tap ends the active session
 
@@ -209,8 +209,9 @@ Whichever condition is met first triggers the send. When the queue contains more
 The server response includes a `results` array with a per-plate `matched` boolean (see server spec REQ-S-4). The `results` array is positionally aligned with the `plates` array in the request. The app MUST:
 - Iterate over the `results` array and correlate each result with the corresponding queued entry by position
 - Increment the originating session target counter for each plate where `matched` is `true`
-- Display the updated target count in the status bar
-- Map each variant hash back to its original plate's primary hash prefix (using an in-memory variant→primary mapping) and update the corresponding debug feed entry to MATCHED
+- Display the updated match count in the status bar
+- Map each variant hash back to its original plate's primary hash prefix (using an in-memory variant→primary mapping) and update the corresponding debug feed entry to MATCHED. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
+- For non-matched responses, defer updating the debug feed entry from QUEUED to SENT until all variants for the same primary plate have been acknowledged. This prevents premature SENT display while variants are still in-flight.
 - NOT alert the user or provide any visual/audio feedback on matches
 
 #### REQ-M-14b: Final Flush on Session Stop
@@ -427,31 +428,30 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 
 ```
 ┌──────────────────────────────────────────────────────┐
+│  ● Online │ Last: 2s ago │ Plates: 47 │ Matches: 2  │
 │                                                      │
 │                  Camera Preview                      │
 │                  (full screen)                       │
 │                                                      │
 │                                                      │
 │                [Stop Recording]                      │
-│              12 uploads queued ✕                     │
-│  ● Online │ Last: 2s ago │ Plates: 47 │ Targets: 2  │
 └──────────────────────────────────────────────────────┘
 ```
 
-- **Bottom-center control**:
-  - "Stop Recording" button, always visible during an active session
-  - Positioned directly above the upload queue banner (if visible) and the status bar
-  - Tapping ends the current session and opens the session summary
-- **Upload queue banner** (conditional, between stop button and status bar):
-  - Shown only when the offline queue is non-empty (`queueDepth > 0`)
-  - Displays `"N uploads queued"` in amber/yellow monospace text on a semi-transparent black pill-shaped background
-  - Includes a dismiss button (✕) that clears the entire offline queue
-  - Also shown on the splash screen (bottom-center) when there are queued entries from a previous session
-- **Status bar** (bottom, always visible):
+- **Status bar** (top, always visible):
   - Connectivity indicator (● Online / ● Offline)
   - Time since last plate detected ("Last: 2s ago", or "Last: --" if none)
   - Total plates detected this session
-  - Total target plates detected this session (from server match responses)
+  - Total match count this session (from server match responses), labeled "Matches"
+  - Pending plate count (plates queued but not yet uploaded), labeled "Pending" in amber/yellow, shown only when count > 0
+- **Bottom-center control**:
+  - "Stop Recording" button, always visible during an active session
+  - Tapping ends the current session and opens the session summary
+- **Upload queue banner** (debug mode only, below stop button):
+  - Shown only in debug builds with debug mode active, when the offline queue is non-empty (`queueDepth > 0`)
+  - Displays `"N uploads queued"` in amber/yellow monospace text on a semi-transparent black pill-shaped background
+  - Includes a dismiss button (✕) that clears the entire offline queue
+  - In production, the status bar "Pending" count replaces this banner
 - Camera preview fills the entire screen
 - Minimal UI — this is a "set and forget" dashboard app
 
@@ -542,12 +542,12 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 |---|---|
 | ML model | YOLOv8-nano, exported to Core ML (iOS) and TFLite (Android) |
 | Plate formats | US only |
-| Status bar content | Last detected timestamp, total plates, total targets; stop button sits directly above the status bar |
+| Status bar content | Top-positioned header bar: connectivity, last detected timestamp, total plates, matches, pending count |
 | Detection feedback | None (no sound, no vibration) |
 | HMAC pepper provisioning | Injected at build time from root `.env` (single source of truth) |
 | device_id | Hardware ID (`identifierForVendor` / `ANDROID_ID`) |
 | Training data (Phase 1) | HuggingFace license-plate-object-detection (8,823 images), fine-tuned from COCO |
-| Targets counter styling | No special color treatment |
+| Match/Pending counter styling | Matches: default color; Pending: amber/yellow when count > 0 |
 | Session stop behavior | Stop immediately halts capture/detection, triggers a final flush attempt, then shows a summary |
 | Session summary semantics | Plates = unique queued reads, ICE = confirmed matches attributed to that session, duration = start-to-stop elapsed time |
 | OCR model | fast-plate-ocr CCT-XS (global, 65+ countries), deployed as ONNX to both platforms with native fixed-slot decoding |
@@ -579,7 +579,7 @@ ios/IceBloxApp/
 ├── ContentView.swift                   # Root view, wires all managers, session lifecycle, stop control, session summary card
 ├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
 ├── Views/
-│   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
+│   ├── StatusBarView.swift             # Top status bar (online, last detected, counts, pending)
 │   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS, detection feed
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
@@ -629,7 +629,7 @@ ios/IceBloxApp/
 | 10 | Location | REQ-M-16 | CLLocationManager, attach GPS to each queue entry, "No GPS" warning |
 | 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-14b, REQ-M-17, REQ-M-17a | Batch POST, match response parsing, final flush on stop, exponential backoff, 429 handling |
 | 12 | Session UX | REQ-M-3c, REQ-M-3d | Session summary sheet, reset to idle after dismissal |
-| 13 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, targets count |
+| 13 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, matches count, pending count |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
 | 16 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |

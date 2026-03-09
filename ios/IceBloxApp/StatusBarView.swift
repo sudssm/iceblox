@@ -4,7 +4,8 @@ struct StatusBarView: View {
     let isConnected: Bool
     let lastDetection: Date?
     let plateCount: Int
-    let targetCount: Int
+    let matchCount: Int
+    let pendingCount: Int
     let hasGPS: Bool
     var nearbySightings: Int = 0
 
@@ -18,7 +19,11 @@ struct StatusBarView: View {
             }
             Text("Last: \(lastDetectionText)")
             Text("Plates: \(plateCount)")
-            Text("Targets: \(targetCount)")
+            Text("Matches: \(matchCount)")
+            if pendingCount > 0 {
+                Text("Pending: \(pendingCount)")
+                    .foregroundStyle(.yellow)
+            }
             if nearbySightings > 0 {
                 Text("Nearby: \(nearbySightings)")
                     .foregroundStyle(.cyan)
@@ -33,7 +38,7 @@ struct StatusBarView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(.black.opacity(0.6))
+        .background(.black.opacity(0.6), ignoresSafeAreaEdges: .top)
     }
 
     private var lastDetectionText: String {

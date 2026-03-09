@@ -60,10 +60,14 @@ class CaptureRepository(private val application: Application) {
     private val _queueDepth = MutableStateFlow(0)
     val queueDepth: StateFlow<Int> = _queueDepth
 
+    private val _pendingPlateCount = MutableStateFlow(0)
+    val pendingPlateCount: StateFlow<Int> = _pendingPlateCount
+
     private val _detectionFeed = MutableStateFlow<List<DetectionFeedEntry>>(emptyList())
     val detectionFeed: StateFlow<List<DetectionFeedEntry>> = _detectionFeed
 
     private val variantHashMap = ConcurrentHashMap<String, String>()
+    private val pendingVariants = ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>()
 
     val apiClient = ApiClient(
         context = application,
@@ -71,7 +75,14 @@ class CaptureRepository(private val application: Application) {
         retryManager = retryManager,
         onTargetMatched = { sessionId -> onTargetMatched(sessionId) },
         onPlateSent = { hash, matched, sessionId -> onPlateSent(hash, matched, sessionId) },
-        onQueueDepthChanged = { depth -> _queueDepth.value = depth }
+        onQueueDepthChanged = { depth ->
+            _queueDepth.value = depth
+            scope.launch(Dispatchers.IO) {
+                activeSessionId?.let { sid ->
+                    _pendingPlateCount.value = queueDao.pendingPlateCount(sid)
+                }
+            }
+        }
     )
 
     val frameAnalyzer = FrameAnalyzer(application) { plates ->
@@ -119,18 +130,23 @@ class CaptureRepository(private val application: Application) {
         activeSessionId = sessionId
         deduplicationCache.reset()
         variantHashMap.clear()
+        pendingVariants.clear()
         _plateCount.value = 0L
         _targetCount.value = 0
         _lastDetectionTime.value = 0L
+        _pendingPlateCount.value = 0
         _detectionFeed.value = emptyList()
     }
 
     suspend fun countBySessionId(sessionId: String): Int = queueDao.countBySessionId(sessionId)
 
+    suspend fun pendingPlateCount(sessionId: String): Int = queueDao.pendingPlateCount(sessionId)
+
     fun clearQueue() {
         scope.launch(Dispatchers.IO) {
             queueDao.deleteAll()
             _queueDepth.value = 0
+            _pendingPlateCount.value = 0
         }
     }
 
@@ -170,6 +186,8 @@ class CaptureRepository(private val application: Application) {
             val loc = locationProvider.currentLocation.value
             val now = System.currentTimeMillis()
 
+            pendingVariants[primaryPrefix] = java.util.concurrent.atomic.AtomicInteger(variants.size)
+
             scope.launch(Dispatchers.IO) {
                 for ((variantText, substitutions) in variants) {
                     val hash = if (substitutions == 0) primaryHash else PlateHasher.hash(variantText)
@@ -190,6 +208,7 @@ class CaptureRepository(private val application: Application) {
                 }
                 enforceMaxQueueSize()
                 _queueDepth.value = queueDao.count()
+                _pendingPlateCount.value = queueDao.pendingPlateCount(sessionId)
                 apiClient.checkAndFlush()
             }
 
@@ -222,16 +241,36 @@ class CaptureRepository(private val application: Application) {
     private fun onPlateSent(hash: String, matched: Boolean, sessionId: String) {
         val prefix = hash.take(8)
         val primaryPrefix = variantHashMap[prefix] ?: prefix
-        val newState = if (matched) DetectionState.MATCHED else DetectionState.SENT
-        val current = _detectionFeed.value.toMutableList()
-        val idx = if (matched) {
-            current.indexOfLast { it.hashPrefix == primaryPrefix && it.state != DetectionState.MATCHED }
+
+        if (matched) {
+            pendingVariants.remove(primaryPrefix)
+            val current = _detectionFeed.value.toMutableList()
+            val idx = current.indexOfLast { it.hashPrefix == primaryPrefix && it.state != DetectionState.MATCHED }
+            if (idx >= 0) {
+                current[idx] = current[idx].copy(state = DetectionState.MATCHED)
+                _detectionFeed.value = current
+            }
         } else {
-            current.indexOfLast { it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED }
-        }
-        if (idx >= 0) {
-            current[idx] = current[idx].copy(state = newState)
-            _detectionFeed.value = current
+            val counter = pendingVariants[primaryPrefix]
+            val allSent = if (counter != null) {
+                val remaining = counter.decrementAndGet()
+                if (remaining <= 0) {
+                    pendingVariants.remove(primaryPrefix)
+                    true
+                } else {
+                    false
+                }
+            } else {
+                true
+            }
+            if (allSent) {
+                val current = _detectionFeed.value.toMutableList()
+                val idx = current.indexOfLast { it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED }
+                if (idx >= 0) {
+                    current[idx] = current[idx].copy(state = DetectionState.SENT)
+                    _detectionFeed.value = current
+                }
+            }
         }
     }
 
@@ -245,6 +284,9 @@ class CaptureRepository(private val application: Application) {
     private fun refreshQueueDepth() {
         scope.launch(Dispatchers.IO) {
             _queueDepth.value = queueDao.count()
+            activeSessionId?.let { sid ->
+                _pendingPlateCount.value = queueDao.pendingPlateCount(sid)
+            }
         }
     }
 
