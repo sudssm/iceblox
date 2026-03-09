@@ -182,6 +182,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 - [x] **Background capture E2E test** — Verify app process survives backgrounding and produces sightings while backgrounded (TS-E2E-10)
 - [x] **Batch upload E2E test** — Verify batch-format POSTs, upload queue banner visibility, sighting creation, and banner clearing after flush
+- [x] **Match debug label E2E test** — Verify debug feed shows [MTCH] label after server returns a match for a target plate (TS-E2E-11)
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---

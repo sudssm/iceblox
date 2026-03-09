@@ -276,6 +276,7 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Stop recording summary**: The Android target-plate test taps `Stop Recording` and inspects the summary overlay. The iOS target-plate test triggers stop via an Application Support file and validates the summary artifact fields emitted by the app.
 - **Background capture** (`tests/test_background_capture.sh`): Pushes a target plate image, starts the camera, then backgrounds the app via `KEYCODE_HOME`. Verifies the app process survives backgrounding, remains alive after the batch flush window, and produces at least one sighting while backgrounded.
 - **Batch upload** (`tests/test_batch_upload.sh`): Pushes a target plate image, starts the camera, verifies the upload queue banner appears while plates are queued, waits for the batch flush, then verifies the server received batch-format POSTs (with `count=` in logs), sightings were recorded, and the upload queue banner cleared after the flush.
+- **Match debug label** (`tests/test_match_debug_label.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies the server logged a match and the debug feed shows a `[MTCH]` label for the matched plate.
 
 ### Prerequisites
 
