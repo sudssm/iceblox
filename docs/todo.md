@@ -12,6 +12,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
+- [x] **Request logging middleware** — Wrap the HTTP mux to log method/path/status/duration/device_id, and recover panics as logged 500s (REQ-S-17). Implemented in working tree.
 - [x] **Match detection logging** — Emit structured log line with plaintext plate, hash, and GPS on match (REQ-O-1). Implemented via `Plate()` method on target store.
 - [x] **Substitutions field** — Accept optional `substitutions` integer in `PlateRequest`, pass through to `RecordSighting`, store in sightings table (REQ-S-1, REQ-S-3)
 

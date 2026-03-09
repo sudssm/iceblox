@@ -118,9 +118,14 @@ make setup
 # Extract plates from XML into data/plates.txt
 make extract
 
+# Run schema migrations only
+make migrate
+
 # Run the server (loads plates, computes hashes, listens on :8080)
 make run-server
 ```
+
+Railway deployments run `make migrate` as a `preDeployCommand` before starting the new server instance.
 
 ### Android
 

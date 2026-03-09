@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://$(USER)@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract run-server run-test-server db db-stop server-test server-test-db server-lint android-test kill-server clean
+.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint android-test kill-server clean
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -44,6 +44,14 @@ $(PLATES_FILE): $(ZIP_FILE)
 		| grep -E '^[A-Z0-9]{2,8}$$' \
 		> $(PLATES_FILE)
 	@echo "Extracted $$(wc -l < $(PLATES_FILE) | tr -d ' ') unique plates to $(PLATES_FILE)"
+
+## migrate: Run database schema migrations without starting the server
+migrate:
+	@if [ -x /server ]; then \
+		/server --migrate-only --db-dsn "$${DATABASE_URL:-$(DB_DSN)}"; \
+	else \
+		cd server && go run ./cmd/server/... --migrate-only --db-dsn "$${DATABASE_URL:-$(DB_DSN)}"; \
+	fi
 
 ## run-server: Build and run the Go server
 run-server:

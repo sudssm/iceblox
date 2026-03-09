@@ -20,6 +20,43 @@ import (
 	"iceblox/server/internal/targets"
 )
 
+func TestRun_MigrateOnly_DoesNotRequirePepperOrPlates(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	env := map[string]string{
+		"DATABASE_URL": dsn,
+		"PLATES_FILE":  filepath.Join(t.TempDir(), "missing-plates.txt"),
+	}
+
+	if err := run(context.Background(), []string{"--migrate-only"}, func(key string) string {
+		return env[key]
+	}); err != nil {
+		t.Fatalf("run migrate-only: %v", err)
+	}
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	var count int
+	if err := database.Pool().QueryRowContext(context.Background(), `
+		SELECT COUNT(*)
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
+		  AND table_name IN ('plates', 'sightings', 'device_tokens')
+	`).Scan(&count); err != nil {
+		t.Fatalf("query tables: %v", err)
+	}
+	if count != 3 {
+		t.Fatalf("expected 3 migrated tables, got %d", count)
+	}
+}
+
 func TestEndToEnd_WithDatabase(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {

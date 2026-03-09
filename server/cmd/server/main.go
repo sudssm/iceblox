@@ -4,10 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -19,58 +21,73 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 8080, "server listen port")
-	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
-	pepper := flag.String("pepper", "", "HMAC pepper for hashing plates")
-	apnsKeyFile := flag.String("apns-key-file", "", "path to APNs .p8 key file")
-	apnsKeyID := flag.String("apns-key-id", "", "APNs key ID")
-	apnsTeamID := flag.String("apns-team-id", "", "APNs team ID")
-	apnsBundleID := flag.String("apns-bundle-id", "", "APNs bundle ID")
-	apnsProduction := flag.Bool("apns-production", false, "use APNs production endpoint")
-	fcmServiceAccount := flag.String("fcm-service-account", "", "path to FCM service account JSON file")
-	dbDSN := flag.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
-	flag.Parse()
+	if err := run(context.Background(), os.Args[1:], os.Getenv); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run(ctx context.Context, args []string, getenv func(string) string) error {
+	fs := flag.NewFlagSet("server", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	port := fs.Int("port", 8080, "server listen port")
+	platesFile := fs.String("plates-file", "data/plates.txt", "path to plaintext plates file")
+	pepper := fs.String("pepper", "", "HMAC pepper for hashing plates")
+	apnsKeyFile := fs.String("apns-key-file", "", "path to APNs .p8 key file")
+	apnsKeyID := fs.String("apns-key-id", "", "APNs key ID")
+	apnsTeamID := fs.String("apns-team-id", "", "APNs team ID")
+	apnsBundleID := fs.String("apns-bundle-id", "", "APNs bundle ID")
+	apnsProduction := fs.Bool("apns-production", false, "use APNs production endpoint")
+	fcmServiceAccount := fs.String("fcm-service-account", "", "path to FCM service account JSON file")
+	dbDSN := fs.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
+	migrateOnly := fs.Bool("migrate-only", false, "run database migrations and exit")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 
 	// Environment variables override flags (for Railway / container deployment)
-	if v := os.Getenv("PORT"); v != "" {
-		if p, err := fmt.Sscanf(v, "%d", port); p != 1 || err != nil {
-			log.Fatal("invalid PORT env")
+	if v := getenv("PORT"); v != "" {
+		p, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("invalid PORT env: %w", err)
 		}
+		*port = p
 	}
-	if v := os.Getenv("DATABASE_URL"); v != "" {
+	if v := getenv("DATABASE_URL"); v != "" {
 		*dbDSN = v
 	}
-	if v := os.Getenv("PEPPER"); v != "" {
+	if v := getenv("PEPPER"); v != "" {
 		*pepper = v
 	}
-	if v := os.Getenv("PLATES_FILE"); v != "" {
+	if v := getenv("PLATES_FILE"); v != "" {
 		*platesFile = v
 	}
 
-	if *pepper == "" {
-		log.Fatal("PEPPER is required: set via --pepper flag or PEPPER environment variable")
-	}
-
-	ctx := context.Background()
-
 	database, err := db.Connect(*dbDSN)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer database.Close()
 
 	if err := database.Migrate(ctx); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	log.Println("database migrations complete")
+	if *migrateOnly {
+		return nil
+	}
+
+	if *pepper == "" {
+		return fmt.Errorf("PEPPER is required: set via --pepper flag or PEPPER environment variable")
+	}
 
 	store, err := targets.New(*platesFile, []byte(*pepper))
 	if err != nil {
-		log.Fatalf("failed to load targets from %s: %v", *platesFile, err)
+		return fmt.Errorf("failed to load targets from %s: %w", *platesFile, err)
 	}
 
 	if err := seedDatabase(ctx, database, store); err != nil {
-		log.Fatalf("failed to seed database: %v", err)
+		return fmt.Errorf("failed to seed database: %w", err)
 	}
 
 	subStore := subscribers.New()
@@ -81,7 +98,7 @@ func main() {
 		var err error
 		apnsClient, err = push.NewAPNsClient(*apnsKeyFile, *apnsKeyID, *apnsTeamID, *apnsBundleID, *apnsProduction)
 		if err != nil {
-			log.Fatalf("failed to create APNs client: %v", err)
+			return fmt.Errorf("failed to create APNs client: %w", err)
 		}
 		log.Println("APNs client initialized")
 	}
@@ -91,7 +108,7 @@ func main() {
 		var err error
 		fcmClient, err = push.NewFCMClient(*fcmServiceAccount)
 		if err != nil {
-			log.Fatalf("failed to create FCM client: %v", err)
+			return fmt.Errorf("failed to create FCM client: %w", err)
 		}
 		log.Println("FCM client initialized")
 	}
@@ -110,7 +127,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", *port),
-		Handler:           mux,
+		Handler:           handler.RequestLoggingMiddleware(log.Default())(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -124,14 +141,14 @@ func main() {
 					log.Printf("reload failed: %v", err)
 					continue
 				}
-				if err := seedDatabase(context.Background(), database, store); err != nil {
+				if err := seedDatabase(ctx, database, store); err != nil {
 					log.Printf("failed to re-seed database: %v", err)
 					continue
 				}
 				continue
 			}
 			log.Println("shutting down gracefully")
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 			if err := srv.Shutdown(shutdownCtx); err != nil {
 				log.Printf("graceful shutdown failed: %v, forcing close", err)
@@ -143,8 +160,9 @@ func main() {
 
 	log.Printf("listening on :%d, %d targets loaded", *port, store.Count())
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatalf("server error: %v", err)
+		return fmt.Errorf("server error: %w", err)
 	}
+	return nil
 }
 
 // dbSightingQuerier adapts db.DB to the handler.SightingQuerier interface.
