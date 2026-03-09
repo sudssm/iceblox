@@ -8,10 +8,10 @@ import com.iceblox.app.notification.NotificationHelper
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.O])
@@ -63,9 +63,7 @@ class NotificationHelperTest {
         assertNotEquals(id1, id2)
     }
 
-    private fun notificationChannel(manager: NotificationManager): NotificationChannel? {
-        return Shadows.shadowOf(manager)
-            .notificationChannels
-            .firstOrNull { it.id == NotificationHelper.CHANNEL_ID }
-    }
+    private fun notificationChannel(manager: NotificationManager): NotificationChannel? = Shadows.shadowOf(manager)
+        .notificationChannels
+        .firstOrNull { it.id == NotificationHelper.CHANNEL_ID }
 }

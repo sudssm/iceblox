@@ -238,9 +238,21 @@ fun SessionSummaryOverlay(summary: SessionSummary, onDone: () -> Unit, modifier:
                 fontWeight = FontWeight.Bold
             )
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Plates seen: ${summary.platesSeen}", color = Color.White, fontFamily = FontFamily.Monospace)
-                Text("ICE vehicles: ${summary.iceVehicles}", color = Color.White, fontFamily = FontFamily.Monospace)
-                Text("Duration: ${formatSessionDuration(summary.durationMs)}", color = Color.White, fontFamily = FontFamily.Monospace)
+                Text(
+                    "Plates seen: ${summary.platesSeen}",
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    "ICE vehicles: ${summary.iceVehicles}",
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    "Duration: ${formatSessionDuration(summary.durationMs)}",
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
                 if (summary.pendingUploads > 0) {
                     Text(
                         "Pending sync: ${summary.pendingUploads} uploads",
