@@ -76,8 +76,8 @@ fun CameraScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> viewModel.startPipeline(isTestMode)
-                Lifecycle.Event.ON_STOP -> viewModel.stopPipeline()
+                Lifecycle.Event.ON_START -> viewModel.startForegroundPipeline(isTestMode)
+                Lifecycle.Event.ON_STOP -> viewModel.stopForegroundPipeline()
                 else -> {}
             }
         }

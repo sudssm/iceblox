@@ -167,7 +167,7 @@ When launched with the `test_mode` intent extra:
 
 1. `MainActivity` reads the extra, shows splash screen, bypasses camera permission on "Start Camera" tap
 2. `CameraScreen` renders `TestImagePreview` instead of `CameraPreview`
-3. `MainViewModel.startPipeline(isTestMode=true)` creates a `TestFrameFeeder`
+3. `MainViewModel.startForegroundPipeline(isTestMode=true)` creates a `TestFrameFeeder`
 4. `TestFrameFeeder` loads images, then cycles them through `FrameAnalyzer.analyzeBitmap()` on a coroutine timer
 5. The full pipeline executes: detect → OCR → normalize → deduplicate → hash → queue → batch upload
 

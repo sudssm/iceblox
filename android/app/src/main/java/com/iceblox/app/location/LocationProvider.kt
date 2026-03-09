@@ -26,6 +26,9 @@ class LocationProvider(private val context: Context) {
     private val _hasPermission = MutableStateFlow(false)
     val hasPermission: StateFlow<Boolean> = _hasPermission
 
+    @Volatile
+    private var updatesStarted = false
+
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             _currentLocation.value = result.lastLocation
@@ -39,20 +42,27 @@ class LocationProvider(private val context: Context) {
         ) == PackageManager.PERMISSION_GRANTED
 
         _hasPermission.value = hasFine
-        if (!hasFine) return
+        if (!hasFine) {
+            stopUpdates()
+            return
+        }
+        if (updatesStarted) return
 
         try {
             val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000)
                 .setMinUpdateIntervalMillis(5_000)
                 .build()
             fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+            updatesStarted = true
         } catch (e: SecurityException) {
             DebugLog.w(TAG, "Location permission revoked: ${e.message}")
         }
     }
 
     fun stopUpdates() {
+        if (!updatesStarted) return
         fusedClient.removeLocationUpdates(locationCallback)
+        updatesStarted = false
     }
 
     companion object {
