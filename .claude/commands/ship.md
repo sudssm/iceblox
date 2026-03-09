@@ -12,7 +12,7 @@ Run `git diff main...HEAD` and `git log main..HEAD --oneline` to understand all 
 
 ## Step 2: Run review skills
 
-First, count the diff size: `git diff main...HEAD | wc -l`. If the diff is **50 lines or fewer**, skip the review agents entirely — the change is small enough to review by eye. Proceed directly to Step 3.
+First, count the number of changed lines: `git diff main...HEAD --numstat | awk '{s+=$1+$2} END {print s+0}'`. This sums added and deleted lines (excluding context/headers). If the result is **50 lines or fewer**, skip the review agents entirely — the change is small enough to review by eye. Proceed directly to Step 3.
 
 Otherwise, launch TWO subagents in parallel using the Agent tool:
 
