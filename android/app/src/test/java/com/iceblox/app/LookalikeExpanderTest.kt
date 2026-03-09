@@ -44,9 +44,9 @@ class LookalikeExpanderTest {
         val texts = result.map { it.first }.toSet()
         assertEquals(setOf("5S", "SS", "55", "S5"), texts)
         assertEquals(0, result.first { it.first == "5S" }.second)
-        assertTrue(result.first { it.first == "SS" }.second == 1)
-        assertTrue(result.first { it.first == "55" }.second == 1)
-        assertTrue(result.first { it.first == "S5" }.second == 2)
+        assertEquals(1, result.first { it.first == "SS" }.second)
+        assertEquals(1, result.first { it.first == "55" }.second)
+        assertEquals(2, result.first { it.first == "S5" }.second)
     }
 
     @Test

@@ -37,10 +37,11 @@ final class LookalikeExpanderTests: XCTestCase {
         let result = LookalikeExpander.expand("5S", maxVariants: 64)
         let texts = Set(result.map { $0.0 })
         XCTAssertEqual(texts, Set(["5S", "SS", "55", "S5"]))
-        XCTAssertEqual(result.first { $0.0 == "5S" }!.1, 0)
-        XCTAssertEqual(result.first { $0.0 == "SS" }!.1, 1)
-        XCTAssertEqual(result.first { $0.0 == "55" }!.1, 1)
-        XCTAssertEqual(result.first { $0.0 == "S5" }!.1, 2)
+        let lookup = Dictionary(uniqueKeysWithValues: result.map { ($0.0, $0.1) })
+        XCTAssertEqual(lookup["5S"], 0)
+        XCTAssertEqual(lookup["SS"], 1)
+        XCTAssertEqual(lookup["55"], 1)
+        XCTAssertEqual(lookup["S5"], 2)
     }
 
     func testCapEnforcement() {

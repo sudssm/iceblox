@@ -49,6 +49,7 @@ final class FrameProcessor: ObservableObject {
     private var fpsFrameCount = 0
     private var fpsTimer = Date()
     private var variantHashMap: [String: String] = [:]
+    private let variantHashQueue = DispatchQueue(label: "com.iceblox.variantHashMap")
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient, sessionID: String) {
         self.offlineQueue = offlineQueue
@@ -152,7 +153,7 @@ final class FrameProcessor: ObservableObject {
 
     func onPlateSent(hash: String, matched: Bool) {
         let prefix = String(hash.prefix(8))
-        let primaryPrefix = variantHashMap[prefix] ?? prefix
+        let primaryPrefix = variantHashQueue.sync { variantHashMap[prefix] } ?? prefix
         let newState: DetectionState = matched ? .matched : .sent
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -213,7 +214,7 @@ final class FrameProcessor: ObservableObject {
             let hash = substitutions == 0 ? primaryHash : PlateHasher.hash(normalizedPlate: variantText)
             let prefix = String(hash.prefix(8))
             if prefix != primaryPrefix {
-                variantHashMap[prefix] = primaryPrefix
+                variantHashQueue.sync { variantHashMap[prefix] = primaryPrefix }
             }
             let entry = OfflineQueueEntry(
                 plateHash: hash,
