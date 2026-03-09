@@ -13,10 +13,7 @@ import org.junit.Test
 
 class DetectionFeedUpdateTest {
 
-    private fun addFeedEntry(
-        feed: MutableStateFlow<List<DetectionFeedEntry>>,
-        entry: DetectionFeedEntry
-    ) {
+    private fun addFeedEntry(feed: MutableStateFlow<List<DetectionFeedEntry>>, entry: DetectionFeedEntry) {
         feed.update { current ->
             val list = current.toMutableList()
             list.add(0, entry)
@@ -25,10 +22,7 @@ class DetectionFeedUpdateTest {
         }
     }
 
-    private fun markSent(
-        feed: MutableStateFlow<List<DetectionFeedEntry>>,
-        hashPrefix: String
-    ): Boolean {
+    private fun markSent(feed: MutableStateFlow<List<DetectionFeedEntry>>, hashPrefix: String): Boolean {
         var found = false
         feed.update { current ->
             val list = current.toMutableList()

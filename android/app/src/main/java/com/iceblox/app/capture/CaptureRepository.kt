@@ -270,7 +270,9 @@ class CaptureRepository(private val application: Application) {
             if (allSent) {
                 _detectionFeed.update { feed ->
                     val current = feed.toMutableList()
-                    val idx = current.indexOfLast { it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED }
+                    val idx = current.indexOfLast {
+                        it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED
+                    }
                     if (idx >= 0) {
                         current[idx] = current[idx].copy(state = DetectionState.SENT)
                         current
