@@ -20,7 +20,7 @@ ios/
 │   │   └── Contents.json
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
 │   ├── Views/
-│   │   ├── StatusBarView.swift        # Bottom status bar (connectivity, last detected, counts)
+│   │   ├── StatusBarView.swift        # Top status bar (connectivity, last detected, counts, pending)
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
 │   │   └── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
 │   ├── Camera/

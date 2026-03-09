@@ -37,8 +37,8 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### UI
 - [x] **Full-screen camera preview** — Landscape, camera fills screen
-- [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
-- [x] **Wire live data** — StatusBarView connected to FrameProcessor, APIClient, ConnectivityMonitor, LocationManager
+- [x] **Status bar** — Top-positioned header: connectivity, last detected, plates count, matches count, pending count, GPS warning — wired to live pipeline state
+- [x] **Wire live data** — StatusBarView connected to FrameProcessor, APIClient, ConnectivityMonitor, LocationManager, OfflineQueue pending count
 - [x] **Recording session state** — Session lifecycle with per-session timestamps and counters, managed in ContentView.swift (REQ-M-3a, REQ-M-3d)
 - [x] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
 - [x] **Session summary sheet** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
@@ -72,7 +72,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Connectivity monitor** — ConnectivityMonitor.swift: NWPathMonitor, flush queue on reconnect (REQ-M-14)
 - [x] **Plate normalization ASCII filter** — Added `.isASCII` filter to match overview spec and Android (REQ-M-10)
 - [x] **Upload queue expiry** — Prune offline queue entries older than 10 minutes at the start of each batch cycle (REQ-M-15)
-- [x] **Upload queue banner** — Show "N uploads queued" amber pill with dismiss button on camera screen and splash screen when queue is non-empty (REQ-M-14)
+- [x] **Upload queue banner** — Show "N uploads queued" amber pill with dismiss button, debug mode only; pending count shown in status bar for production (REQ-M-14)
 - [x] **Clear queue action** — Dismiss button on upload queue banner clears entire offline queue (REQ-M-15)
 
 ### Debug Mode
@@ -119,7 +119,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 ### UI
 - [x] **Full-screen camera preview** — Landscape Compose layout
-- [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
+- [x] **Status bar** — Top-positioned header: connectivity, last detected, plates count, matches count, pending count, GPS warning — wired to live pipeline state
 - [x] **Wire ViewModel** — MainViewModel with StateFlow, CameraScreen observes via collectAsState
 - [x] **Recording session state** — Session lifecycle with per-session timestamps and counters, managed in MainViewModel.kt (REQ-M-3a, REQ-M-3d)
 - [x] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
@@ -151,7 +151,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **429 handling** — Read Retry-After, pause uploads (REQ-M-17a)
 - [x] **Connectivity monitor** — ConnectivityManager.NetworkCallback, flush on reconnect (REQ-M-14)
 - [x] **Upload queue expiry** — Prune offline queue entries older than 10 minutes at the start of each batch cycle (REQ-M-15)
-- [x] **Upload queue banner** — Show "N uploads queued" amber pill with dismiss button on camera screen and splash screen when queue is non-empty (REQ-M-14)
+- [x] **Upload queue banner** — Show "N uploads queued" amber pill with dismiss button, debug mode only; pending count shown in status bar for production (REQ-M-14)
 - [x] **Clear queue action** — Dismiss button on upload queue banner clears entire offline queue via `deleteAll` DAO method (REQ-M-15)
 
 ### Debug Mode
