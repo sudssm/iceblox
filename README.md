@@ -1,4 +1,4 @@
-[![Tests](https://github.com/sudssm/iceblox/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/iceblox/actions/workflows/test.yml) ![Lines of Code](https://img.shields.io/badge/lines%20of%20code-12%2E7k-blue)
+[![Tests](https://github.com/sudssm/iceblox/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/iceblox/actions/workflows/test.yml) ![Lines of Code](https://img.shields.io/badge/lines%20of%20code-12%2E9k-blue)
 
 # IceBlox
 
@@ -118,9 +118,14 @@ make setup
 # Extract plates from XML into data/plates.txt
 make extract
 
+# Run schema migrations only
+make migrate
+
 # Run the server (loads plates, computes hashes, listens on :8080)
 make run-server
 ```
+
+Railway deployments run `make migrate` as a `preDeployCommand` before starting the new server instance.
 
 ### Android
 
