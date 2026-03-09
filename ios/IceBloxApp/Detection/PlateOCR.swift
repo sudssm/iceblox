@@ -1,5 +1,6 @@
+import CoreVideo
 import Foundation
-import onnxruntime
+import OnnxRuntimeBindings
 
 enum PlateOCR {
     private static let targetHeight = 64

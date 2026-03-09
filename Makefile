@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://$(USER)@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract run-server run-test-server db db-stop server-test server-test-db server-lint android-test clean
+.PHONY: setup extract run-server run-test-server db db-stop server-test server-test-db server-lint android-test kill-server clean
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -67,6 +67,10 @@ server-test-db:
 	createdb $(TEST_DB) && \
 	cd server && TEST_DATABASE_URL="postgres://$(USER)@localhost:5432/$(TEST_DB)?sslmode=disable" go test -tags integration ./... -v; \
 	dropdb --if-exists $(TEST_DB)
+
+## kill-server: Kill whatever is listening on port 8080
+kill-server:
+	@lsof -ti :8080 | xargs kill -9 2>/dev/null && echo "Killed process on port 8080" || echo "Nothing listening on port 8080"
 
 ## db: Start PostgreSQL in Docker for development
 db:

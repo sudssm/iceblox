@@ -19,6 +19,11 @@ class PlateOCR(context: Context) {
 
     private var inputName = "input"
 
+    private val pixelBuffer = IntArray(TARGET_WIDTH * TARGET_HEIGHT)
+    private val rgbBuffer = ByteArray(TARGET_HEIGHT * TARGET_WIDTH * 3)
+    private val inputByteBuffer: ByteBuffer =
+        ByteBuffer.allocateDirect(TARGET_HEIGHT * TARGET_WIDTH * 3).order(ByteOrder.nativeOrder())
+
     init {
         try {
             val modelBytes = context.assets.open("plate_ocr.onnx").use { it.readBytes() }
@@ -59,11 +64,11 @@ class PlateOCR(context: Context) {
         val inputData = preprocessImage(cropped)
         val shape = longArrayOf(1, TARGET_HEIGHT.toLong(), TARGET_WIDTH.toLong(), 3)
 
-        val buffer = ByteBuffer.allocateDirect(inputData.size).order(ByteOrder.nativeOrder())
-        buffer.put(inputData)
-        buffer.rewind()
+        inputByteBuffer.clear()
+        inputByteBuffer.put(inputData)
+        inputByteBuffer.rewind()
 
-        OnnxTensor.createTensor(env, buffer, shape, ai.onnxruntime.OnnxJavaType.UINT8).use { inputTensor ->
+        OnnxTensor.createTensor(env, inputByteBuffer, shape, ai.onnxruntime.OnnxJavaType.UINT8).use { inputTensor ->
             sess.run(mapOf(inputName to inputTensor)).use { output ->
                 val outputTensor = output[0].value
 
@@ -77,27 +82,24 @@ class PlateOCR(context: Context) {
     private fun preprocessImage(bitmap: Bitmap): ByteArray {
         val resized = Bitmap.createScaledBitmap(bitmap, TARGET_WIDTH, TARGET_HEIGHT, true)
         try {
-            val pixels = IntArray(TARGET_WIDTH * TARGET_HEIGHT)
-            resized.getPixels(pixels, 0, TARGET_WIDTH, 0, 0, TARGET_WIDTH, TARGET_HEIGHT)
+            resized.getPixels(pixelBuffer, 0, TARGET_WIDTH, 0, 0, TARGET_WIDTH, TARGET_HEIGHT)
 
             // Pack as HWC uint8 RGB
-            val data = ByteArray(TARGET_HEIGHT * TARGET_WIDTH * 3)
-
             for (y in 0 until TARGET_HEIGHT) {
                 for (x in 0 until TARGET_WIDTH) {
-                    val pixel = pixels[y * TARGET_WIDTH + x]
+                    val pixel = pixelBuffer[y * TARGET_WIDTH + x]
                     val r = ((pixel shr 16) and 0xFF).toByte()
                     val g = ((pixel shr 8) and 0xFF).toByte()
                     val b = (pixel and 0xFF).toByte()
 
                     val baseIdx = (y * TARGET_WIDTH + x) * 3
-                    data[baseIdx] = r
-                    data[baseIdx + 1] = g
-                    data[baseIdx + 2] = b
+                    rgbBuffer[baseIdx] = r
+                    rgbBuffer[baseIdx + 1] = g
+                    rgbBuffer[baseIdx + 2] = b
                 }
             }
 
-            return data
+            return rgbBuffer
         } finally {
             if (resized !== bitmap) resized.recycle()
         }
