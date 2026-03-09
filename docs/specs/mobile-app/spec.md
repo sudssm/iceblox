@@ -167,6 +167,7 @@ The app MUST send hashed plates to the server via HTTPS POST (see server spec fo
 - Send a batch when the queue reaches 10 plates, OR
 - Send a batch every 30 seconds if the queue is non-empty, OR
 - Send a batch immediately when connectivity is restored after an offline period
+- **(Android)**: Additionally, send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
 
 Whichever condition is met first triggers the send.
 

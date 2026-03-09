@@ -23,6 +23,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
+- [x] **Match detection logging** — Emit structured log line with plaintext plate, hash, and GPS on match (REQ-O-1). Implemented via `Plate()` method on target store.
 - [x] **Device token store** — `device_tokens` table, CRUD operations in `db.go` (REQ-S-9)
 - [x] **POST /api/v1/devices** — Device token registration endpoint with upsert (REQ-S-9)
 - [x] **APNs client** — HTTP/2 push provider, ES256 JWT signing, `.p8` key loading, token caching (REQ-S-11)
@@ -200,6 +201,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 - [x] **Target plate test scenario** — Verified matched sighting with target plate image (TS-E2E-3).
 - [x] **Stop recording summary scenario** — Verified the target-plate flow can stop the active session and show session summary stats (TS-E2E-8).
 - [x] **iOS stop recording summary scenario** — Verified the simulator stop trigger writes a session summary artifact after a target-plate session (TS-E2E-9).
+- [x] **Background capture E2E test** — Verify app process survives backgrounding and produces sightings while backgrounded (TS-E2E-10)
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---
