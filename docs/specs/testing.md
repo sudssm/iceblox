@@ -274,6 +274,7 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Non-target plate image** (`tests/test_non_target_plate.sh`): Pushes an image containing a real plate that is NOT in `test_plates.txt`. After the batch flush interval, verifies zero sightings (the app detects and uploads the plate, but the server does not match it).
 - **Target plate image** (`tests/test_target_plate.sh`): Pushes an image containing a known test plate. After the batch flush interval, verifies at least one matched sighting exists in the database.
 - **Stop recording summary**: The Android target-plate test taps `Stop Recording` and inspects the summary overlay. The iOS target-plate test triggers stop via an Application Support file and validates the summary artifact fields emitted by the app.
+- **Background capture** (`tests/test_background_capture.sh`): Pushes a target plate image, starts the camera, then backgrounds the app via `KEYCODE_HOME`. Verifies the app process survives backgrounding, remains alive after the batch flush window, and produces at least one sighting while backgrounded.
 
 ### Prerequisites
 
@@ -300,6 +301,26 @@ For stop-summary verification, the iOS harness sets `E2E_USE_STOP_RECORDING_TRIG
 
 - **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is below `BATCH_SIZE` (10), the tests wait 35 seconds for the timer-based flush.
 - **iOS**: The E2E harness overrides the batch interval to 1 second at launch, so each scenario waits 6 seconds for upload and DB persistence.
+
+## Local Device Testing
+
+`scripts/android-test.sh` supports testing on a physical Android device connected via USB or Wi-Fi ADB. It automates the full build-deploy-run cycle for local development.
+
+```bash
+scripts/android-test.sh               # local server (default)
+scripts/android-test.sh --prod-server  # prod server (Railway)
+```
+
+**What it does:**
+
+1. **Connects** to a USB-attached device or prompts for a Wi-Fi ADB address
+2. **Patches** `AppConfig.SERVER_BASE_URL` for the target (localhost via `adb reverse`, or the Railway production URL)
+3. **Builds and installs** the debug APK
+4. **Reverts** the AppConfig patch after build
+5. **Launches** the app on the device
+6. **(Local only)** Starts a Docker PostgreSQL container if needed, sets up `adb reverse tcp:8080`, and runs the Go server in the foreground
+
+A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates.
 
 ## Future Enhancements
 

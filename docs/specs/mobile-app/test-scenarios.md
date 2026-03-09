@@ -46,7 +46,7 @@ And the detection pipeline restarts
 ```
 Given a recording session is active
 When the camera screen is visible
-Then a "Stop Recording" button is visible in the top-right corner
+Then a "Stop Recording" button is visible at the bottom-center, above the status bar
 And it remains tappable above the camera preview
 ```
 
@@ -509,6 +509,19 @@ Then a "Session Summary" overlay appears
 And it shows "Plates seen", "ICE vehicles", and "Duration"
 And "Plates seen" is at least 1
 And "ICE vehicles" is at least 1
+```
+
+### TS-E2E-10: Android background capture continues producing sightings
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the Android app is installed on the emulator
+When a target plate image is pushed and the app is launched in test mode
+And the camera is started
+And the app is backgrounded via KEYCODE_HOME
+Then the app process remains alive after backgrounding
+And the app process remains alive after the batch flush window
+And at least one sighting exists in the database (captured while backgrounded)
 ```
 
 ### TS-E2E-9: iOS stop recording writes session summary artifact

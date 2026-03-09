@@ -129,22 +129,18 @@ struct ContentView: View {
 
             if !showingSummary, cameraManager.permissionGranted {
                 VStack {
-                    HStack {
-                        Spacer()
-                        Button(action: stopRecordingSession) {
-                            Text("Stop Recording")
-                                .font(.system(.subheadline, design: .monospaced).weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(.red.opacity(0.85))
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding(.top, 20)
-                    .padding(.horizontal, 20)
-
                     Spacer()
+
+                    Button(action: stopRecordingSession) {
+                        Text("Stop Recording")
+                            .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(.red.opacity(0.85))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.bottom, 12)
 
                     StatusBarView(
                         isConnected: connectivityMonitor.isConnected,

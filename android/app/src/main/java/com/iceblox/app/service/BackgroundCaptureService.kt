@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -27,11 +28,12 @@ class BackgroundCaptureService : LifecycleService() {
     private var captureBound = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         when (intent?.action ?: AppConfig.ACTION_START_BACKGROUND_CAPTURE) {
             AppConfig.ACTION_STOP_BACKGROUND_CAPTURE -> stopCapture()
             AppConfig.ACTION_START_BACKGROUND_CAPTURE -> startCapture()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startCapture() {
@@ -42,10 +44,17 @@ class BackgroundCaptureService : LifecycleService() {
         }
 
         ensureNotificationChannel()
-        startForeground(
-            AppConfig.BACKGROUND_CAPTURE_NOTIFICATION_ID,
-            buildNotification()
-        )
+        try {
+            startForeground(
+                AppConfig.BACKGROUND_CAPTURE_NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            )
+        } catch (e: SecurityException) {
+            DebugLog.w(TAG, "Cannot start foreground service: ${e.message}")
+            stopSelf()
+            return
+        }
         repository.setBackgroundActive(true)
 
         if (!captureBound) {

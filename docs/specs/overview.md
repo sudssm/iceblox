@@ -41,7 +41,7 @@ The system operates under an **honest-but-curious** threat model:
 | Property | Value |
 |---|---|
 | Algorithm | HMAC-SHA256 |
-| Key (pepper) | Shared secret, hardcoded in app binary at build time, obfuscated |
+| Key (pepper) | Shared secret, injected into app binary at build time from root `.env` |
 | Input normalization | Uppercase, strip whitespace/hyphens, ASCII only |
 | Output | 64-character hex string |
 
@@ -50,7 +50,7 @@ The system operates under an **honest-but-curious** threat model:
 License plates have a small keyspace (~2 billion US plates). An attacker with access to the HMAC key can brute-force any hash. Privacy relies on:
 
 1. Operational controls (non-matching hashes are never written to disk on the server)
-2. Obfuscation (pepper is obfuscated in the app binary, not stored as plaintext)
+2. Access control (pepper is injected at build time from a committed `.env` file; a determined attacker with the binary can extract it)
 3. Honest-but-curious assumption (server doesn't actively attempt brute-force reversal)
 
 **Future enhancement:** Private Set Intersection (PSI) protocol would provide cryptographic guarantees independent of operational trust. See `docs/specs/privacy-roadmap.md` (TBD).
@@ -73,7 +73,7 @@ License plates have a small keyspace (~2 billion US plates). An attacker with ac
 
 Target plates are sourced from the [StopICE Plate Tracker](https://www.stopice.net/platetracker/?data=1), a public database of ICE (Immigration and Customs Enforcement) vehicle license plates. As of March 2026, the database contains ~5,300 vehicle reports comprising ~2,600 unique plate numbers.
 
-The data is published as a nightly-compiled ZIP archive containing XML with plate records. A Makefile in `server/` automates downloading and extracting the plates into a plaintext file that the server loads at startup.
+The data is published as a nightly-compiled ZIP archive containing XML with plate records. The root `Makefile` automates downloading and extracting the plates into a plaintext file that the server loads at startup.
 
 ## Target Scale
 

@@ -6,28 +6,13 @@ Items are ordered by dependency — earlier items unblock later ones. Within a c
 
 ---
 
-## YOLO Model Training
-
-Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_plate_detection.md)
-
-- [ ] Download license plate dataset (HuggingFace, 8,823 images)
-- [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
-- [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
-
----
-
 ## Server (Go)
 
 Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
-- [x] **Device token store** — `device_tokens` table, CRUD operations in `db.go` (REQ-S-9)
-- [x] **POST /api/v1/devices** — Device token registration endpoint with upsert (REQ-S-9)
-- [x] **APNs client** — HTTP/2 push provider, ES256 JWT signing, `.p8` key loading, token caching (REQ-S-11)
-- [x] **FCM client** — HTTP v1 API, RS256 JWT → OAuth2 token exchange, token caching (REQ-S-12)
-- [x] **Push notifier** — Dispatch notifications to all registered devices on match, async goroutine, stale token cleanup (REQ-S-10)
+- [x] **Match detection logging** — Emit structured log line with plaintext plate, hash, and GPS on match (REQ-O-1). Implemented via `Plate()` method on target store.
 
 ---
 
@@ -90,12 +75,6 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [x] **Debug log panel** — Translucent log panel at bottom of overlay showing DebugLog entries, color-coded by level, auto-scrolling (DBG-4)
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
-
-### Push Notifications
-- [x] **Notification permission** — Request via `UNUserNotificationCenter`, register for remote notifications (REQ-M-60)
-- [x] **APNs token registration** — Convert device token to hex string, POST to `/api/v1/devices` (REQ-M-61)
-- [x] **Notification handling** — `UNUserNotificationCenterDelegate`, foreground banner display (REQ-M-62)
-
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 - [ ] **App icon** — Add 1024×1024 PNG to `AppIcon.appiconset`
@@ -162,22 +141,6 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [x] **Debug log panel** — Translucent log panel at bottom of overlay showing DebugLog entries, color-coded by level, auto-scrolling (DBG-4)
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
-
-### Push Notifications
-- [x] **Firebase setup** — Add FCM dependency, `google-services.json`, notification channel (REQ-M-60)
-- [x] **POST_NOTIFICATIONS permission** — Runtime permission request for Android 13+ (REQ-M-60)
-- [x] **FCM token registration** — Send token to server via POST `/api/v1/devices`, handle `onNewToken` (REQ-M-61)
-- [x] **Notification service** — `FirebaseMessagingService` subclass, build and display notifications (REQ-M-62)
-
-### Rename
-- [x] **Rename to IceBlox everywhere** — Update iOS bundle ID, server references, specs, and any remaining legacy branding references to use IceBlox branding
-
-### Test Mode
-- [x] **Test mode intent extra** — `test_mode` boolean extra bypasses camera permission, splash screen shown normally (TS-33)
-- [x] **TestFrameFeeder** — Loads images from `src/debug/assets/test_images/` and `filesDir/test_images/`, feeds through `analyzeBitmap()` on 500ms timer (TS-34)
-- [x] **Test mode UI** — `TestImagePreview` composable replaces camera preview, `[TEST MODE]` banner shown (TS-35)
-- [x] **test_mode.sh script** — Installs APK, optionally pushes images via `--push-dir`, launches with test_mode extra
-
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
 - [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
 
@@ -187,19 +150,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 
 Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app/test-scenarios.md`](specs/mobile-app/test-scenarios.md) → E2E Tests
 
-### Android
-
-- [x] **Directory structure** — `e2e/android/` with orchestrator, config, lib/, tests/, fixtures/
-- [x] **Infrastructure lifecycle** — Ephemeral postgres + Go server with test plates (TS-E2E-1, TS-E2E-2)
-- [x] **App lifecycle** — Build, install, push images, launch in test mode via `--ez test_mode true`
-- [x] **DB verification** — `docker exec psql` queries for sighting assertions
-- [x] **`analyzeBitmap()` fallback param** — `useFallback` parameter so no-plate test works correctly
-- [x] **Fixture images** — Real images added: `no_plate/no_plate.png`, `non_target_plate/non_target.jpg`, `target_plate/target.jpg`
-- [x] **No-plate test scenario** — Verified zero sightings with no-plate image (TS-E2E-1).
-- [x] **Non-target plate test scenario** — Verified zero sightings with non-target plate image (TS-E2E-2).
-- [x] **Target plate test scenario** — Verified matched sighting with target plate image (TS-E2E-3).
-- [x] **Stop recording summary scenario** — Verified the target-plate flow can stop the active session and show session summary stats (TS-E2E-8).
-- [x] **iOS stop recording summary scenario** — Verified the simulator stop trigger writes a session summary artifact after a target-plate session (TS-E2E-9).
+- [x] **Background capture E2E test** — Verify app process survives backgrounding and produces sightings while backgrounded (TS-E2E-10)
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---
@@ -266,5 +217,6 @@ Spec: [`specs/mobile-app/license_plate_ocr.md`](specs/mobile-app/license_plate_o
 
 ## Productionizing
 
-- [ ] **Change the pepper** — Replace `default-pepper-change-me` with a secure random value (`openssl rand -hex 32`). Update server env var (`PEPPER`), iOS `PlateHasher.swift` pepperPartA/B, and Android `PlateHasher.kt` pepperPartA/B to match.
+- [x] **Change the pepper** — Replaced `default-pepper-change-me` with a secure random value in root `.env` as single source of truth. Server reads via env var, iOS generates `Pepper.swift` at build time, Android injects via `BuildConfig.PEPPER`.
 - [ ] **Enable SSL** — Configure TLS for the server. Railway provides automatic HTTPS via its proxy, but update mobile app `SERVER_BASE_URL` to use `https://` and ensure `DATABASE_URL` uses `sslmode=require` for the Postgres connection.
+- [ ] **Redis subscriber store** — Replace the in-memory `subscribers.Store` with Redis-backed storage so subscriber state survives server restarts and scales across multiple instances.

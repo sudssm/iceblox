@@ -57,7 +57,7 @@ android/
         │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id
         │   │   ├── processing/
         │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
-        │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, XOR pepper
+        │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, pepper from BuildConfig
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
         │   │   ├── service/
         │   │   │   └── BackgroundCaptureService.kt # Foreground service that keeps analysis running when app backgrounds

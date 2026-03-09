@@ -20,6 +20,7 @@ type PlateRequest struct {
 type TargetChecker interface {
 	Contains(hash string) bool
 	PlateID(hash string) (int64, bool)
+	Plate(hash string) (string, bool)
 }
 
 type SightingRecorder interface {
@@ -53,6 +54,9 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 		log.Printf("POST /api/v1/plates hash=%s matched=%v lat=%.4f lon=%.4f", req.PlateHash, matched, req.Latitude, req.Longitude)
 
 		if matched {
+			plate, _ := targets.Plate(req.PlateHash)
+			log.Printf("MATCH DETECTED plate=%s hash=%s lat=%.6f lon=%.6f", plate, req.PlateHash, req.Latitude, req.Longitude)
+
 			plateID, _ := targets.PlateID(req.PlateHash)
 			seenAt := parseTimestamp(req.Timestamp)
 			hardwareID := r.Header.Get("X-Device-ID")

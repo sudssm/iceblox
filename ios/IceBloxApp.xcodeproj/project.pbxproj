@@ -39,6 +39,7 @@
 		A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000040 /* AlertClient.swift */; };
 		A1B2C3D4E5F60001000041 /* AlertClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000041 /* AlertClientTests.swift */; };
 		A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */; };
+		A1B2C3D4E5F60001000043 /* Pepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000043 /* Pepper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +86,7 @@
 		A1B2C3D4E5F60002000040 /* AlertClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClient.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000041 /* AlertClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClientTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000043 /* Pepper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pepper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -172,6 +174,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60002000020 /* AppConfig.swift */,
+				A1B2C3D4E5F60002000043 /* Pepper.swift */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -256,6 +259,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A1B2C3D4E5F6000A000001 /* Build configuration list for PBXNativeTarget "IceBloxApp" */;
 			buildPhases = (
+				A1B2C3D4E5F60009000004 /* Generate Pepper */,
 				A1B2C3D4E5F60009000001 /* Sources */,
 				A1B2C3D4E5F60007000001 /* Frameworks */,
 				A1B2C3D4E5F60009000003 /* Resources */,
@@ -373,6 +377,7 @@
 				A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */,
 				A1B2C3D4E5F60001000039 /* SimulatorCamera.swift in Sources */,
 				A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */,
+				A1B2C3D4E5F60001000043 /* Pepper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,6 +392,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A1B2C3D4E5F60009000004 /* Generate Pepper */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../.env",
+			);
+			name = "Generate Pepper";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/IceBloxApp/Config/Pepper.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "ENV_FILE=\"${SRCROOT}/../.env\"\nOUT_FILE=\"${SRCROOT}/IceBloxApp/Config/Pepper.swift\"\nif [ ! -f \"$ENV_FILE\" ]; then\n  echo \"error: .env file not found at $ENV_FILE\" >&2\n  exit 1\nfi\nPEPPER=$(grep '^PEPPER=' \"$ENV_FILE\" | head -1 | cut -d'=' -f2-)\nif [ -z \"$PEPPER\" ]; then\n  echo \"error: PEPPER not found in $ENV_FILE\" >&2\n  exit 1\nfi\ncat > \"$OUT_FILE\" << SWIFT\n// Auto-generated from .env — do not edit\nenum Pepper {\n    static let value = \"$PEPPER\"\n}\nSWIFT\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		A1B2C3D4E5F6000B000001 /* PBXTargetDependency */ = {
@@ -434,7 +462,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -497,7 +525,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -649,7 +677,7 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/nicklasaven/onnxruntime-swift-package-manager";
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.20.0;

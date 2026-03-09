@@ -28,9 +28,6 @@ jobs:
   go-tests:
     name: Go Unit Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +35,7 @@ jobs:
         with:
           go-version-file: server/go.mod
 
-      - run: go test ./...
+      - run: make server-test
 
   swift-lint:
     name: Swift Lint
@@ -79,9 +76,6 @@ jobs:
   android-tests:
     name: Android Unit Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: android
     steps:
       - uses: actions/checkout@v4
 
@@ -92,4 +86,4 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - run: ./gradlew test
+      - run: make android-test
