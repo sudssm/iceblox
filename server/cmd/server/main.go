@@ -141,14 +141,14 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 					log.Printf("reload failed: %v", err)
 					continue
 				}
-				if err := seedDatabase(context.Background(), database, store); err != nil {
+				if err := seedDatabase(ctx, database, store); err != nil {
 					log.Printf("failed to re-seed database: %v", err)
 					continue
 				}
 				continue
 			}
 			log.Println("shutting down gracefully")
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 			if err := srv.Shutdown(shutdownCtx); err != nil {
 				log.Printf("graceful shutdown failed: %v, forcing close", err)
