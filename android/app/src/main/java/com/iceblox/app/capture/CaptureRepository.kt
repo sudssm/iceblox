@@ -16,10 +16,12 @@ import com.iceblox.app.network.RetryManager
 import com.iceblox.app.persistence.OfflineQueueDatabase
 import com.iceblox.app.persistence.OfflineQueueEntry
 import com.iceblox.app.processing.DeduplicationCache
+import com.iceblox.app.processing.LookalikeExpander
 import com.iceblox.app.processing.PlateHasher
 import com.iceblox.app.ui.DetectionFeedEntry
 import com.iceblox.app.ui.DetectionState
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,6 +62,8 @@ class CaptureRepository(private val application: Application) {
 
     private val _detectionFeed = MutableStateFlow<List<DetectionFeedEntry>>(emptyList())
     val detectionFeed: StateFlow<List<DetectionFeedEntry>> = _detectionFeed
+
+    private val variantHashMap = ConcurrentHashMap<String, String>()
 
     val apiClient = ApiClient(
         context = application,
@@ -113,6 +117,7 @@ class CaptureRepository(private val application: Application) {
     fun resetSessionState(sessionId: String) {
         activeSessionId = sessionId
         deduplicationCache.reset()
+        variantHashMap.clear()
         _plateCount.value = 0L
         _targetCount.value = 0
         _lastDetectionTime.value = 0L
@@ -153,31 +158,49 @@ class CaptureRepository(private val application: Application) {
         for (plate in plates) {
             if (deduplicationCache.isDuplicate(plate.normalizedText)) continue
 
-            val hash = PlateHasher.hash(plate.normalizedText)
+            val variants = LookalikeExpander.expand(plate.normalizedText)
+            val primaryHash = PlateHasher.hash(variants[0].first)
+            val primaryPrefix = primaryHash.take(8)
             val loc = locationProvider.currentLocation.value
+            val now = System.currentTimeMillis()
 
             scope.launch(Dispatchers.IO) {
-                queueDao.insert(
-                    OfflineQueueEntry(
-                        plateHash = hash,
-                        timestamp = System.currentTimeMillis(),
-                        latitude = loc?.latitude,
-                        longitude = loc?.longitude,
-                        sessionId = sessionId
+                for ((variantText, substitutions) in variants) {
+                    val hash = if (substitutions == 0) primaryHash else PlateHasher.hash(variantText)
+                    val prefix = hash.take(8)
+                    if (prefix != primaryPrefix) {
+                        variantHashMap[prefix] = primaryPrefix
+                    }
+                    queueDao.insert(
+                        OfflineQueueEntry(
+                            plateHash = hash,
+                            timestamp = now,
+                            latitude = loc?.latitude,
+                            longitude = loc?.longitude,
+                            sessionId = sessionId,
+                            substitutions = substitutions
+                        )
                     )
-                )
+                }
                 enforceMaxQueueSize()
                 _queueDepth.value = queueDao.count()
                 apiClient.checkAndFlush()
             }
 
             _plateCount.update { it + 1 }
-            _lastDetectionTime.value = System.currentTimeMillis()
+            _lastDetectionTime.value = now
+
+            val extraCount = variants.size - 1
+            val feedText = if (extraCount > 0) {
+                "${plate.normalizedText} (+$extraCount)"
+            } else {
+                plate.normalizedText
+            }
 
             addFeedEntry(
                 DetectionFeedEntry(
-                    plateText = plate.normalizedText,
-                    hashPrefix = hash.take(8),
+                    plateText = feedText,
+                    hashPrefix = primaryPrefix,
                     state = DetectionState.QUEUED
                 )
             )
@@ -192,10 +215,11 @@ class CaptureRepository(private val application: Application) {
 
     private fun onPlateSent(hash: String, matched: Boolean, sessionId: String) {
         val prefix = hash.take(8)
+        val primaryPrefix = variantHashMap[prefix] ?: prefix
         val newState = if (matched) DetectionState.MATCHED else DetectionState.SENT
         val current = _detectionFeed.value.toMutableList()
         val idx = current.indexOfLast {
-            it.hashPrefix == prefix && it.state == DetectionState.QUEUED
+            it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED
         }
         if (idx >= 0) {
             current[idx] = current[idx].copy(state = newState)

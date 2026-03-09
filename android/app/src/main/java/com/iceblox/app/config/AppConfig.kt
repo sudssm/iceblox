@@ -26,6 +26,8 @@ object AppConfig {
     const val RETRY_MAX_DELAY_MS = 300_000L
     const val RETRY_MAX_ATTEMPTS = 10
 
+    const val MAX_LOOKALIKE_VARIANTS = 64
+
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6
 

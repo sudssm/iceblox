@@ -11,10 +11,11 @@ import (
 )
 
 type PlateRequest struct {
-	PlateHash string  `json:"plate_hash"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Timestamp string  `json:"timestamp,omitempty"`
+	PlateHash     string  `json:"plate_hash"`
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
+	Timestamp     string  `json:"timestamp,omitempty"`
+	Substitutions int     `json:"substitutions"`
 }
 
 type TargetChecker interface {
@@ -24,7 +25,7 @@ type TargetChecker interface {
 }
 
 type SightingRecorder interface {
-	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error)
+	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error)
 }
 
 type PushNotifier interface {
@@ -64,7 +65,7 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 				hardwareID = "unknown"
 			}
 
-			sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID)
+			sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID, req.Substitutions)
 			if err != nil {
 				log.Printf("failed to record sighting: %v", err)
 				writeError(w, http.StatusInternalServerError, "failed to record sighting")
@@ -99,6 +100,9 @@ func validatePlateRequest(req PlateRequest) error {
 	}
 	if req.Longitude < -180 || req.Longitude > 180 {
 		return fmt.Errorf("longitude must be in range [-180, 180]")
+	}
+	if req.Substitutions < 0 {
+		return fmt.Errorf("substitutions must be >= 0")
 	}
 	return nil
 }

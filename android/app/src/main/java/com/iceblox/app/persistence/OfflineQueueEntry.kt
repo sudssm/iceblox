@@ -11,5 +11,6 @@ data class OfflineQueueEntry(
     @ColumnInfo(name = "timestamp") val timestamp: Long,
     @ColumnInfo(name = "latitude") val latitude: Double?,
     @ColumnInfo(name = "longitude") val longitude: Double?,
-    @ColumnInfo(name = "session_id") val sessionId: String
+    @ColumnInfo(name = "session_id") val sessionId: String,
+    @ColumnInfo(name = "substitutions", defaultValue = "0") val substitutions: Int = 0
 )

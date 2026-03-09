@@ -7,6 +7,7 @@ struct PlateSubmission: Codable {
     let latitude: Double?
     let longitude: Double?
     let timestamp: String?
+    let substitutions: Int
 }
 
 struct PlateResponse: Codable {
@@ -80,7 +81,8 @@ final class APIClient {
                 plate_hash: entry.plateHash,
                 latitude: entry.latitude,
                 longitude: entry.longitude,
-                timestamp: formatter.string(from: entry.timestamp)
+                timestamp: formatter.string(from: entry.timestamp),
+                substitutions: entry.substitutions
             )
 
             guard let body = try? JSONEncoder().encode(submission) else { continue }

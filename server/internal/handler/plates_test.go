@@ -17,18 +17,20 @@ type mockRecorder struct {
 }
 
 type mockSighting struct {
-	PlateID    int64
-	SeenAt     time.Time
-	Lat, Lng   float64
-	HardwareID string
+	PlateID       int64
+	SeenAt        time.Time
+	Lat, Lng      float64
+	HardwareID    string
+	Substitutions int
 }
 
-func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error) {
+func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.sightings = append(m.sightings, mockSighting{
 		PlateID: plateID, SeenAt: seenAt,
 		Lat: lat, Lng: lng, HardwareID: hardwareID,
+		Substitutions: substitutions,
 	})
 	return int64(len(m.sightings)), nil
 }
@@ -306,5 +308,53 @@ func TestPlatesHandler_BoundaryCoordinates(t *testing.T) {
 				t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 			}
 		})
+	}
+}
+
+func TestPlatesHandler_SubstitutionsStored(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
+	h := PlatesHandler(recorder, targets, nil)
+
+	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"substitutions":3}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	req.Header.Set("X-Device-ID", "test-device")
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	if len(recorder.sightings) != 1 {
+		t.Fatalf("expected 1 sighting, got %d", len(recorder.sightings))
+	}
+	if recorder.sightings[0].Substitutions != 3 {
+		t.Errorf("expected substitutions 3, got %d", recorder.sightings[0].Substitutions)
+	}
+}
+
+func TestPlatesHandler_SubstitutionsDefaultZero(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
+	h := PlatesHandler(recorder, targets, nil)
+
+	body := `{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	req.Header.Set("X-Device-ID", "test-device")
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	if len(recorder.sightings) != 1 {
+		t.Fatalf("expected 1 sighting, got %d", len(recorder.sightings))
+	}
+	if recorder.sightings[0].Substitutions != 0 {
+		t.Errorf("expected substitutions 0 (default), got %d", recorder.sightings[0].Substitutions)
 	}
 }

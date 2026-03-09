@@ -20,13 +20,14 @@ type PlateRecord struct {
 
 // Sighting represents a plate sighting joined with its plate text.
 type Sighting struct {
-	ID         int64
-	PlateID    int64
-	Plate      string
-	SeenAt     time.Time
-	Latitude   float64
-	Longitude  float64
-	HardwareID string
+	ID            int64
+	PlateID       int64
+	Plate         string
+	SeenAt        time.Time
+	Latitude      float64
+	Longitude     float64
+	HardwareID    string
+	Substitutions int
 }
 
 type DeviceToken struct {
@@ -104,12 +105,12 @@ func (d *DB) LoadPlateIDs(ctx context.Context) (map[string]int64, error) {
 	return mapping, rows.Err()
 }
 
-func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error) {
+func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error) {
 	var id int64
 	err := d.pool.QueryRowContext(ctx,
-		`INSERT INTO sightings (plate_id, seen_at, latitude, longitude, hardware_id)
-		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		plateID, seenAt, lat, lng, hardwareID).Scan(&id)
+		`INSERT INTO sightings (plate_id, seen_at, latitude, longitude, hardware_id, substitutions)
+		 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		plateID, seenAt, lat, lng, hardwareID, substitutions).Scan(&id)
 	return id, err
 }
 
@@ -152,7 +153,7 @@ func (d *DB) DeleteDeviceToken(ctx context.Context, id int64) error {
 // fast SQL pre-filtering before precise haversine calculation in Go.
 func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]Sighting, error) {
 	rows, err := d.pool.QueryContext(ctx,
-		`SELECT s.id, s.plate_id, p.plate, s.seen_at, s.latitude, s.longitude, s.hardware_id
+		`SELECT s.id, s.plate_id, p.plate, s.seen_at, s.latitude, s.longitude, s.hardware_id, s.substitutions
 		 FROM sightings s
 		 JOIN plates p ON p.id = s.plate_id
 		 WHERE s.seen_at >= $1
@@ -168,7 +169,7 @@ func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng
 	var sightings []Sighting
 	for rows.Next() {
 		var s Sighting
-		if err := rows.Scan(&s.ID, &s.PlateID, &s.Plate, &s.SeenAt, &s.Latitude, &s.Longitude, &s.HardwareID); err != nil {
+		if err := rows.Scan(&s.ID, &s.PlateID, &s.Plate, &s.SeenAt, &s.Latitude, &s.Longitude, &s.HardwareID, &s.Substitutions); err != nil {
 			return nil, fmt.Errorf("scan sighting: %w", err)
 		}
 		sightings = append(sightings, s)
@@ -198,7 +199,8 @@ CREATE TABLE IF NOT EXISTS sightings (
 	seen_at TIMESTAMPTZ NOT NULL,
 	latitude DOUBLE PRECISION NOT NULL,
 	longitude DOUBLE PRECISION NOT NULL,
-	hardware_id TEXT NOT NULL
+	hardware_id TEXT NOT NULL,
+	substitutions INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS device_tokens (

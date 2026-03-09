@@ -25,18 +25,20 @@ type testRecorder struct {
 }
 
 type testSighting struct {
-	PlateID    int64
-	SeenAt     time.Time
-	Lat, Lng   float64
-	HardwareID string
+	PlateID       int64
+	SeenAt        time.Time
+	Lat, Lng      float64
+	HardwareID    string
+	Substitutions int
 }
 
-func (r *testRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string) (int64, error) {
+func (r *testRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.sightings = append(r.sightings, testSighting{
 		PlateID: plateID, SeenAt: seenAt,
 		Lat: lat, Lng: lng, HardwareID: hardwareID,
+		Substitutions: substitutions,
 	})
 	return int64(len(r.sightings)), nil
 }
