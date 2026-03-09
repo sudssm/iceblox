@@ -12,7 +12,6 @@ Usage:
 """
 
 import argparse
-import shutil
 import sys
 import urllib.request
 from pathlib import Path

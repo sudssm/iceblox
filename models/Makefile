@@ -8,9 +8,9 @@
 #   make export         Export to Core ML (.mlpackage) and TFLite (.tflite)
 #   make deploy         Copy exported models to iOS and Android app directories
 #   make all            Run full pipeline: download → train → export → deploy
-#   make export-ocr     Download + convert PP-OCRv3 OCR model (ONNX/CoreML/TFLite)
+#   make export-ocr     Download + verify CCT-XS ONNX OCR model
 #   make evaluate-ocr   Validate OCR model on real plate images (go/no-go gate)
-#   make deploy-ocr     Copy OCR models to iOS and Android app directories
+#   make deploy-ocr     Copy OCR ONNX model to iOS and Android app directories
 #   make clean          Remove training artifacts (keeps exported models)
 #
 # The trained model detects a single class ("license-plate") using YOLOv8-nano
@@ -113,27 +113,26 @@ deploy: ## Copy exported models to iOS and Android app directories
 	@echo "  iOS:     $(IOS_MODEL_DIR)/plate_detector.mlpackage"
 	@echo "  Android: $(ANDROID_ASSETS)/plate_detector.tflite"
 
-# ── OCR Model (PP-OCRv3) ────────────────────────────────────────────────────
+# ── OCR Model (fast-plate-ocr CCT-XS) ──────────────────────────────────────
 
-download-ocr: setup ## Download PP-OCRv3 model (fine-tuned or base fallback)
+download-ocr: setup ## Download CCT-XS ONNX model from fast-plate-ocr
 	$(PYTHON) $(TRAINING_DIR)/export_ocr.py --download-only
 
-export-ocr: setup ## Download + convert PP-OCRv3 to ONNX, CoreML, TFLite
+export-ocr: setup ## Download + verify CCT-XS ONNX model
 	$(PYTHON) $(TRAINING_DIR)/export_ocr.py
 
 evaluate-ocr: setup ## Validate OCR model on real plate images (go/no-go gate)
 	@test -f $(EXPORT_DIR)/plate_ocr.onnx || (echo "Error: No ONNX model. Run 'make export-ocr' first." && exit 1)
 	$(PYTHON) $(TRAINING_DIR)/evaluate_ocr.py $(if $(TEST_DIR),--test-dir $(TEST_DIR))
 
-deploy-ocr: ## Copy OCR models to iOS and Android app directories
-	@test -d $(EXPORT_DIR)/plate_ocr.mlpackage || (echo "Error: No CoreML OCR model. Run 'make export-ocr' first." && exit 1)
-	@test -f $(EXPORT_DIR)/plate_ocr.tflite || (echo "Error: No TFLite OCR model. Run 'make export-ocr' first." && exit 1)
+deploy-ocr: ## Copy OCR ONNX model to iOS and Android app directories
+	@test -f $(EXPORT_DIR)/plate_ocr.onnx || (echo "Error: No ONNX OCR model. Run 'make export-ocr' first." && exit 1)
 	@mkdir -p $(IOS_MODEL_DIR) $(ANDROID_ASSETS)
-	@echo "Deploying OCR models to app directories..."
-	cp -r $(EXPORT_DIR)/plate_ocr.mlpackage $(IOS_MODEL_DIR)/
-	cp $(EXPORT_DIR)/plate_ocr.tflite $(ANDROID_ASSETS)/
-	@echo "  iOS:     $(IOS_MODEL_DIR)/plate_ocr.mlpackage"
-	@echo "  Android: $(ANDROID_ASSETS)/plate_ocr.tflite"
+	@echo "Deploying OCR model to app directories..."
+	cp $(EXPORT_DIR)/plate_ocr.onnx $(IOS_MODEL_DIR)/
+	cp $(EXPORT_DIR)/plate_ocr.onnx $(ANDROID_ASSETS)/
+	@echo "  iOS:     $(IOS_MODEL_DIR)/plate_ocr.onnx"
+	@echo "  Android: $(ANDROID_ASSETS)/plate_ocr.onnx"
 
 # ── Detect ───────────────────────────────────────────────────────────────────
 

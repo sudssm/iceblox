@@ -22,9 +22,10 @@ class PlateOCR(context: Context) {
     init {
         try {
             val modelBytes = context.assets.open("plate_ocr.onnx").use { it.readBytes() }
-            session = env.createSession(modelBytes)
-            inputName = session!!.inputNames.first()
-            val outputInfo = session!!.outputInfo.values.first()
+            val sess = env.createSession(modelBytes)
+            session = sess
+            inputName = sess.inputNames.first()
+            val outputInfo = sess.outputInfo.values.first()
             DebugLog.d(TAG, "OCR model loaded (ONNX Runtime), input=$inputName, output=${outputInfo.info}")
         } catch (e: Exception) {
             DebugLog.e(TAG, "OCR model init failed: ${e.javaClass.simpleName}: ${e.message}", e)
@@ -49,6 +50,8 @@ class PlateOCR(context: Context) {
         } catch (e: Exception) {
             DebugLog.w(TAG, "OCR failed: ${e.message}")
             null
+        } finally {
+            cropped.recycle()
         }
     }
 
@@ -72,27 +75,31 @@ class PlateOCR(context: Context) {
 
     private fun preprocessImage(bitmap: Bitmap): ByteArray {
         val resized = Bitmap.createScaledBitmap(bitmap, TARGET_WIDTH, TARGET_HEIGHT, true)
-        val pixels = IntArray(TARGET_WIDTH * TARGET_HEIGHT)
-        resized.getPixels(pixels, 0, TARGET_WIDTH, 0, 0, TARGET_WIDTH, TARGET_HEIGHT)
+        try {
+            val pixels = IntArray(TARGET_WIDTH * TARGET_HEIGHT)
+            resized.getPixels(pixels, 0, TARGET_WIDTH, 0, 0, TARGET_WIDTH, TARGET_HEIGHT)
 
-        // Pack as HWC uint8 RGB
-        val data = ByteArray(TARGET_HEIGHT * TARGET_WIDTH * 3)
+            // Pack as HWC uint8 RGB
+            val data = ByteArray(TARGET_HEIGHT * TARGET_WIDTH * 3)
 
-        for (y in 0 until TARGET_HEIGHT) {
-            for (x in 0 until TARGET_WIDTH) {
-                val pixel = pixels[y * TARGET_WIDTH + x]
-                val r = ((pixel shr 16) and 0xFF).toByte()
-                val g = ((pixel shr 8) and 0xFF).toByte()
-                val b = (pixel and 0xFF).toByte()
+            for (y in 0 until TARGET_HEIGHT) {
+                for (x in 0 until TARGET_WIDTH) {
+                    val pixel = pixels[y * TARGET_WIDTH + x]
+                    val r = ((pixel shr 16) and 0xFF).toByte()
+                    val g = ((pixel shr 8) and 0xFF).toByte()
+                    val b = (pixel and 0xFF).toByte()
 
-                val baseIdx = (y * TARGET_WIDTH + x) * 3
-                data[baseIdx] = r
-                data[baseIdx + 1] = g
-                data[baseIdx + 2] = b
+                    val baseIdx = (y * TARGET_WIDTH + x) * 3
+                    data[baseIdx] = r
+                    data[baseIdx + 1] = g
+                    data[baseIdx + 2] = b
+                }
             }
-        }
 
-        return data
+            return data
+        } finally {
+            if (resized !== bitmap) resized.recycle()
+        }
     }
 
     private fun fixedSlotDecode(output: Array<FloatArray>): OCRResult? {
