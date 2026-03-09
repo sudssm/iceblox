@@ -13,7 +13,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 - [ ] **Hash matcher** — Constant-time comparison via `crypto/subtle`, return matched label (REQ-S-2). Currently uses O(1) map lookup which is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
 - [x] **Match detection logging** — Emit structured log line with plaintext plate, hash, and GPS on match (REQ-O-1). Implemented via `Plate()` method on target store.
-- [ ] **Substitutions field** — Accept optional `substitutions` integer in `PlateRequest`, pass through to `RecordSighting`, store in sightings table (REQ-S-1a, REQ-S-3)
+- [x] **Substitutions field** — Accept optional `substitutions` integer in `PlateRequest`, pass through to `RecordSighting`, store in sightings table (REQ-S-1, REQ-S-3)
 
 ---
 
@@ -76,10 +76,10 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [x] **Debug log panel** — Translucent log panel at bottom of overlay showing DebugLog entries, color-coded by level, auto-scrolling (DBG-4)
 ### Lookalike Expansion
-- [ ] **LookalikeExpander** — Implement `LookalikeExpander.swift` with 5 merged groups, BFS by substitution distance, max 64 variants (REQ-M-12a)
-- [ ] **Queue schema migration** — Add `substitutions INTEGER NOT NULL DEFAULT 0` column to offline queue (REQ-M-12a)
-- [ ] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
-- [ ] **Pipeline integration** — Expand plates in `FrameProcessor.recordPlate()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
+- [x] **LookalikeExpander** — Implement `LookalikeExpander.swift` with 5 merged groups, BFS by substitution distance, max 64 variants (REQ-M-12a)
+- [x] **Queue schema migration** — Add `substitutions INTEGER NOT NULL DEFAULT 0` column to offline queue (REQ-M-12a)
+- [x] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
+- [x] **Pipeline integration** — Expand plates in `FrameProcessor.recordPlate()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
 
 ### Debug & Release
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
@@ -149,10 +149,10 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Detection feed** — Right-side scrollable feed showing recent plates with QUEUED/SENT/MATCHED state (DBG-2, DBG-3)
 - [x] **Debug log panel** — Translucent log panel at bottom of overlay showing DebugLog entries, color-coded by level, auto-scrolling (DBG-4)
 ### Lookalike Expansion
-- [ ] **LookalikeExpander** — Implement `LookalikeExpander.kt` with 5 merged groups, BFS by substitution distance, max 64 variants (REQ-M-12a)
-- [ ] **Queue schema migration** — Add `substitutions INTEGER NOT NULL DEFAULT 0` column via `MIGRATION_2_3` (REQ-M-12a)
-- [ ] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
-- [ ] **Pipeline integration** — Expand plates in `CaptureRepository.onPlatesDetected()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
+- [x] **LookalikeExpander** — Implement `LookalikeExpander.kt` with 5 merged groups, BFS by substitution distance, max 64 variants (REQ-M-12a)
+- [x] **Queue schema migration** — Add `substitutions INTEGER NOT NULL DEFAULT 0` column via `MIGRATION_2_3` (REQ-M-12a)
+- [x] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
+- [x] **Pipeline integration** — Expand plates in `CaptureRepository.onPlatesDetected()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
 
 ### Debug & Release
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)

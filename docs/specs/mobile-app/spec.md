@@ -584,7 +584,8 @@ ios/IceBloxApp/
 ├── Processing/
 │   ├── PlateNormalizer.swift           # Uppercase, strip, validate length
 │   ├── PlateHasher.swift              # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
-│   └── DeduplicationCache.swift        # Time-windowed set of recently seen normalized plates
+│   ├── DeduplicationCache.swift        # Time-windowed set of recently seen normalized plates
+│   └── LookalikeExpander.swift        # BFS expansion of confusable characters (REQ-M-12a)
 ├── Networking/
 │   ├── APIClient.swift                 # URLSession POST to server, batch construction
 │   ├── AlertClient.swift               # Subscribe endpoint client, 10-min timer, GPS truncation
@@ -688,7 +689,8 @@ android/app/src/main/java/com/iceblox/app/
 ├── processing/
 │   ├── PlateNormalizer.kt               # Uppercase, strip, validate
 │   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper from BuildConfig
-│   └── DeduplicationCache.kt            # Time-windowed set
+│   ├── DeduplicationCache.kt            # Time-windowed set
+│   └── LookalikeExpander.kt            # BFS expansion of confusable characters (REQ-M-12a)
 ├── network/
 │   ├── ApiClient.kt                     # OkHttp, POST /api/v1/plates + /api/v1/devices
 │   ├── AlertClient.kt                   # Subscribe endpoint client, coroutine timer, GPS truncation

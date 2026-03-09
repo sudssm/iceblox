@@ -57,6 +57,7 @@ android/
         │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id
         │   │   ├── processing/
         │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
+        │   │   │   ├── LookalikeExpander.kt # BFS expansion of confusable characters (REQ-M-12a)
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, pepper from BuildConfig
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
         │   │   ├── service/
@@ -86,7 +87,8 @@ android/
                 ├── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry, AppConfig
                 ├── AlertClientTest.kt      # AlertClient GPS truncation, timer, subscribe tests
                 ├── DeviceTokenManagerTest.kt # Token registration request tests
-                └── NotificationHelperTest.kt # Notification channel and display tests
+                ├── NotificationHelperTest.kt # Notification channel and display tests
+                └── LookalikeExpanderTest.kt # Lookalike character expansion tests (REQ-M-12a)
 ```
 
 ## Architecture
