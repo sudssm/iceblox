@@ -1,7 +1,3 @@
-# Environment
-.env
-.env.*
-
 # Context
 .context/
 
@@ -51,4 +47,7 @@ models/CHANGELOG.md
 
 # Deployed model files in ios/ and android/ ARE committed so clones work immediately.
 # Intermediate exports are ignored via models/exports/ above.
+# Generated at build time from .env
+ios/IceBloxApp/Config/Pepper.swift
+
 .claude/worktrees/
