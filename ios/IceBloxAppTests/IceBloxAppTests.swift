@@ -151,7 +151,7 @@ final class IceBloxAppTests: XCTestCase {
         XCTAssertEqual(AppConfig.detectionConfidenceThreshold, 0.7)
         XCTAssertEqual(AppConfig.ocrConfidenceThreshold, 0.6)
         XCTAssertEqual(AppConfig.deduplicationWindowSeconds, 60)
-        XCTAssertEqual(AppConfig.batchSize, 10)
+        XCTAssertEqual(AppConfig.batchSize, 65)
         XCTAssertEqual(AppConfig.maxQueueSize, 1000)
     }
 }

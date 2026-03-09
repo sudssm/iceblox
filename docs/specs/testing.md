@@ -300,7 +300,7 @@ For stop-summary verification, the iOS harness sets `E2E_USE_STOP_RECORDING_TRIG
 
 ### Timing
 
-- **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is well below `BATCH_SIZE` (200), the tests wait 35 seconds for the timer-based flush.
+- **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is well below `BATCH_SIZE` (65), the tests wait 35 seconds for the timer-based flush.
 - **iOS**: The E2E harness overrides the batch interval to 1 second at launch, so each scenario waits 6 seconds for upload and DB persistence.
 
 ## Local Device Testing

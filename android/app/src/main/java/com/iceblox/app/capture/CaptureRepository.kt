@@ -224,8 +224,10 @@ class CaptureRepository(private val application: Application) {
         val primaryPrefix = variantHashMap[prefix] ?: prefix
         val newState = if (matched) DetectionState.MATCHED else DetectionState.SENT
         val current = _detectionFeed.value.toMutableList()
-        val idx = current.indexOfLast {
-            it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED
+        val idx = if (matched) {
+            current.indexOfLast { it.hashPrefix == primaryPrefix && it.state != DetectionState.MATCHED }
+        } else {
+            current.indexOfLast { it.hashPrefix == primaryPrefix && it.state == DetectionState.QUEUED }
         }
         if (idx >= 0) {
             current[idx] = current[idx].copy(state = newState)
