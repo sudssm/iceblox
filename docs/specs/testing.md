@@ -275,6 +275,7 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Target plate image** (`tests/test_target_plate.sh`): Pushes an image containing a known test plate. After the batch flush interval, verifies at least one matched sighting exists in the database.
 - **Stop recording summary**: The Android target-plate test taps `Stop Recording` and inspects the summary overlay. The iOS target-plate test triggers stop via an Application Support file and validates the summary artifact fields emitted by the app.
 - **Background capture** (`tests/test_background_capture.sh`): Pushes a target plate image, starts the camera, then backgrounds the app via `KEYCODE_HOME`. Verifies the app process survives backgrounding, remains alive after the batch flush window, and produces at least one sighting while backgrounded.
+- **Batch upload** (`tests/test_batch_upload.sh`): Pushes a target plate image, starts the camera, verifies the upload queue banner appears while plates are queued, waits for the batch flush, then verifies the server received batch-format POSTs (with `count=` in logs), sightings were recorded, and the upload queue banner cleared after the flush.
 
 ### Prerequisites
 
@@ -299,7 +300,7 @@ For stop-summary verification, the iOS harness sets `E2E_USE_STOP_RECORDING_TRIG
 
 ### Timing
 
-- **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is below `BATCH_SIZE` (10), the tests wait 35 seconds for the timer-based flush.
+- **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is well below `BATCH_SIZE` (200), the tests wait 35 seconds for the timer-based flush.
 - **iOS**: The E2E harness overrides the batch interval to 1 second at launch, so each scenario waits 6 seconds for upload and DB persistence.
 
 ## Local Device Testing

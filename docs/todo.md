@@ -15,6 +15,8 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 - [x] **Request logging middleware** — Wrap the HTTP mux to log method/path/status/duration/device_id, and recover panics as logged 500s (REQ-S-17). Implemented in working tree.
 - [x] **Match detection logging** — Emit structured log line with plaintext plate, hash, and GPS on match (REQ-O-1). Implemented via `Plate()` method on target store.
 - [x] **Substitutions field** — Accept optional `substitutions` integer in `PlateRequest`, pass through to `RecordSighting`, store in sightings table (REQ-S-1, REQ-S-3)
+- [x] **Batch plates endpoint** — Accept `{"plates": [...]}` array, validate all entries, process each plate, return positionally aligned `{"results": [...]}` array (REQ-S-1, REQ-S-4)
+- [x] **Header sanitization** — Sanitize `X-Device-ID` header to allow only alphanumeric characters, hyphens, underscores, and periods before logging (REQ-S-1)
 
 ---
 
@@ -61,14 +63,17 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Persistence & Networking
 - [x] **Offline queue** — OfflineQueue.swift: SQLite-backed FIFO, max 1000 entries, oldest eviction (REQ-M-15)
 - [x] **Location services** — LocationManager.swift: CLLocationManager, GPS attach, "No GPS" warning (REQ-M-16)
-- [x] **Batch upload** — APIClient.swift: URLSession POST, 10-plate or 30-second trigger, sends device timestamp in ISO 8601 (REQ-M-14)
-- [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
+- [x] **Batch upload** — APIClient.swift: URLSession POST with batch `{"plates": [...]}` format, 200-plate or 30-second trigger, loop until queue drained, sends device timestamp in ISO 8601 (REQ-M-14)
+- [x] **Match response handling** — Parse positionally aligned `results` array with per-plate `matched` boolean, update target counter (REQ-M-14a)
 - [x] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
 - [x] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
 - [x] **Retry logic** — RetryManager.swift: exponential backoff, max 10 retries (REQ-M-17)
 - [x] **429 handling** — Read Retry-After header, pause uploads (REQ-M-17a)
 - [x] **Connectivity monitor** — ConnectivityMonitor.swift: NWPathMonitor, flush queue on reconnect (REQ-M-14)
 - [x] **Plate normalization ASCII filter** — Added `.isASCII` filter to match overview spec and Android (REQ-M-10)
+- [x] **Upload queue expiry** — Prune offline queue entries older than 10 minutes at the start of each batch cycle (REQ-M-15)
+- [x] **Upload queue banner** — Show "N uploads queued" amber pill with dismiss button on camera screen and splash screen when queue is non-empty (REQ-M-14)
+- [x] **Clear queue action** — Dismiss button on upload queue banner clears entire offline queue (REQ-M-15)
 
 ### Debug Mode
 - [x] **Debug toggle** — Triple-tap gesture, `#if DEBUG` gated (REQ-M-18)
@@ -81,6 +86,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Queue schema migration** — Add `substitutions INTEGER NOT NULL DEFAULT 0` column to offline queue (REQ-M-12a)
 - [x] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
 - [x] **Pipeline integration** — Expand plates in `FrameProcessor.recordPlate()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
+
+### Persistence & Networking (cont.)
+- [x] **Drain queue regardless of session state** — Run the batch upload timer whenever there are pending items in the offline queue, even on the splash screen before a recording session starts. Currently the timer only runs during active foreground/background capture, so stale entries from a previous session are never retried (REQ-M-14)
 
 ### Debug & Release
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
@@ -135,13 +143,16 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Persistence & Networking
 - [x] **Offline queue** — Room database, max 1000 entries, oldest eviction (REQ-M-15)
 - [x] **Location services** — FusedLocationProviderClient, GPS warning in status bar (REQ-M-16)
-- [x] **Batch upload** — OkHttp POST, 10-plate or 30-second trigger, sends device timestamp in ISO 8601 (REQ-M-14)
-- [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
+- [x] **Batch upload** — OkHttp POST with batch `{"plates": [...]}` format, 200-plate or 30-second trigger, loop until queue drained, sends device timestamp in ISO 8601 (REQ-M-14)
+- [x] **Match response handling** — Parse positionally aligned `results` array with per-plate `matched` boolean, update target counter (REQ-M-14a)
 - [x] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
 - [x] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
 - [x] **Retry logic** — Exponential backoff on failure (REQ-M-17)
 - [x] **429 handling** — Read Retry-After, pause uploads (REQ-M-17a)
 - [x] **Connectivity monitor** — ConnectivityManager.NetworkCallback, flush on reconnect (REQ-M-14)
+- [x] **Upload queue expiry** — Prune offline queue entries older than 10 minutes at the start of each batch cycle (REQ-M-15)
+- [x] **Upload queue banner** — Show "N uploads queued" amber pill with dismiss button on camera screen and splash screen when queue is non-empty (REQ-M-14)
+- [x] **Clear queue action** — Dismiss button on upload queue banner clears entire offline queue via `deleteAll` DAO method (REQ-M-15)
 
 ### Debug Mode
 - [x] **Debug toggle** — Triple-tap gesture, debug builds only via `BuildConfig.DEBUG` (REQ-M-18)
@@ -155,6 +166,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
 - [x] **Pipeline integration** — Expand plates in `CaptureRepository.onPlatesDetected()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
 
+### Persistence & Networking (cont.)
+- [x] **Drain queue regardless of session state** — Run the batch upload timer whenever there are pending items in the offline queue, even on the splash screen before a recording session starts. Currently the timer only runs during active foreground/background capture, so stale entries from a previous session are never retried (REQ-M-14)
+
 ### Debug & Release
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
@@ -167,6 +181,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app/test-scenarios.md`](specs/mobile-app/test-scenarios.md) → E2E Tests
 
 - [x] **Background capture E2E test** — Verify app process survives backgrounding and produces sightings while backgrounded (TS-E2E-10)
+- [x] **Batch upload E2E test** — Verify batch-format POSTs, upload queue banner visibility, sighting creation, and banner clearing after flush
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---

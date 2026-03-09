@@ -1,8 +1,8 @@
--include .env
+PEPPER ?= $(shell grep '^PEPPER=' .env 2>/dev/null | cut -d= -f2)
 export PEPPER
 
 .env: pepper.config
-	cp pepper.config .env
+	@grep -q '^PEPPER=' .env 2>/dev/null || cat pepper.config >> .env
 
 # ── Server ──────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,7 @@ ZIP_FILE := $(DATA_DIR)/plates.zip
 ZIP_URL_FILE := $(DATA_DIR)/.zip_url
 TRACKER_URL := https://www.stopice.net/platetracker
 
-DB_DSN ?= postgres://$(USER)@localhost:5432/iceblox?sslmode=disable
+DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
 .PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint android-test kill-server clean

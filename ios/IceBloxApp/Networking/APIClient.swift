@@ -10,9 +10,17 @@ struct PlateSubmission: Codable {
     let substitutions: Int
 }
 
-struct PlateResponse: Codable {
+struct BatchPlateRequest: Codable {
+    let plates: [PlateSubmission]
+}
+
+struct BatchPlateResponse: Codable {
     let status: String
-    let matched: Bool?
+    let results: [PlateResult]?
+}
+
+struct PlateResult: Codable {
+    let matched: Bool
 }
 
 final class APIClient {
@@ -64,41 +72,43 @@ final class APIClient {
     private func sendBatch() {
         guard !retryManager.isRateLimited else { return }
 
-        let entries = offlineQueue.dequeue(limit: AppConfig.batchSize)
-        guard !entries.isEmpty else { return }
+        offlineQueue.removeExpired(olderThan: AppConfig.uploadTimeoutSeconds)
 
         let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
         let url = AppConfig.serverBaseURL.appendingPathComponent(AppConfig.platesEndpoint)
+        let formatter = ISO8601DateFormatter()
 
-        for entry in entries {
+        while true {
+            let entries = offlineQueue.dequeue(limit: AppConfig.batchSize)
+            guard !entries.isEmpty else { return }
+
+            let submissions = entries.map { entry in
+                PlateSubmission(
+                    plate_hash: entry.plateHash,
+                    latitude: entry.latitude,
+                    longitude: entry.longitude,
+                    timestamp: formatter.string(from: entry.timestamp),
+                    substitutions: entry.substitutions
+                )
+            }
+            let batch = BatchPlateRequest(plates: submissions)
+            guard let body = try? JSONEncoder().encode(batch) else { return }
+
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
-
-            let formatter = ISO8601DateFormatter()
-            let submission = PlateSubmission(
-                plate_hash: entry.plateHash,
-                latitude: entry.latitude,
-                longitude: entry.longitude,
-                timestamp: formatter.string(from: entry.timestamp),
-                substitutions: entry.substitutions
-            )
-
-            guard let body = try? JSONEncoder().encode(submission) else { continue }
             request.httpBody = body
 
+            var shouldContinue = false
             let semaphore = DispatchSemaphore(value: 0)
-            var shouldRemove = false
 
             session.dataTask(with: request) { [weak self] data, response, error in
                 defer { semaphore.signal() }
 
                 if let error {
                     DebugLog.shared.w("APIClient", "Upload failed: \(error.localizedDescription)")
-                    if let delay = self?.retryManager.handleFailure() {
-                        Thread.sleep(forTimeInterval: delay)
-                    }
+                    _ = self?.retryManager.handleFailure()
                     return
                 }
 
@@ -112,30 +122,31 @@ final class APIClient {
                 }
 
                 if httpResponse.statusCode == 200 {
-                    DebugLog.shared.d("APIClient", "Upload OK")
-                    shouldRemove = true
+                    DebugLog.shared.d("APIClient", "Upload OK (\(entries.count) plates)")
                     self?.retryManager.reset()
 
-                    let matched: Bool
+                    let ids = entries.compactMap { $0.id }
+                    self?.offlineQueue.remove(ids: ids)
+
                     if let data,
-                       let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data) {
-                        matched = plateResponse.matched == true
-                        if matched, entry.sessionID == self?.currentSessionID {
-                            DispatchQueue.main.async {
-                                self?.totalTargets += 1
+                       let batchResponse = try? JSONDecoder().decode(BatchPlateResponse.self, from: data),
+                       let results = batchResponse.results {
+                        for (i, result) in results.enumerated() where i < entries.count {
+                            let entry = entries[i]
+                            if result.matched, entry.sessionID == self?.currentSessionID {
+                                DispatchQueue.main.async {
+                                    self?.totalTargets += 1
+                                }
                             }
+                            self?.onPlateSent?(entry.plateHash, result.matched, entry.sessionID)
                         }
-                    } else {
-                        matched = false
                     }
-                    self?.onPlateSent?(entry.plateHash, matched, entry.sessionID)
+                    shouldContinue = true
                 }
             }.resume()
 
             semaphore.wait()
-            if shouldRemove, let id = entry.id {
-                offlineQueue.remove(ids: [id])
-            }
+            if !shouldContinue { return }
         }
     }
 }

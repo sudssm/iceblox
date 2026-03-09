@@ -25,9 +25,9 @@ Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetra
 
 ## Requirements
 
-### REQ-S-1: Receive Hashed Plates
+### REQ-S-1: Receive Hashed Plates (Batch)
 
-The server MUST expose an HTTP endpoint that accepts a single hashed plate submission.
+The server MUST expose an HTTP endpoint that accepts a batch of hashed plate submissions. Each request contains a `plates` array with one or more plate entries.
 
 ```
 POST /api/v1/plates
@@ -35,38 +35,50 @@ Content-Type: application/json
 X-Device-ID: <device identifier>
 
 {
-  "plate_hash": "string (64-char hex, HMAC-SHA256)",
-  "latitude": number,
-  "longitude": number,
-  "timestamp": "string (ISO 8601 / RFC 3339, optional)",
-  "substitutions": number (integer >= 0, optional, default 0)
+  "plates": [
+    {
+      "plate_hash": "string (64-char hex, HMAC-SHA256)",
+      "latitude": number,
+      "longitude": number,
+      "timestamp": "string (ISO 8601 / RFC 3339, optional)",
+      "substitutions": number (integer >= 0, optional, default 0)
+    }
+  ]
 }
 ```
 
-**Field validation:**
+**Request validation:**
+- `plates`: Required. MUST be a non-empty array. An empty array returns `400 Bad Request`.
+
+**Per-plate field validation:**
 - `plate_hash`: Required. MUST be a 64-character hexadecimal string.
 - `latitude`: Required. MUST be in range [-90, 90].
 - `longitude`: Required. MUST be in range [-180, 180].
 - `timestamp`: Optional. ISO 8601 / RFC 3339 format (e.g., `"2026-03-08T14:30:00Z"`). If omitted or unparseable, defaults to the server's current UTC time. Represents when the plate was seen by the device.
 - `substitutions`: Optional. Non-negative integer indicating how many character positions were changed from the original OCR reading due to lookalike character expansion (see mobile spec REQ-M-12a). Defaults to 0 if omitted. The server MUST validate that the value is >= 0 and store it with matched sightings.
 
+If any plate in the batch fails validation, the entire request is rejected with `400 Bad Request`.
+
 **Headers:**
-- `X-Device-ID`: Optional. Identifies the submitting device. If omitted, recorded as `"unknown"`. Maps to `hardware_id` in the sightings table.
+- `X-Device-ID`: Optional. Identifies the submitting device. If omitted, recorded as `"unknown"`. Maps to `hardware_id` in the sightings table. The header value is sanitized to allow only alphanumeric characters, hyphens, underscores, and periods.
 
 **Response (200 OK):**
 ```json
 {
   "status": "ok",
-  "matched": true
+  "results": [
+    {"matched": true},
+    {"matched": false}
+  ]
 }
 ```
 
+The `results` array is positionally aligned with the `plates` array in the request — `results[i]` corresponds to `plates[i]`.
+
 **Error responses:**
-- `400 Bad Request` — malformed JSON or failed field validation. Body: `{"error": "description"}`.
+- `400 Bad Request` — malformed JSON, empty plates array, or failed field validation. Body: `{"error": "description"}`.
 - `405 Method Not Allowed` — non-POST request to this endpoint.
 - `500 Internal Server Error` — database write failure. Body: `{"error": "failed to record sighting"}`.
-
-> **Future:** Batch submissions (array of plates + device_id) will be added when offline queue flush is needed.
 
 ### REQ-S-2: Compare Against Targets
 
@@ -85,7 +97,7 @@ Non-matching hashes MUST NOT be persisted (privacy model: non-target plates are 
 
 ### REQ-S-4: Response
 
-The server MUST return a per-plate match boolean in the response body. The response format is `{"status": "ok", "matched": true|false}`. No target details are revealed to the device.
+The server MUST return a per-plate match boolean in the response body. The response format is `{"status": "ok", "results": [{"matched": true|false}, ...]}`, where the `results` array is positionally aligned with the `plates` array in the request. No target details are revealed to the device.
 
 ### REQ-S-5: Target Plate Loading
 
@@ -400,7 +412,7 @@ The server MUST wrap the HTTP mux with request logging middleware so operator lo
 | Language / framework | Go with `net/http` |
 | Target list source | StopICE plate tracker data (plaintext `plates.txt` extracted via Makefile) |
 | Alert delivery | Push notifications to registered devices on match, filtered by proximity (APNs for iOS, FCM for Android, in-memory store for subscriber locations) |
-| Match results to device | Yes — per-plate boolean only, no target details |
+| Match results to device | Yes — per-plate boolean in batch `results` array, no target details |
 | Storage | PostgreSQL — `plates` table for targets, `sightings` table for matched observations |
 | Monitoring app data source | REST API querying `sightings` table |
 | Rate limiting | 20 plates/minute per device_id, 429 response with Retry-After |

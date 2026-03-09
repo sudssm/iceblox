@@ -23,4 +23,10 @@ interface OfflineQueueDao {
 
     @Query("DELETE FROM offline_queue WHERE id IN (SELECT id FROM offline_queue ORDER BY id ASC LIMIT :count)")
     suspend fun deleteOldest(count: Int)
+
+    @Query("DELETE FROM offline_queue")
+    suspend fun deleteAll()
+
+    @Query("DELETE FROM offline_queue WHERE timestamp < :cutoffMs")
+    suspend fun deleteOlderThan(cutoffMs: Long)
 }

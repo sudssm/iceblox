@@ -23,9 +23,10 @@ enum AppConfig {
     static let minPlateLength = 2
     static let maxPlateLength = 8
 
-    static let batchSize = 10
+    static let batchSize = 200
     static let batchIntervalSeconds = timeIntervalEnv("E2E_BATCH_INTERVAL_SECONDS", defaultValue: 30)
     static let maxQueueSize = 1000
+    static let uploadTimeoutSeconds: TimeInterval = 600
 
     static let retryInitialDelay: TimeInterval = 5
     static let retryMaxDelay: TimeInterval = 300

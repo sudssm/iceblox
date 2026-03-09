@@ -27,8 +27,20 @@ run_test_target_plate() {
         E2E_FAIL=$((E2E_FAIL + 1))
     fi
 
-    if grep -q '"matched":true' "$E2E_SERVER_LOG" 2>/dev/null; then
-        echo "  INFO: Server logged a matched plate POST"
+    if grep -q 'MATCH DETECTED' "$E2E_SERVER_LOG" 2>/dev/null; then
+        echo "  PASS: Server logged a matched plate"
+        E2E_PASS=$((E2E_PASS + 1))
+    else
+        echo "  FAIL: Server should log MATCH DETECTED for target plate"
+        E2E_FAIL=$((E2E_FAIL + 1))
+    fi
+
+    if grep -q 'count=[0-9]' "$E2E_SERVER_LOG" 2>/dev/null; then
+        echo "  PASS: Server received batch POST (count= in log)"
+        E2E_PASS=$((E2E_PASS + 1))
+    else
+        echo "  FAIL: Server should log batch count"
+        E2E_FAIL=$((E2E_FAIL + 1))
     fi
 
     local sighting

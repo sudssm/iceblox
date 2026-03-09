@@ -70,12 +70,10 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             } else {
                 rawBitmap
             }
-            DebugLog.d(
-                TAG,
-                "analyze: frame=$frameCount, bitmap=${bitmap.width}x${bitmap.height}, rotation=$rotationDegrees"
-            )
             val detections = detector.detect(bitmap)
-            DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
+            if (detections.isNotEmpty()) {
+                DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
+            }
 
             _rawDetections.value = detections.map { det ->
                 RawDetectionBox(

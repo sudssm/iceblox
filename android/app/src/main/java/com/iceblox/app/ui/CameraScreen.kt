@@ -12,11 +12,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -180,6 +183,13 @@ fun CameraScreen(
                     Text("Stop Recording")
                 }
 
+                if (queueDepth > 0) {
+                    UploadQueueBanner(
+                        count = queueDepth,
+                        onClear = { viewModel.clearUploadQueue() }
+                    )
+                }
+
                 StatusBar(
                     isConnected = isConnected,
                     platesDetected = plateCount,
@@ -288,6 +298,36 @@ fun formatSessionDuration(durationMs: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "${minutes}m ${seconds.toString().padStart(2, '0')}s"
+}
+
+@Composable
+fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(50))
+            .padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp)
+    ) {
+        Text(
+            text = "$count uploads queued",
+            color = Color(0xFFFFB300),
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        IconButton(
+            onClick = onClear,
+            modifier = Modifier.size(24.dp)
+        ) {
+            Text(
+                text = "\u2715",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(4.dp))
 }
 
 @Composable
