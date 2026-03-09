@@ -1,10 +1,12 @@
--include ../.env
+-include .env
 export PEPPER
 
-../.env: ../pepper.config
-	cp ../pepper.config ../.env
+.env: pepper.config
+	cp pepper.config .env
 
-DATA_DIR := data
+# ── Server ──────────────────────────────────────────────────────────────────
+
+DATA_DIR := server/data
 PLATES_FILE := $(DATA_DIR)/plates.txt
 ZIP_FILE := $(DATA_DIR)/plates.zip
 ZIP_URL_FILE := $(DATA_DIR)/.zip_url
@@ -13,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://$(USER)@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract run-server run-test-server db db-stop test test-db lint clean
+.PHONY: setup extract run-server run-test-server db db-stop server-test server-test-db server-lint android-test clean
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -45,25 +47,25 @@ $(PLATES_FILE): $(ZIP_FILE)
 
 ## run-server: Build and run the Go server
 run-server:
-	go run ./cmd/server/... --db-dsn "$(DB_DSN)"
+	cd server && go run ./cmd/server/... --db-dsn "$(DB_DSN)"
 
 ## run-test-server: Run server with test plates (known plates for E2E testing)
 run-test-server:
-	go run ./cmd/server/... --plates-file testdata/test_plates.txt --db-dsn "$(DB_DSN)"
+	cd server && go run ./cmd/server/... --plates-file testdata/test_plates.txt --db-dsn "$(DB_DSN)"
 
-## lint: Run golangci-lint
-lint:
-	golangci-lint run ./...
+## server-lint: Run golangci-lint
+server-lint:
+	cd server && golangci-lint run ./...
 
-## test: Run all Go tests (unit only, no DB required)
-test:
-	go test ./...
+## server-test: Run all Go tests (unit only, no DB required)
+server-test:
+	cd server && go test ./...
 
-## test-db: Run all tests including DB integration tests (requires PostgreSQL)
-test-db:
+## server-test-db: Run all tests including DB integration tests (requires PostgreSQL)
+server-test-db:
 	@dropdb --if-exists $(TEST_DB) 2>/dev/null; \
 	createdb $(TEST_DB) && \
-	TEST_DATABASE_URL="postgres://$(USER)@localhost:5432/$(TEST_DB)?sslmode=disable" go test -tags integration ./... -v; \
+	cd server && TEST_DATABASE_URL="postgres://$(USER)@localhost:5432/$(TEST_DB)?sslmode=disable" go test -tags integration ./... -v; \
 	dropdb --if-exists $(TEST_DB)
 
 ## db: Start PostgreSQL in Docker for development
@@ -73,6 +75,14 @@ db:
 ## db-stop: Stop PostgreSQL container
 db-stop:
 	docker stop iceblox-postgres
+
+# ── Android ─────────────────────────────────────────────────────────────────
+
+## android-test: Run Android unit tests (generates .env first)
+android-test: .env
+	cd android && ./gradlew test
+
+# ── Cleanup ─────────────────────────────────────────────────────────────────
 
 ## clean: Remove downloaded data
 clean:
