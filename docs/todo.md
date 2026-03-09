@@ -51,7 +51,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
 - [x] **Wire live data** — StatusBarView connected to FrameProcessor, APIClient, ConnectivityMonitor, LocationManager
 - [x] **Recording session state** — Session lifecycle with per-session timestamps and counters, managed in ContentView.swift (REQ-M-3a, REQ-M-3d)
-- [x] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
+- [x] **Stop Recording button** — Persistent bottom-center control (above status bar) that halts new detections immediately (REQ-M-3b)
 - [x] **Session summary sheet** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
 
 ### Detection Pipeline
@@ -126,7 +126,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
 - [x] **Wire ViewModel** — MainViewModel with StateFlow, CameraScreen observes via collectAsState
 - [x] **Recording session state** — Session lifecycle with per-session timestamps and counters, managed in MainViewModel.kt (REQ-M-3a, REQ-M-3d)
-- [x] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
+- [x] **Stop Recording button** — Persistent bottom-center control (above status bar) that halts new detections immediately (REQ-M-3b)
 - [x] **Session summary dialog** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
 
 ### Detection Pipeline

@@ -158,27 +158,31 @@ fun CameraScreen(
         }
 
         if (sessionSummary == null) {
-            Button(
-                onClick = { viewModel.stopRecordingSession() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 24.dp, end = 24.dp)
-                    .testTag("stop_recording_button")
-            ) {
-                Text("Stop Recording")
-            }
-
-            StatusBar(
-                isConnected = isConnected,
-                platesDetected = plateCount,
-                targetCount = targetCount,
-                lastDetectionTime = lastDetectionTime,
-                hasGps = hasGps,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-            )
+            ) {
+                Button(
+                    onClick = { viewModel.stopRecordingSession() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                    modifier = Modifier
+                        .padding(bottom = 12.dp)
+                        .testTag("stop_recording_button")
+                ) {
+                    Text("Stop Recording")
+                }
+
+                StatusBar(
+                    isConnected = isConnected,
+                    platesDetected = plateCount,
+                    targetCount = targetCount,
+                    lastDetectionTime = lastDetectionTime,
+                    hasGps = hasGps,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         sessionSummary?.let { summary ->
