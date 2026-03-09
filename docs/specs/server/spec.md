@@ -19,7 +19,7 @@ Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetra
 
 - **Language**: Go
 - **Framework**: `net/http` (standard library)
-- **Database**: PostgreSQL (via `pgx` driver with `database/sql`)
+- **Database**: PostgreSQL (via GORM ORM with `pgx` driver)
 - **Target list source**: `data/plates.txt` — plaintext plate list extracted from StopICE data, seeded into the `plates` database table on startup
 - **Push notifications**: APNs (iOS) via HTTP/2 + ES256 JWT, FCM (Android) via HTTP v1 API + OAuth2 — Go stdlib only (`net/http`, `crypto/*`)
 
@@ -183,6 +183,8 @@ CREATE TABLE device_tokens (
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
 3. When a submitted hash matches, a sighting is inserted with the plate's ID, timestamp, GPS, and device ID
 4. Non-matching hashes are never written to the database
+
+**Schema management:** The database schema is defined by GORM model structs in `internal/db/db.go` with struct tags specifying types, indexes, constraints, and foreign keys. On startup (and via `make migrate`), the server calls GORM's `AutoMigrate` which creates missing tables, adds missing columns, and creates missing indexes — no hand-written migration SQL is required. Adding a column is as simple as adding a tagged field to the Go struct.
 
 **Connection:** Configured via `--db-dsn` flag. Default: `postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable`. Schema migrations MUST be executable via `make migrate`, which runs database-only migrations against `DATABASE_URL` or `DB_DSN` and exits without starting the HTTP server. Railway deployments MUST invoke this target as a predeploy command so schema changes complete before the new server instance starts receiving traffic. The server MAY also run the same idempotent migration path on startup as a safety check.
 
@@ -478,15 +480,15 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 14 | Notifier | REQ-S-10 | Match → push dispatch to all devices, async goroutine, stale token cleanup |
 | 15 | Geo package | REQ-S-15 | Haversine distance calculation, bounding box utility (pure functions, no deps) |
 | 16 | Subscriber store | REQ-S-14 | In-memory subscriber location storage with 1-hour TTL and periodic cleanup |
-| 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, Sighting struct, composite geo index |
+| 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, SightingResult struct, composite geo index |
 | 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
 | 20 | Request logging middleware | REQ-S-17 | Wrap mux, record method/path/status/duration/device_id, recover panics as 500 |
 
 ### Key Technical Notes
 
-- **External dependency**: `github.com/jackc/pgx/v5` for PostgreSQL driver (via `database/sql` interface).
-- **Schema migrations**: Expose a database-only `make migrate` entrypoint for deploy-time execution. The implementation remains idempotent via `CREATE TABLE IF NOT EXISTS`, so startup can safely call the same migration path in development and as a production safety check. No migration framework is needed for v1.
+- **External dependencies**: `gorm.io/gorm` (ORM) and `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally).
+- **Schema migrations**: GORM's `AutoMigrate` derives the schema from Go struct tags (types, indexes, constraints, foreign keys). It creates tables, adds missing columns, and creates missing indexes idempotently on each startup. A `make migrate` entrypoint runs migrations and exits for deploy-time execution (e.g., Railway predeploy).
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
 - **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
