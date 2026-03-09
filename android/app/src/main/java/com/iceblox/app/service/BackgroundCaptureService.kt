@@ -28,6 +28,7 @@ class BackgroundCaptureService : LifecycleService() {
     private var captureBound = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         when (intent?.action ?: AppConfig.ACTION_START_BACKGROUND_CAPTURE) {
             AppConfig.ACTION_STOP_BACKGROUND_CAPTURE -> stopCapture()
             AppConfig.ACTION_START_BACKGROUND_CAPTURE -> startCapture()
