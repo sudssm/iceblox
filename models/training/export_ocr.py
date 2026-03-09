@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """PP-OCRv3 model download, conversion, and export pipeline.
 
 Downloads the fine-tuned USLicensePlateOCR PP-OCRv3 model and converts it to
@@ -32,10 +34,10 @@ PADDLE_BASE_URL = (
     "https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_infer.tar"
 )
 
-# Tier 3: Pre-converted ONNX from HuggingFace
+# Tier 3: Pre-converted ONNX from HuggingFace (deepghs/paddleocr)
 HF_ONNX_URL = (
-    "https://huggingface.co/SWHL/RapidOCR/resolve/main/"
-    "PP-OCRv3/en_PP-OCRv3_rec_infer/en_PP-OCRv3_rec_infer.onnx"
+    "https://huggingface.co/deepghs/paddleocr/resolve/main/"
+    "rec/en_PP-OCRv3_rec/model.onnx"
 )
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -179,32 +181,45 @@ def verify_onnx(onnx_path: Path) -> bool:
 
 
 def convert_to_coreml(onnx_path: Path, output_path: Path) -> bool:
-    """Convert ONNX to CoreML .mlpackage."""
+    """Convert ONNX to CoreML .mlpackage (runs in isolated subprocess)."""
     print(f"Converting ONNX → CoreML: {output_path}")
-    try:
-        import coremltools as ct
-
-        model = ct.converters.convert(
-            str(onnx_path),
-            minimum_deployment_target=ct.target.iOS17,
-            convert_to="mlprogram",
-        )
-        model.save(str(output_path))
-        print(f"  CoreML model saved: {output_path}")
-        return output_path.exists()
-    except Exception as e:
-        print(f"  CoreML conversion failed: {e}")
+    # Run in isolated subprocess to avoid tensorflow/coremltools conflicts.
+    # Load ONNX model object explicitly so coremltools detects the framework.
+    script = f"""
+import onnx
+import coremltools as ct
+m = onnx.load("{onnx_path}")
+model = ct.convert(
+    m,
+    inputs=[ct.TensorType(name="x", shape={INPUT_SHAPE})],
+    minimum_deployment_target=ct.target.iOS17,
+    convert_to="mlprogram",
+)
+model.save("{output_path}")
+print("CoreML model saved")
+"""
+    # Strip tensorflow from sys.path to prevent coremltools from detecting it
+    env = {**os.environ, "TF_CPP_MIN_LOG_LEVEL": "3"}
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True, text=True, env=env,
+    )
+    if result.returncode != 0:
+        print(f"  CoreML conversion failed: {result.stderr.strip()}")
         return False
+    print(f"  CoreML model saved: {output_path}")
+    return output_path.exists()
 
 
 def convert_to_tflite(onnx_path: Path, output_dir: Path) -> bool:
-    """Convert ONNX to TFLite via onnx2tf."""
+    """Convert ONNX to TFLite via onnx2tf (runs in isolated subprocess)."""
     print(f"Converting ONNX → TFLite: {output_dir / 'plate_ocr.tflite'}")
     try:
+        tflite_tmp = output_dir / "tflite_tmp"
         cmd = [
             sys.executable, "-m", "onnx2tf",
             "-i", str(onnx_path),
-            "-o", str(output_dir / "tflite_tmp"),
+            "-o", str(tflite_tmp),
             "-osd",
             "--non_verbose",
         ]
@@ -214,8 +229,7 @@ def convert_to_tflite(onnx_path: Path, output_dir: Path) -> bool:
             return False
 
         # Find the generated .tflite file
-        tflite_dir = output_dir / "tflite_tmp"
-        tflite_files = list(tflite_dir.rglob("*.tflite"))
+        tflite_files = list(tflite_tmp.rglob("*.tflite"))
         if not tflite_files:
             print("  No .tflite file generated")
             return False
@@ -230,7 +244,7 @@ def convert_to_tflite(onnx_path: Path, output_dir: Path) -> bool:
             shutil.copy2(tflite_files[0], target)
 
         # Cleanup temp dir
-        shutil.rmtree(tflite_dir, ignore_errors=True)
+        shutil.rmtree(tflite_tmp, ignore_errors=True)
         print(f"  TFLite model saved: {target}")
         return target.exists()
     except Exception as e:
@@ -274,9 +288,7 @@ def main():
             result = download_hf_onnx(MODEL_DIR)
             if result:
                 have_onnx = True
-                # Move to export dir as raw ONNX
-                raw_onnx = MODEL_DIR / "en_PP-OCRv3_rec_infer.onnx"
-                shutil.copy2(raw_onnx, onnx_path)
+                shutil.copy2(result, onnx_path)
                 print("  ✓ Pre-converted ONNX downloaded (fallback)")
             else:
                 print("ERROR: All download tiers failed")
@@ -296,20 +308,24 @@ def main():
         print("=" * 60)
 
         paddle_files = find_paddle_model(MODEL_DIR)
-        if not paddle_files:
-            print("ERROR: PaddlePaddle model files not found")
-            sys.exit(1)
+        conversion_ok = False
+        if paddle_files:
+            raw_onnx = EXPORT_DIR / "plate_ocr_raw.onnx"
+            if convert_paddle_to_onnx(paddle_files[0], paddle_files[1], raw_onnx):
+                if optimize_onnx(raw_onnx, onnx_path):
+                    conversion_ok = True
+                raw_onnx.unlink(missing_ok=True)
 
-        raw_onnx = EXPORT_DIR / "plate_ocr_raw.onnx"
-        if not convert_paddle_to_onnx(paddle_files[0], paddle_files[1], raw_onnx):
-            print("ERROR: ONNX conversion failed")
-            sys.exit(1)
-
-        if not optimize_onnx(raw_onnx, onnx_path):
-            print("ERROR: ONNX optimization failed")
-            sys.exit(1)
-
-        raw_onnx.unlink(missing_ok=True)
+        if not conversion_ok:
+            print("  Paddle→ONNX conversion failed, falling back to Tier 3 (HuggingFace ONNX)")
+            result = download_hf_onnx(MODEL_DIR)
+            if result:
+                shutil.copy2(result, onnx_path)
+                have_onnx = True
+                print("  ✓ Pre-converted ONNX downloaded (fallback)")
+            else:
+                print("ERROR: All conversion paths failed")
+                sys.exit(1)
     elif have_onnx:
         print("\n  ONNX model already available, skipping conversion")
 

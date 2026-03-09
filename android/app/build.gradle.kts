@@ -66,6 +66,7 @@ android {
     }
     androidResources {
         noCompress += "tflite"
+        noCompress += "onnx"
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
@@ -87,6 +88,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.tensorflow.lite)
+    implementation(libs.onnxruntime.android)
     implementation(libs.play.services.tasks)
     implementation(libs.play.services.location)
     implementation(platform(libs.firebase.bom))

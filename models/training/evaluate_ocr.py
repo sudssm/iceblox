@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """Validate PP-OCRv3 OCR model on real license plate images.
 
 Downloads test plate images, runs YOLO detection to crop plate regions,

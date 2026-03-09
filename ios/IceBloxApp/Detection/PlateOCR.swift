@@ -1,93 +1,103 @@
-import CoreML
+import Foundation
 import Accelerate
+import onnxruntime
 
 enum PlateOCR {
     private static let targetHeight = 48
     private static let targetWidth = 320
 
-    // PP-OCRv3 en_dict.txt: 95 printable ASCII characters (space through tilde).
-    // Index 0 = CTC blank; indices 1..N map to this array.
-    private static let dictionary: [Character] = {
-        (32...126).map { Character(UnicodeScalar($0)) }
+    // PP-OCRv3 en_dict.txt character order (NOT ASCII order).
+    // Index 0 = CTC blank; indices 1..95 map to characters in this string.
+    // Index 96 = unknown/padding (ignored).
+    // Order: space, 0-9, :-~, !-/
+    private static let dictionary: [Character] = Array(
+        " 0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~!\"#$%&'()*+,-./"
+    )
+
+    private static let env: ORTEnv? = {
+        try? ORTEnv(loggingLevel: .warning)
     }()
 
-    private static let model: MLModel? = {
-        let config = MLModelConfiguration()
-        #if targetEnvironment(simulator)
-        config.computeUnits = .cpuOnly
-        #else
-        config.computeUnits = .all
-        #endif
+    private static let session: ORTSession? = {
+        guard let env else {
+            DebugLog.shared.e("PlateOCR", "Failed to create ONNX Runtime environment")
+            return nil
+        }
+        guard let modelPath = Bundle.main.path(forResource: "plate_ocr", ofType: "onnx") else {
+            DebugLog.shared.e("PlateOCR", "plate_ocr.onnx not found in bundle")
+            return nil
+        }
         do {
-            let model = try plate_ocr(configuration: config).model
-            DebugLog.shared.d("PlateOCR", "CoreML OCR model loaded")
-            return model
+            let session = try ORTSession(env: env, modelPath: modelPath, sessionOptions: nil)
+            DebugLog.shared.d("PlateOCR", "ONNX Runtime OCR model loaded")
+            return session
         } catch {
-            DebugLog.shared.e("PlateOCR", "Failed to load OCR model: \(error.localizedDescription)")
+            DebugLog.shared.e("PlateOCR", "OCR model init failed: \(error.localizedDescription)")
             return nil
         }
     }()
 
     private static let inputName: String = {
-        guard let model else { return "x" }
-        return model.modelDescription.inputDescriptionsByName.keys.first ?? "x"
+        guard let session else { return "x" }
+        return (try? session.inputNames().first) ?? "x"
     }()
 
     static func recognizeText(in pixelBuffer: CVPixelBuffer) -> String? {
-        guard let model else { return nil }
+        guard let session else { return nil }
 
         let srcWidth = CVPixelBufferGetWidth(pixelBuffer)
         let srcHeight = CVPixelBufferGetHeight(pixelBuffer)
         guard srcWidth > 0, srcHeight > 0 else { return nil }
 
-        guard let input = preprocessImage(pixelBuffer, srcWidth: srcWidth, srcHeight: srcHeight) else {
+        var inputData = preprocessImage(pixelBuffer, srcWidth: srcWidth, srcHeight: srcHeight)
+
+        do {
+            let inputShape: [NSNumber] = [1, 3, NSNumber(value: targetHeight), NSNumber(value: targetWidth)]
+            let data = NSMutableData(
+                bytes: &inputData,
+                length: inputData.count * MemoryLayout<Float>.size
+            )
+            let inputTensor = try ORTValue(
+                tensorData: data,
+                elementType: .float,
+                shape: inputShape
+            )
+
+            let outputNames = try session.outputNames()
+            let outputs = try session.run(
+                withInputs: [inputName: inputTensor],
+                outputNames: Set(outputNames),
+                runOptions: nil
+            )
+
+            guard let outputTensor = outputs[outputNames[0]] else { return nil }
+            let outputData = try outputTensor.tensorData()
+            let shapeInfo = try outputTensor.tensorTypeAndShapeInfo()
+
+            return ctcDecode(data: outputData as Data, shape: shapeInfo.shape)
+        } catch {
+            DebugLog.shared.w("PlateOCR", "OCR failed: \(error.localizedDescription)")
             return nil
         }
-
-        guard let features = try? MLDictionaryFeatureProvider(dictionary: [inputName: input]),
-              let prediction = try? model.prediction(from: features) else {
-            return nil
-        }
-
-        guard let outputName = prediction.featureNames.first,
-              let logits = prediction.featureValue(for: outputName)?.multiArrayValue else {
-            return nil
-        }
-
-        return ctcDecode(logits: logits)
     }
 
     private static func preprocessImage(
         _ pixelBuffer: CVPixelBuffer,
         srcWidth: Int,
         srcHeight: Int
-    ) -> MLMultiArray? {
-        guard let input = try? MLMultiArray(
-            shape: [1, 3, NSNumber(value: targetHeight), NSNumber(value: targetWidth)],
-            dataType: .float32
-        ) else { return nil }
-
+    ) -> [Float] {
         let scale = Float(targetHeight) / Float(srcHeight)
         let scaledWidth = min(Int(Float(srcWidth) * scale), targetWidth)
+
+        let hw = targetHeight * targetWidth
+        var data = [Float](repeating: -1.0, count: 3 * hw)
 
         CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
 
-        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
+        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else { return data }
         let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
 
-        let ptr = input.dataPointer.bindMemory(
-            to: Float.self,
-            capacity: 3 * targetHeight * targetWidth
-        )
-
-        // Fill with -1.0 (normalized black: (0/255 - 0.5)/0.5 = -1)
-        let count = 3 * targetHeight * targetWidth
-        var fillValue: Float = -1.0
-        vDSP_vfill(&fillValue, ptr, 1, vDSP_Length(count))
-
-        // Nearest-neighbor resize + normalize into CHW layout
-        let hw = targetHeight * targetWidth
         for y in 0..<targetHeight {
             let srcY = min(Int(Float(y) / scale), srcHeight - 1)
             let rowPtr = baseAddress.advanced(by: srcY * bytesPerRow)
@@ -102,68 +112,61 @@ enum PlateOCR {
                 let g = Float(rowPtr[pixelOffset + 1])
                 let r = Float(rowPtr[pixelOffset + 2])
 
-                // Normalize: (pixel / 255.0 - 0.5) / 0.5
-                ptr[0 * hw + y * targetWidth + x] = (r / 255.0 - 0.5) / 0.5
-                ptr[1 * hw + y * targetWidth + x] = (g / 255.0 - 0.5) / 0.5
-                ptr[2 * hw + y * targetWidth + x] = (b / 255.0 - 0.5) / 0.5
+                let idx = y * targetWidth + x
+                data[0 * hw + idx] = (r / 255.0 - 0.5) / 0.5
+                data[1 * hw + idx] = (g / 255.0 - 0.5) / 0.5
+                data[2 * hw + idx] = (b / 255.0 - 0.5) / 0.5
             }
         }
 
-        return input
+        return data
     }
 
-    private static func ctcDecode(logits: MLMultiArray) -> String? {
-        let shape = logits.shape.map { $0.intValue }
+    private static func ctcDecode(data: Data, shape: [NSNumber]) -> String? {
         let seqLen: Int
         let numClasses: Int
 
         if shape.count == 3 {
-            seqLen = shape[1]
-            numClasses = shape[2]
+            seqLen = shape[1].intValue
+            numClasses = shape[2].intValue
         } else if shape.count == 2 {
-            seqLen = shape[0]
-            numClasses = shape[1]
+            seqLen = shape[0].intValue
+            numClasses = shape[1].intValue
         } else {
             return nil
         }
-
-        let totalElements = shape.count == 3 ? shape[0] * seqLen * numClasses : seqLen * numClasses
-        let ptr = logits.dataPointer.bindMemory(to: Float.self, capacity: totalElements)
 
         var decoded: [Character] = []
         var totalConfidence: Float = 0
         var prevIndex = -1
 
-        for t in 0..<seqLen {
-            let base = t * numClasses
+        data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
+            let floatPtr = ptr.bindMemory(to: Float.self)
 
-            // Argmax + track max value for softmax
-            var maxIdx = 0
-            var maxVal: Float = ptr[base]
-            for c in 1..<numClasses {
-                let val = ptr[base + c]
-                if val > maxVal {
-                    maxVal = val
-                    maxIdx = c
+            for t in 0..<seqLen {
+                let base = t * numClasses
+
+                var maxIdx = 0
+                var maxVal = floatPtr[base]
+                for c in 1..<numClasses {
+                    let val = floatPtr[base + c]
+                    if val > maxVal {
+                        maxVal = val
+                        maxIdx = c
+                    }
                 }
+
+                // Skip blank (index 0) and collapse consecutive duplicates
+                if maxIdx != 0 && maxIdx != prevIndex {
+                    // Model outputs softmax probabilities — use max value directly
+                    let charIdx = maxIdx - 1
+                    if charIdx < dictionary.count {
+                        decoded.append(dictionary[charIdx])
+                        totalConfidence += maxVal
+                    }
+                }
+                prevIndex = maxIdx
             }
-
-            // Skip blank (index 0) and collapse consecutive duplicates
-            if maxIdx != 0 && maxIdx != prevIndex {
-                // Softmax probability of the winning class
-                var sumExp: Float = 0
-                for c in 0..<numClasses {
-                    sumExp += exp(ptr[base + c] - maxVal)
-                }
-                let prob = 1.0 / sumExp
-
-                let charIdx = maxIdx - 1
-                if charIdx < dictionary.count {
-                    decoded.append(dictionary[charIdx])
-                    totalConfidence += prob
-                }
-            }
-            prevIndex = maxIdx
         }
 
         guard !decoded.isEmpty else { return nil }
