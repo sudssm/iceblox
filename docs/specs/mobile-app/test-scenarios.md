@@ -46,7 +46,7 @@ And the detection pipeline restarts
 ```
 Given a recording session is active
 When the camera screen is visible
-Then a "Stop Recording" button is visible in the top-right corner
+Then a "Stop Recording" button is visible at the bottom-center, above the status bar
 And it remains tappable above the camera preview
 ```
 

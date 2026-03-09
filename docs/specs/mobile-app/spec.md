@@ -43,7 +43,7 @@ Tapping "Start Camera" MUST create a new session, reset session-scoped counters,
 
 While a recording session is active, the camera view MUST display a persistent "Stop Recording" button.
 
-- Placement: top-right corner inside the safe area
+- Placement: bottom-center, directly above the status bar
 - Visibility: rendered above the camera preview and not hidden by debug UI
 - Interaction: one tap ends the active session
 
@@ -391,18 +391,19 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                                   [Stop Recording]   │
 │                                                      │
 │                  Camera Preview                      │
 │                  (full screen)                       │
 │                                                      │
 │                                                      │
+│                [Stop Recording]                      │
 │  ● Online │ Last: 2s ago │ Plates: 47 │ Targets: 2  │
 └──────────────────────────────────────────────────────┘
 ```
 
-- **Top-right control**:
+- **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session
+  - Positioned directly above the status bar
   - Tapping ends the current session and opens the session summary
 - **Status bar** (bottom, always visible):
   - Connectivity indicator (● Online / ● Offline)
@@ -499,7 +500,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 |---|---|
 | ML model | YOLOv8-nano, exported to Core ML (iOS) and TFLite (Android) |
 | Plate formats | US only |
-| Status bar content | Last detected timestamp, total plates, total targets; stop control lives separately in the camera overlay |
+| Status bar content | Last detected timestamp, total plates, total targets; stop button sits directly above the status bar |
 | Detection feedback | None (no sound, no vibration) |
 | HMAC pepper provisioning | Hardcoded at build time, obfuscated in binary |
 | device_id | Hardware ID (`identifierForVendor` / `ANDROID_ID`) |
