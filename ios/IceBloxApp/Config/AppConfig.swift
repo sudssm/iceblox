@@ -10,7 +10,10 @@ enum AppConfig {
     static let autoStartCamera = boolEnv("E2E_AUTOSTART_CAMERA", defaultValue: false)
     static let requestLocationPermission = boolEnv("E2E_REQUEST_LOCATION_PERMISSION", defaultValue: true)
     static let useSplashTrigger = boolEnv("E2E_USE_SPLASH_TRIGGER", defaultValue: false)
+    static let useStopRecordingTrigger = boolEnv("E2E_USE_STOP_RECORDING_TRIGGER", defaultValue: false)
     static let splashTriggerFilename = stringEnv("E2E_SPLASH_TRIGGER_FILENAME") ?? "e2e_start_camera.trigger"
+    static let stopRecordingTriggerFilename = stringEnv("E2E_STOP_RECORDING_TRIGGER_FILENAME") ?? "e2e_stop_recording.trigger"
+    static let sessionSummaryFilename = stringEnv("E2E_SESSION_SUMMARY_FILENAME") ?? "e2e_session_summary.txt"
     static let simulatorTestImagesDirectoryName = stringEnv("SIMULATOR_TEST_IMAGES_DIRNAME") ?? "test_images"
     static let simulatorFrameIntervalMilliseconds = intEnv("SIMULATOR_FRAME_INTERVAL_MS", defaultValue: 100)
 
@@ -38,10 +41,27 @@ enum AppConfig {
 
     static var splashTriggerURL: URL? {
         guard useSplashTrigger else { return nil }
+        guard let appSupport = appSupportDirectoryURL else { return nil }
+        return appSupport.appendingPathComponent(splashTriggerFilename)
+    }
+
+    static var stopRecordingTriggerURL: URL? {
+        guard useStopRecordingTrigger else { return nil }
+        guard let appSupport = appSupportDirectoryURL else { return nil }
+        return appSupport.appendingPathComponent(stopRecordingTriggerFilename)
+    }
+
+    static var sessionSummaryArtifactURL: URL? {
+        guard useStopRecordingTrigger else { return nil }
+        guard let appSupport = appSupportDirectoryURL else { return nil }
+        return appSupport.appendingPathComponent(sessionSummaryFilename)
+    }
+
+    private static var appSupportDirectoryURL: URL? {
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return nil
         }
-        return appSupport.appendingPathComponent(splashTriggerFilename)
+        return appSupport
     }
 
     private static func stringEnv(_ key: String) -> String? {

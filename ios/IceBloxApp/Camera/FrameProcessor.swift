@@ -34,6 +34,7 @@ final class FrameProcessor: ObservableObject {
     let offlineQueue: OfflineQueue
     let locationManager: LocationManager
     let apiClient: APIClient
+    let sessionID: String
 
     @Published var totalPlates = 0
     @Published var lastDetectionTime: Date?
@@ -42,23 +43,28 @@ final class FrameProcessor: ObservableObject {
     @Published var detectionFeed: [DetectionFeedEntry] = []
     @Published var fps: Double = 0
 
+    var isAcceptingDetections = true
+
     private var frameCount = 0
     private var fpsFrameCount = 0
     private var fpsTimer = Date()
 
-    init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient) {
+    init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient, sessionID: String) {
         self.offlineQueue = offlineQueue
         self.locationManager = locationManager
         self.apiClient = apiClient
+        self.sessionID = sessionID
         detector.loadModel()
     }
 
     func processFrame(_ sampleBuffer: CMSampleBuffer, skipCount: Int) {
+        guard isAcceptingDetections else { return }
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         processFrame(pixelBuffer, skipCount: skipCount)
     }
 
     func processFrame(_ pixelBuffer: CVPixelBuffer, skipCount: Int) {
+        guard isAcceptingDetections else { return }
         frameCount += 1
         if frameCount % (skipCount + 1) != 0 { return }
 
@@ -81,6 +87,7 @@ final class FrameProcessor: ObservableObject {
         var results: [FrameResult] = []
 
         for detection in detections {
+            guard isAcceptingDetections else { break }
             guard let cropped = PlateDetector.cropPlateRegion(
                 from: detection.pixelBuffer,
                 rect: detection.boundingBox
@@ -106,6 +113,7 @@ final class FrameProcessor: ObservableObject {
     }
 
     func processSimulatedPlate(_ plateText: String, imageWidth: Int, imageHeight: Int) {
+        guard isAcceptingDetections else { return }
         updateFPS()
 
         guard let normalized = PlateNormalizer.normalize(plateText) else { return }
@@ -199,7 +207,8 @@ final class FrameProcessor: ObservableObject {
         let entry = OfflineQueueEntry(
             plateHash: hash,
             latitude: locationManager.latitude,
-            longitude: locationManager.longitude
+            longitude: locationManager.longitude,
+            sessionID: sessionID
         )
         offlineQueue.enqueue(entry)
 

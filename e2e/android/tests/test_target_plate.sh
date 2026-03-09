@@ -46,6 +46,48 @@ run_test_target_plate() {
         echo "  INFO: Latest sighting: $sighting"
     fi
 
+    if tap_button_by_text "Stop Recording" && wait_for_ui_text "Session Summary" 10; then
+        echo "  PASS: Stop Recording shows the session summary overlay"
+        E2E_PASS=$((E2E_PASS + 1))
+
+        local ui_texts
+        ui_texts="$(ui_dump_texts)"
+
+        local plates_seen
+        plates_seen="$(printf '%s\n' "$ui_texts" | sed -n 's/^Plates seen: //p' | head -1)"
+        local ice_vehicles
+        ice_vehicles="$(printf '%s\n' "$ui_texts" | sed -n 's/^ICE vehicles: //p' | head -1)"
+        local duration_text
+        duration_text="$(printf '%s\n' "$ui_texts" | sed -n 's/^Duration: //p' | head -1)"
+
+        if [ -n "$plates_seen" ] && [ "$plates_seen" -ge 1 ] 2>/dev/null; then
+            echo "  PASS: Session summary reports at least one plate seen (plates_seen=$plates_seen)"
+            E2E_PASS=$((E2E_PASS + 1))
+        else
+            echo "  FAIL: Session summary should report at least one plate seen (actual=${plates_seen:-missing})"
+            E2E_FAIL=$((E2E_FAIL + 1))
+        fi
+
+        if [ -n "$ice_vehicles" ] && [ "$ice_vehicles" -ge 1 ] 2>/dev/null; then
+            echo "  PASS: Session summary reports at least one ICE vehicle (ice_vehicles=$ice_vehicles)"
+            E2E_PASS=$((E2E_PASS + 1))
+        else
+            echo "  FAIL: Session summary should report at least one ICE vehicle (actual=${ice_vehicles:-missing})"
+            E2E_FAIL=$((E2E_FAIL + 1))
+        fi
+
+        if [ -n "$duration_text" ]; then
+            echo "  PASS: Session summary reports a duration ($duration_text)"
+            E2E_PASS=$((E2E_PASS + 1))
+        else
+            echo "  FAIL: Session summary should report a duration"
+            E2E_FAIL=$((E2E_FAIL + 1))
+        fi
+    else
+        echo "  FAIL: Stop Recording should surface the session summary overlay"
+        E2E_FAIL=$((E2E_FAIL + 1))
+    fi
+
     stop_app
     echo "=== END: Target Plate Image ==="
 }

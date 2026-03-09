@@ -17,4 +17,9 @@ class DeduplicationCache {
         seen[normalizedPlate] = now
         return false
     }
+
+    @Synchronized
+    fun reset() {
+        seen.clear()
+    }
 }

@@ -57,35 +57,80 @@ launch_app() {
     sleep "$E2E_SETTLE_WAIT"
 }
 
-tap_start_camera() {
-    echo "Tapping 'Start Camera' button..."
+dump_ui_xml() {
+    "$ADB" shell uiautomator dump /sdcard/ui_dump.xml >/dev/null 2>&1
+    "$ADB" shell cat /sdcard/ui_dump.xml
+}
+
+ui_dump_texts() {
+    dump_ui_xml | python3 -c '
+import sys
+import xml.etree.ElementTree as ET
+
+tree = ET.parse(sys.stdin)
+for elem in tree.iter():
+    text = elem.get("text", "").strip()
+    if text:
+        print(text)
+'
+}
+
+tap_button_by_text() {
+    local button_text="$1"
+    echo "Tapping '$button_text' button..."
     "$ADB" shell input keyevent KEYCODE_WAKEUP
     sleep 0.5
 
-    "$ADB" shell uiautomator dump /sdcard/ui_dump.xml 2>/dev/null
     local coords
-    coords=$("$ADB" shell cat /sdcard/ui_dump.xml | \
-        python3 -c "
-import sys, re, xml.etree.ElementTree as ET
+    coords=$(dump_ui_xml | python3 -c '
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+target = sys.argv[1]
 tree = ET.parse(sys.stdin)
 for elem in tree.iter():
-    text = elem.get('text', '')
-    if 'Start Camera' in text:
-        bounds = elem.get('bounds', '')
-        m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds)
+    text = elem.get("text", "")
+    if target in text:
+        bounds = elem.get("bounds", "")
+        m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
         if m:
             x = (int(m.group(1)) + int(m.group(3))) // 2
             y = (int(m.group(2)) + int(m.group(4))) // 2
-            print(f'{x} {y}')
+            print(f"{x} {y}")
             break
-")
+' "$button_text")
 
-    if [ -n "$coords" ]; then
-        local x y
-        read -r x y <<< "$coords"
-        "$ADB" shell input tap "$x" "$y"
-        echo "Tapped Start Camera at ($x, $y)"
-    else
+    if [ -z "$coords" ]; then
+        echo "WARNING: Could not find '$button_text' button"
+        return 1
+    fi
+
+    local x y
+    read -r x y <<< "$coords"
+    "$ADB" shell input tap "$x" "$y"
+    echo "Tapped $button_text at ($x, $y)"
+    sleep "$E2E_SETTLE_WAIT"
+}
+
+wait_for_ui_text() {
+    local expected_text="$1"
+    local timeout_seconds="${2:-10}"
+    local elapsed=0
+
+    while [ "$elapsed" -lt "$timeout_seconds" ]; do
+        if ui_dump_texts | grep -Fq "$expected_text"; then
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+
+    return 1
+}
+
+tap_start_camera() {
+    if ! tap_button_by_text "Start Camera"; then
         echo "WARNING: Could not find 'Start Camera' button, attempting center tap"
         "$ADB" shell input tap 540 1200
     fi

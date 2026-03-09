@@ -123,7 +123,7 @@ struct IceBloxApp: App {
     var body: some Scene {
         WindowGroup {
             if showCamera {
-                ContentView()
+                ContentView(onExitToSplash: { showCamera = false })
                     .preferredColorScheme(.dark)
             } else {
                 SplashScreenView(onStartCamera: { showCamera = true })

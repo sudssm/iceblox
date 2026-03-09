@@ -57,8 +57,11 @@ android/
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
         │   │   ├── debug/
         │   │   │   └── DebugLog.kt           # Singleton logger: ring buffer + StateFlow for UI
+        │   │   ├── session/
+        │   │   │   └── RecordingSession.kt # Session lifecycle state, timestamps, per-session counters
         │   │   └── ui/
         │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
+        │   │       ├── SessionSummaryDialog.kt # Modal session summary shown after Stop Recording
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay

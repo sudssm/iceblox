@@ -103,15 +103,30 @@ final class IceBloxAppTests: XCTestCase {
 
     func testQueueEnqueueAndDequeue() {
         let queue = OfflineQueue()
-        let entry = OfflineQueueEntry(plateHash: "abc123", latitude: 40.0, longitude: -74.0)
+        let sessionID = UUID().uuidString
+        let entry = OfflineQueueEntry(plateHash: "abc123", latitude: 40.0, longitude: -74.0, sessionID: sessionID)
         queue.enqueue(entry)
 
         let entries = queue.dequeue(limit: 10)
         XCTAssertGreaterThanOrEqual(entries.count, 1)
         XCTAssertTrue(entries.contains { $0.plateHash == "abc123" })
+        XCTAssertTrue(entries.contains { $0.plateHash == "abc123" && $0.sessionID == sessionID })
 
         let ids = entries.compactMap(\.id)
         queue.remove(ids: ids)
+    }
+
+    func testQueueCountBySessionID() {
+        let queue = OfflineQueue()
+        let sessionA = UUID().uuidString
+        let sessionB = UUID().uuidString
+
+        queue.enqueue(OfflineQueueEntry(plateHash: "hash-a", latitude: nil, longitude: nil, sessionID: sessionA))
+        queue.enqueue(OfflineQueueEntry(plateHash: "hash-b", latitude: nil, longitude: nil, sessionID: sessionA))
+        queue.enqueue(OfflineQueueEntry(plateHash: "hash-c", latitude: nil, longitude: nil, sessionID: sessionB))
+
+        XCTAssertEqual(queue.count(sessionID: sessionA), 2)
+        XCTAssertEqual(queue.count(sessionID: sessionB), 1)
     }
 
     // MARK: - LocationManager

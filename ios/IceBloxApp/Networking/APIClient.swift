@@ -19,13 +19,15 @@ final class APIClient {
     private let retryManager = RetryManager()
     private let offlineQueue: OfflineQueue
     private let uploadQueue = DispatchQueue(label: "api.upload")
+    private let currentSessionID: String
 
     private var batchTimer: Timer?
     @Published var totalTargets = 0
-    var onPlateSent: ((String, Bool) -> Void)?
+    var onPlateSent: ((String, Bool, String) -> Void)?
 
-    init(offlineQueue: OfflineQueue) {
+    init(offlineQueue: OfflineQueue, currentSessionID: String) {
         self.offlineQueue = offlineQueue
+        self.currentSessionID = currentSessionID
     }
 
     func startBatchTimer() {
@@ -116,7 +118,7 @@ final class APIClient {
                     if let data,
                        let plateResponse = try? JSONDecoder().decode(PlateResponse.self, from: data) {
                         matched = plateResponse.matched == true
-                        if matched {
+                        if matched, entry.sessionID == self?.currentSessionID {
                             DispatchQueue.main.async {
                                 self?.totalTargets += 1
                             }
@@ -124,7 +126,7 @@ final class APIClient {
                     } else {
                         matched = false
                     }
-                    self?.onPlateSent?(entry.plateHash, matched)
+                    self?.onPlateSent?(entry.plateHash, matched, entry.sessionID)
                 }
             }.resume()
 

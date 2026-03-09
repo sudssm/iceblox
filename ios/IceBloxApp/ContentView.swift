@@ -1,6 +1,58 @@
 import SwiftUI
 
+private struct SessionSummaryCard: View {
+    let platesSeen: Int
+    let iceVehicles: Int
+    let durationText: String
+    let pendingUploads: Int
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Session Summary")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Plates seen: \(platesSeen)")
+                Text("ICE vehicles: \(iceVehicles)")
+                Text("Duration: \(durationText)")
+                if pendingUploads > 0 {
+                    Text("Pending sync: \(pendingUploads) uploads")
+                        .foregroundStyle(.yellow)
+                    Text("ICE vehicles reflects confirmed matches received so far.")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+            }
+            .font(.system(.body, design: .monospaced))
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onDone) {
+                Text("Done")
+                    .font(.headline)
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 420)
+        .background(.black.opacity(0.9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(.white.opacity(0.15), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .padding(24)
+    }
+}
+
 struct ContentView: View {
+    let onExitToSplash: () -> Void
+
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var locationManager = LocationManager()
     @StateObject private var connectivityMonitor = ConnectivityMonitor()
@@ -13,12 +65,20 @@ struct ContentView: View {
     @State private var debugMode = false
     @ObservedObject private var debugLog = DebugLog.shared
     @State private var lastStatusUpdate = Date()
+    @State private var sessionID = UUID().uuidString
+    @State private var sessionStartedAt = Date()
+    @State private var stopRequestedAt: Date?
+    @State private var pendingSessionUploads = 0
+    @State private var showingSummary = false
+    @State private var e2eStopTask: Task<Void, Never>?
 
     let statusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            if cameraManager.permissionGranted {
+        ZStack {
+            if showingSummary {
+                Color.black.ignoresSafeArea()
+            } else if cameraManager.permissionGranted {
                 #if targetEnvironment(simulator)
                 if let image = cameraManager.simulatorImage {
                     Image(uiImage: image)
@@ -52,7 +112,7 @@ struct ContentView: View {
             }
 
             #if DEBUG
-            if debugMode, let fp = frameProcessor {
+            if debugMode, !showingSummary, let fp = frameProcessor {
                 DebugOverlayView(
                     detections: fp.currentDetections,
                     rawDetections: fp.rawDetections,
@@ -67,60 +127,114 @@ struct ContentView: View {
             }
             #endif
 
-            StatusBarView(
-                isConnected: connectivityMonitor.isConnected,
-                lastDetection: frameProcessor?.lastDetectionTime,
-                plateCount: frameProcessor?.totalPlates ?? 0,
-                targetCount: apiClient?.totalTargets ?? 0,
-                hasGPS: locationManager.hasPermission,
-                nearbySightings: alertClient?.nearbySightings ?? 0
-            )
+            if !showingSummary, cameraManager.permissionGranted {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: stopRecordingSession) {
+                            Text("Stop Recording")
+                                .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(.red.opacity(0.85))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.top, 20)
+                    .padding(.horizontal, 20)
+
+                    Spacer()
+
+                    StatusBarView(
+                        isConnected: connectivityMonitor.isConnected,
+                        lastDetection: frameProcessor?.lastDetectionTime,
+                        plateCount: frameProcessor?.totalPlates ?? 0,
+                        targetCount: apiClient?.totalTargets ?? 0,
+                        hasGPS: locationManager.hasPermission,
+                        nearbySightings: alertClient?.nearbySightings ?? 0
+                    )
+                }
+            }
+
+            if showingSummary {
+                SessionSummaryCard(
+                    platesSeen: frameProcessor?.totalPlates ?? 0,
+                    iceVehicles: apiClient?.totalTargets ?? 0,
+                    durationText: sessionDurationText,
+                    pendingUploads: pendingSessionUploads,
+                    onDone: returnToSplash
+                )
+            }
         }
         #if DEBUG
         .onTapGesture(count: 3) {
-            debugMode.toggle()
+            if !showingSummary {
+                debugMode.toggle()
+            }
         }
         #endif
         .onReceive(statusTimer) { _ in
             lastStatusUpdate = Date()
+            pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
+            if showingSummary {
+                syncSessionSummaryArtifact()
+            }
         }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
-            setupPipeline()
-            cameraManager.checkPermissionAndStart()
+            if apiClient == nil {
+                sessionStartedAt = Date()
+                stopRequestedAt = nil
+                setupPipeline()
+            }
+            if !showingSummary {
+                resumeActiveSession()
+            }
             if AppConfig.requestLocationPermission {
                 locationManager.requestPermission()
             }
+            pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
+            clearSessionSummaryArtifact()
+            startE2EStopWatcher()
+        }
+        .onDisappear {
+            e2eStopTask?.cancel()
+            e2eStopTask = nil
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
-                if cameraManager.permissionGranted {
-                    cameraManager.start()
+                if !showingSummary {
+                    resumeActiveSession()
                 }
-                apiClient?.startBatchTimer()
-                alertClient?.startTimer()
             case .background:
-                cameraManager.stop()
-                apiClient?.flushQueue()
-                apiClient?.stopBatchTimer()
-                alertClient?.subscribe()
-                alertClient?.stopTimer()
+                pauseForBackground()
             default:
                 break
+            }
+        }
+        .onChange(of: showingSummary) { _, isShowing in
+            if isShowing {
+                syncSessionSummaryArtifact()
+            } else {
+                clearSessionSummaryArtifact()
             }
         }
     }
 
     private func setupPipeline() {
-        let client = APIClient(offlineQueue: offlineQueue)
+        let activeSessionID = sessionID
+        let client = APIClient(offlineQueue: offlineQueue, currentSessionID: activeSessionID)
         let processor = FrameProcessor(
             offlineQueue: offlineQueue,
             locationManager: locationManager,
-            apiClient: client
+            apiClient: client,
+            sessionID: activeSessionID
         )
 
-        client.onPlateSent = { [weak processor] hash, matched in
+        client.onPlateSent = { [weak processor] hash, matched, sentSessionID in
+            guard sentSessionID == activeSessionID else { return }
             processor?.onPlateSent(hash: hash, matched: matched)
         }
 
@@ -137,5 +251,95 @@ struct ContentView: View {
         alerts.startTimer()
 
         client.startBatchTimer()
+    }
+
+    private func resumeActiveSession() {
+        frameProcessor?.isAcceptingDetections = true
+        if cameraManager.permissionGranted {
+            cameraManager.start()
+        } else {
+            cameraManager.checkPermissionAndStart()
+        }
+        apiClient?.startBatchTimer()
+        alertClient?.startTimer()
+    }
+
+    private func pauseForBackground() {
+        frameProcessor?.isAcceptingDetections = false
+        cameraManager.stop()
+        apiClient?.flushQueue()
+        apiClient?.stopBatchTimer()
+        alertClient?.subscribe()
+        alertClient?.stopTimer()
+    }
+
+    private func stopRecordingSession() {
+        guard !showingSummary else { return }
+        stopRequestedAt = Date()
+        frameProcessor?.isAcceptingDetections = false
+        cameraManager.stop()
+        apiClient?.stopBatchTimer()
+        apiClient?.flushQueue()
+        alertClient?.stopTimer()
+        pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
+        showingSummary = true
+    }
+
+    private func returnToSplash() {
+        showingSummary = false
+        onExitToSplash()
+    }
+
+    private func startE2EStopWatcher() {
+        guard AppConfig.stopRecordingTriggerURL != nil else { return }
+
+        e2eStopTask?.cancel()
+        e2eStopTask = Task {
+            while !Task.isCancelled {
+                if let triggerURL = AppConfig.stopRecordingTriggerURL,
+                   FileManager.default.fileExists(atPath: triggerURL.path) {
+                    try? FileManager.default.removeItem(at: triggerURL)
+                    await MainActor.run {
+                        stopRecordingSession()
+                    }
+                }
+
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
+    }
+
+    private func syncSessionSummaryArtifact() {
+        guard showingSummary, let artifactURL = AppConfig.sessionSummaryArtifactURL else { return }
+
+        let durationSeconds = max(0, Int((stopRequestedAt ?? Date()).timeIntervalSince(sessionStartedAt)))
+        let payload = """
+        session_id=\(sessionID)
+        plates_seen=\(frameProcessor?.totalPlates ?? 0)
+        ice_vehicles=\(apiClient?.totalTargets ?? 0)
+        duration_seconds=\(durationSeconds)
+        duration_text=\(sessionDurationText)
+        pending_uploads=\(pendingSessionUploads)
+        """
+
+        try? FileManager.default.createDirectory(
+            at: artifactURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        try? payload.write(to: artifactURL, atomically: true, encoding: .utf8)
+    }
+
+    private func clearSessionSummaryArtifact() {
+        guard let artifactURL = AppConfig.sessionSummaryArtifactURL else { return }
+        try? FileManager.default.removeItem(at: artifactURL)
+    }
+
+    private var sessionDurationText: String {
+        let endDate = stopRequestedAt ?? Date()
+        let totalSeconds = max(0, Int(endDate.timeIntervalSince(sessionStartedAt)))
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%dm %02ds", minutes, seconds)
     }
 }

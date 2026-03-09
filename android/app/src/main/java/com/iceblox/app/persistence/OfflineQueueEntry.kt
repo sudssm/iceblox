@@ -10,5 +10,6 @@ data class OfflineQueueEntry(
     @ColumnInfo(name = "plate_hash") val plateHash: String,
     @ColumnInfo(name = "timestamp") val timestamp: Long,
     @ColumnInfo(name = "latitude") val latitude: Double?,
-    @ColumnInfo(name = "longitude") val longitude: Double?
+    @ColumnInfo(name = "longitude") val longitude: Double?,
+    @ColumnInfo(name = "session_id") val sessionId: String
 )

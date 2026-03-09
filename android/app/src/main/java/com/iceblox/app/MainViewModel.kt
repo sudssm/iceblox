@@ -24,6 +24,7 @@ import com.iceblox.app.processing.PlateHasher
 import com.iceblox.app.ui.DetectionFeedEntry
 import com.iceblox.app.ui.DetectionState
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,6 +34,14 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class SessionSummary(
+    val sessionId: String,
+    val platesSeen: Long,
+    val iceVehicles: Int,
+    val durationMs: Long,
+    val pendingUploads: Int
+)
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val deduplicationCache = DeduplicationCache()
@@ -57,6 +66,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _detectionFeed = MutableStateFlow<List<DetectionFeedEntry>>(emptyList())
     val detectionFeed: StateFlow<List<DetectionFeedEntry>> = _detectionFeed
 
+    private val _sessionSummary = MutableStateFlow<SessionSummary?>(null)
+    val sessionSummary: StateFlow<SessionSummary?> = _sessionSummary
+
+    private var activeSessionId: String? = null
+    private var sessionStartedAt: Long = 0L
+
     val alertClient = AlertClient(
         context = application,
         locationProvider = locationProvider
@@ -66,8 +81,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         context = application,
         queueDao = queueDao,
         retryManager = retryManager,
-        onTargetMatched = { _targetCount.update { it + 1 } },
-        onPlateSent = { hash, matched -> onPlateSent(hash, matched) }
+        onTargetMatched = { sessionId -> onTargetMatched(sessionId) },
+        onPlateSent = { hash, matched, sessionId -> onPlateSent(hash, matched, sessionId) }
     )
 
     private val _testFrameFeeder = MutableStateFlow<TestFrameFeeder?>(null)
@@ -106,6 +121,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onPlatesDetected(plates: List<ProcessedPlate>) {
+        val sessionId = activeSessionId ?: return
+
         for (plate in plates) {
             if (deduplicationCache.isDuplicate(plate.normalizedText)) continue
 
@@ -118,7 +135,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         plateHash = hash,
                         timestamp = System.currentTimeMillis(),
                         latitude = loc?.latitude,
-                        longitude = loc?.longitude
+                        longitude = loc?.longitude,
+                        sessionId = sessionId
                     )
                 )
                 enforceMaxQueueSize()
@@ -139,15 +157,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun onPlateSent(hash: String, matched: Boolean) {
+    private fun onTargetMatched(sessionId: String) {
+        if (sessionId == activeSessionId) {
+            _targetCount.update { it + 1 }
+        }
+
+        val summary = _sessionSummary.value
+        if (summary?.sessionId == sessionId) {
+            _sessionSummary.value = summary.copy(iceVehicles = summary.iceVehicles + 1)
+        }
+    }
+
+    private fun onPlateSent(hash: String, matched: Boolean, sessionId: String) {
         val prefix = hash.take(8)
         val newState = if (matched) DetectionState.MATCHED else DetectionState.SENT
-        val current = _detectionFeed.value.toMutableList()
-        val idx = current.indexOfLast { it.hashPrefix == prefix && it.state == DetectionState.QUEUED }
-        if (idx >= 0) {
-            current[idx] = current[idx].copy(state = newState)
-            _detectionFeed.value = current
+        if (sessionId == visibleSessionId()) {
+            val current = _detectionFeed.value.toMutableList()
+            val idx = current.indexOfLast { it.hashPrefix == prefix && it.state == DetectionState.QUEUED }
+            if (idx >= 0) {
+                current[idx] = current[idx].copy(state = newState)
+                _detectionFeed.value = current
+            }
         }
+
+        refreshQueueState(sessionId)
     }
 
     private fun addFeedEntry(entry: DetectionFeedEntry) {
@@ -158,6 +191,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startPipeline(isTestMode: Boolean = false) {
+        if (_sessionSummary.value != null) return
+        if (activeSessionId == null) {
+            startNewSession()
+        }
         locationProvider.startUpdates()
         apiClient.startBatchTimer()
         alertClient.startTimer()
@@ -204,6 +241,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         alertClient.stopTimer()
     }
 
+    fun stopRecordingSession() {
+        val sessionId = activeSessionId ?: return
+        val stoppedAt = System.currentTimeMillis()
+        val durationMs = (stoppedAt - sessionStartedAt).coerceAtLeast(0L)
+
+        activeSessionId = null
+        stopPipeline()
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val pendingUploads = queueDao.countBySessionId(sessionId)
+            _sessionSummary.value = SessionSummary(
+                sessionId = sessionId,
+                platesSeen = _plateCount.value,
+                iceVehicles = _targetCount.value,
+                durationMs = durationMs,
+                pendingUploads = pendingUploads
+            )
+            _queueDepth.value = queueDao.count()
+        }
+    }
+
+    fun dismissSessionSummary() {
+        _sessionSummary.value = null
+    }
+
     private suspend fun enforceMaxQueueSize() {
         val count = queueDao.count()
         if (count > AppConfig.MAX_QUEUE_SIZE) {
@@ -223,5 +285,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationProvider.stopUpdates()
         apiClient.stopBatchTimer()
         alertClient.stopTimer()
+    }
+
+    private fun startNewSession() {
+        activeSessionId = UUID.randomUUID().toString()
+        sessionStartedAt = System.currentTimeMillis()
+        deduplicationCache.reset()
+        _plateCount.value = 0L
+        _targetCount.value = 0
+        _lastDetectionTime.value = 0L
+        _detectionFeed.value = emptyList()
+        _sessionSummary.value = null
+    }
+
+    private fun visibleSessionId(): String? = _sessionSummary.value?.sessionId ?: activeSessionId
+
+    private fun refreshQueueState(sessionId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _queueDepth.value = queueDao.count()
+
+            val summary = _sessionSummary.value
+            if (summary?.sessionId == sessionId) {
+                _sessionSummary.value = summary.copy(
+                    pendingUploads = queueDao.countBySessionId(sessionId)
+                )
+            }
+        }
     }
 }

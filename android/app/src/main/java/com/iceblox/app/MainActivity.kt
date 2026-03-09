@@ -91,7 +91,10 @@ class MainActivity : ComponentActivity() {
             IceBloxTheme {
                 if (showCamera) {
                     if (hasCameraPermission || isTestMode) {
-                        CameraScreen(isTestMode = isTestMode)
+                        CameraScreen(
+                            isTestMode = isTestMode,
+                            onSessionFinished = { showCamera = false }
+                        )
                     } else {
                         PermissionDeniedScreen(
                             onRequestPermission = {
