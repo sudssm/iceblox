@@ -28,8 +28,8 @@ final class LookalikeExpanderTests: XCTestCase {
         let result = LookalikeExpander.expand("0", maxVariants: 64)
         let texts = Set(result.map { $0.0 })
         XCTAssertEqual(texts, Set(["0", "O", "D", "Q", "8", "B"]))
-        for r in result {
-            if r.0 == "0" { XCTAssertEqual(r.1, 0) } else { XCTAssertEqual(r.1, 1) }
+        for entry in result {
+            if entry.0 == "0" { XCTAssertEqual(entry.1, 0) } else { XCTAssertEqual(entry.1, 1) }
         }
     }
 
@@ -52,9 +52,9 @@ final class LookalikeExpanderTests: XCTestCase {
     func testBFSOrdering() {
         let result = LookalikeExpander.expand("0O", maxVariants: 64)
         var lastSub = 0
-        for r in result {
-            XCTAssertGreaterThanOrEqual(r.1, lastSub)
-            lastSub = r.1
+        for entry in result {
+            XCTAssertGreaterThanOrEqual(entry.1, lastSub)
+            lastSub = entry.1
         }
     }
 
