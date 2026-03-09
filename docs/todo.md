@@ -179,7 +179,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md) REQ-S-13 through REQ-S-16, 
 
 - [x] **Geo package** — Haversine distance calculation + bounding box utility, pure functions (REQ-S-15)
 - [x] **Subscriber store** — In-memory subscriber location storage with 1-hour TTL and cleanup (REQ-S-14)
-- [x] **Recent sightings query** — DB method with bounding-box SQL pre-filter, `Sighting` struct, composite geo index (REQ-S-15)
+- [x] **Recent sightings query** — DB method with bounding-box SQL pre-filter, `SightingResult` struct, composite geo index (REQ-S-15)
 - [x] **Subscribe handler** — `POST /api/v1/subscribe` endpoint: validate, store subscriber, query+filter sightings, respond (REQ-S-13)
 - [x] **Proximity fan-out** — Enhance push dispatch with subscriber location filtering via haversine (REQ-S-16)
 - [x] **Wire in main.go** — Subscriber store init, subscribe handler registration, notifier wiring

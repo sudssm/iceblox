@@ -480,7 +480,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 14 | Notifier | REQ-S-10 | Match → push dispatch to all devices, async goroutine, stale token cleanup |
 | 15 | Geo package | REQ-S-15 | Haversine distance calculation, bounding box utility (pure functions, no deps) |
 | 16 | Subscriber store | REQ-S-14 | In-memory subscriber location storage with 1-hour TTL and periodic cleanup |
-| 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, Sighting struct, composite geo index |
+| 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, SightingResult struct, composite geo index |
 | 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
 | 20 | Request logging middleware | REQ-S-17 | Wrap mux, record method/path/status/duration/device_id, recover panics as 500 |
