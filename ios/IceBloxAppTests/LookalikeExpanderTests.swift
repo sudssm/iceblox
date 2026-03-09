@@ -67,7 +67,7 @@ final class LookalikeExpanderTests: XCTestCase {
     func testAllGroupsCovered() {
         let result = LookalikeExpander.expand("0IS2A", maxVariants: 500)
         let texts = Set(result.map { $0.0 })
-        XCTAssertTrue(texts.contains("OIL2A"))
+        XCTAssertTrue(texts.contains("0LS2A"))
         XCTAssertTrue(texts.contains("0IS24"))
         XCTAssertTrue(texts.contains("0ISZA"))
     }

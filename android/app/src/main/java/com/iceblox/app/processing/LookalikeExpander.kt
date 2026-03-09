@@ -44,7 +44,7 @@ object LookalikeExpander {
         results.add(text to 0)
 
         while (queue.isNotEmpty() && results.size < maxVariants) {
-            val state = queue.poll()
+            val state = queue.poll() ?: break
 
             for (posIdx in state.nextIdx until confusablePositions.size) {
                 val pos = confusablePositions[posIdx]
