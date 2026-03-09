@@ -444,6 +444,7 @@ server/
 │       ├── subscribe.go         # POST /api/v1/subscribe handler
 │       ├── health.go            # GET /healthz handler
 │       ├── devices.go           # POST /api/v1/devices handler
+│       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
 │       └── logger.go            # JSONL file writer (legacy, optional)
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
