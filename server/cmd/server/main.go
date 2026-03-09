@@ -21,7 +21,7 @@ import (
 func main() {
 	port := flag.Int("port", 8080, "server listen port")
 	platesFile := flag.String("plates-file", "data/plates.txt", "path to plaintext plates file")
-	pepper := flag.String("pepper", "default-pepper-change-me", "HMAC pepper for hashing plates")
+	pepper := flag.String("pepper", "", "HMAC pepper for hashing plates")
 	apnsKeyFile := flag.String("apns-key-file", "", "path to APNs .p8 key file")
 	apnsKeyID := flag.String("apns-key-id", "", "APNs key ID")
 	apnsTeamID := flag.String("apns-team-id", "", "APNs team ID")
@@ -45,6 +45,10 @@ func main() {
 	}
 	if v := os.Getenv("PLATES_FILE"); v != "" {
 		*platesFile = v
+	}
+
+	if *pepper == "" {
+		log.Fatal("PEPPER is required: set via --pepper flag or PEPPER environment variable")
 	}
 
 	ctx := context.Background()

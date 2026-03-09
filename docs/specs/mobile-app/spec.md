@@ -144,10 +144,9 @@ The app MUST apply a configurable confidence threshold (default: 0.6) for OCR re
 #### REQ-M-12: HMAC-SHA256 Hashing
 
 The app MUST compute HMAC-SHA256 of the normalized plate text using a shared pepper. The pepper MUST be:
-- Hardcoded in the app binary at build time
+- Injected into the app binary at build time from the root `.env` file (single source of truth shared by server, iOS, Android, and E2E tests)
 - Identical across all devices (shared with the server for hash comparison)
 - Never logged, displayed, or transmitted
-- Obfuscated in the binary (not stored as a plaintext string literal)
 
 Output: 64-character lowercase hex string.
 
@@ -354,12 +353,12 @@ Plaintext plate text MUST never leave the device via any channel: network, logs,
 
 Camera frames and still images MUST never leave the device. In production mode, images MUST NOT be saved to disk at all.
 
-#### REQ-M-42: Pepper Obfuscation
+#### REQ-M-42: Pepper Provisioning
 
-The HMAC pepper is hardcoded at build time. To resist casual extraction from the binary:
-- The pepper MUST NOT appear as a contiguous string literal
-- The app SHOULD use XOR obfuscation or split the key across multiple constants
-- This is a deterrent, not a cryptographic guarantee — the threat model accepts that a determined attacker with the binary can extract the pepper
+The HMAC pepper is sourced from the root `.env` file and injected at build time:
+- **iOS**: An Xcode build phase script reads `.env` and generates `Config/Pepper.swift` (gitignored) containing the pepper value. `PlateHasher` reads from the generated constant.
+- **Android**: `build.gradle.kts` reads `../.env` and injects the pepper as `BuildConfig.PEPPER`. `PlateHasher` reads from `BuildConfig`.
+- The pepper appears as a string literal in the compiled binary. The threat model accepts that a determined attacker with the binary can extract the pepper — obfuscation was previously used (XOR split) but was removed in favor of a single-source-of-truth `.env` approach that simplifies pepper rotation across all components.
 
 #### REQ-M-43: No Third-Party Analytics
 
@@ -464,7 +463,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 | Plate detection | Core ML (YOLOv8-nano `.mlpackage`) |
 | OCR | Vision (`VNRecognizeTextRequest`) |
 | Hashing | CryptoKit (`HMAC<SHA256>`) |
-| Pepper storage | Build-time constant (obfuscated) |
+| Pepper storage | Build-time constant (generated from root `.env` by Xcode build phase) |
 | Local database | Core Data or SQLite (for offline queue) |
 | Networking | URLSession |
 | Push notifications | UserNotifications (`UNUserNotificationCenter`) |
@@ -477,7 +476,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 | Plate detection | TFLite (YOLOv8-nano `.tflite`) |
 | OCR | ML Kit Text Recognition |
 | Hashing | `javax.crypto.Mac` with `HmacSHA256` |
-| Pepper storage | Build-time constant (obfuscated) |
+| Pepper storage | Build-time constant (injected from root `.env` via `BuildConfig`) |
 | Local database | Room (for offline queue) |
 | Networking | OkHttp / Retrofit |
 | Push notifications | Firebase Cloud Messaging (`firebase-messaging`) |
@@ -502,7 +501,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 | Plate formats | US only |
 | Status bar content | Last detected timestamp, total plates, total targets; stop button sits directly above the status bar |
 | Detection feedback | None (no sound, no vibration) |
-| HMAC pepper provisioning | Hardcoded at build time, obfuscated in binary |
+| HMAC pepper provisioning | Injected at build time from root `.env` (single source of truth) |
 | device_id | Hardware ID (`identifierForVendor` / `ANDROID_ID`) |
 | Training data (Phase 1) | HuggingFace license-plate-object-detection (8,823 images), fine-tuned from COCO |
 | Targets counter styling | No special color treatment |
@@ -546,7 +545,7 @@ ios/IceBloxApp/
 │   └── PlateOCR.swift                  # Vision VNRecognizeTextRequest on cropped regions
 ├── Processing/
 │   ├── PlateNormalizer.swift           # Uppercase, strip, validate length
-│   ├── PlateHasher.swift              # HMAC-SHA256 via CryptoKit, pepper obfuscation
+│   ├── PlateHasher.swift              # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
 │   └── DeduplicationCache.swift        # Time-windowed set of recently seen normalized plates
 ├── Networking/
 │   ├── APIClient.swift                 # URLSession POST to server, batch construction
@@ -559,7 +558,8 @@ ios/IceBloxApp/
 ├── Location/
 │   └── LocationManager.swift           # CLLocationManager, permission handling, GPS warning
 ├── Config/
-│   └── AppConfig.swift                 # Confidence thresholds, batch size, dedup window, server URL
+│   ├── AppConfig.swift                 # Confidence thresholds, batch size, dedup window, server URL
+│   └── Pepper.swift                    # Generated at build time from root .env (gitignored)
 ├── Models/
 │   └── plate_detector.mlpackage        # YOLOv8-nano Core ML model (bundled)
 └── Info.plist                          # Camera, location usage descriptions
@@ -596,7 +596,7 @@ ios/IceBloxApp/
 - **Frame processing**: Use `AVCaptureVideoDataOutputSampleBufferDelegate`. Process every Nth frame (skip frames to hit 10-15 fps detection) rather than every frame.
 - **Core ML threading**: Run inference on a dedicated `DispatchQueue` to keep the camera preview smooth.
 - **Memory**: Reuse `CVPixelBuffer` and avoid UIImage conversions in the hot path.
-- **Pepper obfuscation**: Store as two `[UInt8]` arrays XOR'd together. Reconstruct at runtime: `zip(a, b).map(^)`.
+- **Pepper injection**: An Xcode "Generate Pepper" build phase reads `PEPPER` from `../.env` and generates `Config/Pepper.swift` (gitignored). `PlateHasher` reads `Pepper.value` at runtime.
 
 #### Model Invocation Flow (Core ML)
 
@@ -648,7 +648,7 @@ android/app/src/main/java/com/iceblox/app/
 │   └── PlateOCR.kt                      # ML Kit Text Recognition on cropped bitmaps
 ├── processing/
 │   ├── PlateNormalizer.kt               # Uppercase, strip, validate
-│   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper obfuscation
+│   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper from BuildConfig
 │   └── DeduplicationCache.kt            # Time-windowed set
 ├── network/
 │   ├── ApiClient.kt                     # OkHttp, POST /api/v1/plates + /api/v1/devices
@@ -709,7 +709,7 @@ android/app/src/debug/
 - **TFLite NMS**: YOLOv8 TFLite export does **not** include NMS. Must implement post-processing manually: filter by confidence → non-max suppression on bounding boxes.
 - **CameraX frame skipping**: Use `ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)` — automatically drops frames when the analyzer is busy.
 - **Room threading**: Use `suspend` DAO functions with coroutines. Queue insert on the analyzer thread; batch reads on the network thread.
-- **Pepper obfuscation**: Same XOR approach as iOS. Store as two `ByteArray` constants, reconstruct at runtime.
+- **Pepper injection**: `build.gradle.kts` reads `PEPPER` from `../.env` and injects it as `BuildConfig.PEPPER`. `PlateHasher` reads the value at runtime.
 
 #### Model Invocation Flow (TFLite)
 

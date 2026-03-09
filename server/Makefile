@@ -1,3 +1,6 @@
+-include ../.env
+export PEPPER
+
 DATA_DIR := data
 PLATES_FILE := $(DATA_DIR)/plates.txt
 ZIP_FILE := $(DATA_DIR)/plates.zip

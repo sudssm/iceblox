@@ -33,7 +33,7 @@ ios/
 │   │   └── PlateOCR.swift             # Vision VNRecognizeTextRequest on cropped regions
 │   ├── Processing/
 │   │   ├── PlateNormalizer.swift      # Uppercase, strip, validate length
-│   │   ├── PlateHasher.swift          # HMAC-SHA256 via CryptoKit, pepper obfuscation
+│   │   ├── PlateHasher.swift          # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
 │   │   └── DeduplicationCache.swift   # Time-windowed set of recently seen plates
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
@@ -46,7 +46,8 @@ ios/
 │   ├── Location/
 │   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning
 │   ├── Config/
-│   │   └── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL
+│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL
+│   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
 │   ├── Debug/
 │   │   └── DebugLog.swift             # Singleton logger: ring buffer + @Published entries for UI
 │   └── Models/
