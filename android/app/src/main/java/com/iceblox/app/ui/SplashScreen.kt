@@ -2,6 +2,7 @@ package com.iceblox.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,35 +19,54 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun SplashScreen(onStartCamera: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
+fun SplashScreen(
+    onStartCamera: () -> Unit,
+    queueDepth: Int = 0,
+    onClearQueue: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color.Black)
     ) {
-        Text(
-            text = "IceBlox",
-            color = Color.White,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Button(
-            onClick = onStartCamera,
-            modifier = Modifier.padding(top = 32.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color.Black
-            )
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Start Camera",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                text = "IceBlox",
+                color = Color.White,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Button(
+                onClick = onStartCamera,
+                modifier = Modifier.padding(top = 32.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black
+                )
+            ) {
+                Text(
+                    text = "Start Camera",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        if (queueDepth > 0) {
+            UploadQueueBanner(
+                count = queueDepth,
+                onClear = onClearQueue,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 48.dp)
             )
         }
     }

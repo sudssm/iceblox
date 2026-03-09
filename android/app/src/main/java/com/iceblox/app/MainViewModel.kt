@@ -113,6 +113,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _sessionSummary.value = null
     }
 
+    fun clearUploadQueue() {
+        repository.clearQueue()
+    }
+
     companion object {
         private const val TAG = "MainViewModel"
     }

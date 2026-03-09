@@ -102,6 +102,7 @@ class CaptureRepository(private val application: Application) {
         }
         powerManager.addThermalStatusListener(thermalListener)
         refreshQueueDepth()
+        apiClient.startBatchTimer()
     }
 
     fun setForegroundActive(active: Boolean) {
@@ -126,6 +127,13 @@ class CaptureRepository(private val application: Application) {
 
     suspend fun countBySessionId(sessionId: String): Int = queueDao.countBySessionId(sessionId)
 
+    fun clearQueue() {
+        scope.launch(Dispatchers.IO) {
+            queueDao.deleteAll()
+            _queueDepth.value = 0
+        }
+    }
+
     fun processTestImageIfPresent() {
         val testFile = File(application.filesDir, "test_plate.png")
         if (!testFile.exists()) return
@@ -141,11 +149,9 @@ class CaptureRepository(private val application: Application) {
     private fun updateSharedComponents() {
         if (foregroundActive || backgroundActive) {
             locationProvider.startUpdates()
-            apiClient.startBatchTimer()
             alertClient.startTimer()
         } else {
             locationProvider.stopUpdates()
-            apiClient.stopBatchTimer()
             apiClient.flushQueue()
             alertClient.subscribeOnce()
             alertClient.stopTimer()

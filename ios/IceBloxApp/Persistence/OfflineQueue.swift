@@ -11,6 +11,8 @@ final class OfflineQueue {
         queue.sync { queryCount() }
     }
 
+    var isEmpty: Bool { queue.sync { queryCount() } == 0 }
+
     init() {
         let path = Self.databasePath()
         queue.sync {
@@ -111,6 +113,24 @@ final class OfflineQueue {
             defer { sqlite3_finalize(stmt) }
             sqlite3_bind_text(stmt, 1, (sessionID as NSString).utf8String, -1, SQLITE_TRANSIENT)
             return sqlite3_step(stmt) == SQLITE_ROW ? Int(sqlite3_column_int(stmt, 0)) : 0
+        }
+    }
+
+    func clearAll() {
+        queue.sync {
+            sqlite3_exec(db, "DELETE FROM queue", nil, nil, nil)
+        }
+    }
+
+    func removeExpired(olderThan timeout: TimeInterval) {
+        queue.sync {
+            let cutoff = Date().timeIntervalSince1970 - timeout
+            let sql = "DELETE FROM queue WHERE timestamp < ?"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_double(stmt, 1, cutoff)
+            sqlite3_step(stmt)
         }
     }
 

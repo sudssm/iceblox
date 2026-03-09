@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"time"
 )
 
@@ -16,6 +17,14 @@ type PlateRequest struct {
 	Longitude     float64 `json:"longitude"`
 	Timestamp     string  `json:"timestamp,omitempty"`
 	Substitutions int     `json:"substitutions"`
+}
+
+type BatchPlateRequest struct {
+	Plates []PlateRequest `json:"plates"`
+}
+
+type PlateResult struct {
+	Matched bool `json:"matched"`
 }
 
 type TargetChecker interface {
@@ -40,40 +49,53 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 			return
 		}
 
-		var req PlateRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var batch BatchPlateRequest
+		if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid JSON body")
 			return
 		}
 
-		if err := validatePlateRequest(req); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
+		if len(batch.Plates) == 0 {
+			writeError(w, http.StatusBadRequest, "plates array must not be empty")
 			return
 		}
 
-		matched := targets.Contains(req.PlateHash)
-		log.Printf("POST /api/v1/plates hash=%s matched=%v lat=%.4f lon=%.4f", req.PlateHash, matched, req.Latitude, req.Longitude)
-
-		if matched {
-			plate, _ := targets.Plate(req.PlateHash)
-			log.Printf("MATCH DETECTED plate=%s hash=%s lat=%.6f lon=%.6f", plate, req.PlateHash, req.Latitude, req.Longitude)
-
-			plateID, _ := targets.PlateID(req.PlateHash)
-			seenAt := parseTimestamp(req.Timestamp)
-			hardwareID := r.Header.Get("X-Device-ID")
-			if hardwareID == "" {
-				hardwareID = "unknown"
-			}
-
-			sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID, req.Substitutions)
-			if err != nil {
-				log.Printf("failed to record sighting: %v", err)
-				writeError(w, http.StatusInternalServerError, "failed to record sighting")
+		for _, req := range batch.Plates {
+			if err := validatePlateRequest(req); err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
 				return
 			}
+		}
 
-			if notifier != nil {
-				notifier.NotifyAsync(sightingID, req.Latitude, req.Longitude)
+		hardwareID := sanitizeHeader(r.Header.Get("X-Device-ID"))
+		if hardwareID == "" {
+			hardwareID = "unknown"
+		}
+
+		log.Printf("POST /api/v1/plates count=%d device=%s", len(batch.Plates), hardwareID) //nolint:gosec // hardwareID sanitized above
+
+		results := make([]PlateResult, len(batch.Plates))
+		for i, req := range batch.Plates {
+			matched := targets.Contains(req.PlateHash)
+			results[i] = PlateResult{Matched: matched}
+
+			if matched {
+				plate, _ := targets.Plate(req.PlateHash)
+				log.Printf("MATCH DETECTED plate=%s hash=%s lat=%.6f lon=%.6f", plate, req.PlateHash, req.Latitude, req.Longitude)
+
+				plateID, _ := targets.PlateID(req.PlateHash)
+				seenAt := parseTimestamp(req.Timestamp)
+
+				sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID, req.Substitutions)
+				if err != nil {
+					log.Printf("failed to record sighting: %v", err)
+					writeError(w, http.StatusInternalServerError, "failed to record sighting")
+					return
+				}
+
+				if notifier != nil {
+					notifier.NotifyAsync(sightingID, req.Latitude, req.Longitude)
+				}
 			}
 		}
 
@@ -81,7 +103,7 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",
-			"matched": matched,
+			"results": results,
 		}); err != nil {
 			log.Printf("failed to encode response: %v", err)
 		}
@@ -116,6 +138,12 @@ func parseTimestamp(ts string) time.Time {
 		return time.Now().UTC()
 	}
 	return t
+}
+
+var headerSanitizer = regexp.MustCompile(`[^a-zA-Z0-9\-_.]`)
+
+func sanitizeHeader(s string) string {
+	return headerSanitizer.ReplaceAllString(s, "")
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {

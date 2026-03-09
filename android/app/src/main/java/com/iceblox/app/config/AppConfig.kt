@@ -17,10 +17,11 @@ object AppConfig {
     const val MIN_PLATE_LENGTH = 2
     const val MAX_PLATE_LENGTH = 8
 
-    const val BATCH_SIZE = 10
+    const val BATCH_SIZE = 200
     const val BATCH_INTERVAL_MS = 30_000L
     const val MAX_BATCH_WAIT_MS = 1_000L
     const val MAX_QUEUE_SIZE = 1000
+    const val UPLOAD_TIMEOUT_MS = 600_000L
 
     const val RETRY_INITIAL_DELAY_MS = 5_000L
     const val RETRY_MAX_DELAY_MS = 300_000L

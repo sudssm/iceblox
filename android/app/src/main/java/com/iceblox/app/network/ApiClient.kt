@@ -20,6 +20,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 
 class ApiClient(
@@ -113,24 +114,32 @@ class ApiClient(
             return
         }
 
-        val entries = queueDao.dequeue(AppConfig.BATCH_SIZE)
-        if (entries.isEmpty()) return
-        DebugLog.d(TAG, "sendBatch: sending ${entries.size} entries")
+        queueDao.deleteOlderThan(System.currentTimeMillis() - AppConfig.UPLOAD_TIMEOUT_MS)
+        onQueueDepthChanged(queueDao.count())
 
         val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.PLATES_ENDPOINT}"
         val mediaType = "application/json".toMediaType()
 
-        for (entry in entries) {
-            val json = JSONObject().apply {
-                put("plate_hash", entry.plateHash)
-                put("latitude", entry.latitude ?: 0.0)
-                put("longitude", entry.longitude ?: 0.0)
-                val ts = Instant.ofEpochMilli(entry.timestamp)
-                    .atOffset(ZoneOffset.UTC)
-                    .format(DateTimeFormatter.ISO_INSTANT)
-                put("timestamp", ts)
-                put("substitutions", entry.substitutions)
+        while (true) {
+            val entries = queueDao.dequeue(AppConfig.BATCH_SIZE)
+            if (entries.isEmpty()) return
+            DebugLog.d(TAG, "sendBatch: sending ${entries.size} entries")
+
+            val platesArray = JSONArray()
+            for (entry in entries) {
+                val plate = JSONObject().apply {
+                    put("plate_hash", entry.plateHash)
+                    put("latitude", entry.latitude ?: 0.0)
+                    put("longitude", entry.longitude ?: 0.0)
+                    val ts = Instant.ofEpochMilli(entry.timestamp)
+                        .atOffset(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_INSTANT)
+                    put("timestamp", ts)
+                    put("substitutions", entry.substitutions)
+                }
+                platesArray.put(plate)
             }
+            val json = JSONObject().apply { put("plates", platesArray) }
 
             val request = Request.Builder()
                 .url(url)
@@ -144,16 +153,20 @@ class ApiClient(
                     when (response.code) {
                         200 -> {
                             retryManager.reset()
-                            queueDao.deleteByIds(listOf(entry.id))
+                            queueDao.deleteByIds(entries.map { it.id })
                             onQueueDepthChanged(queueDao.count())
                             response.body?.string()?.let { body ->
                                 try {
                                     val responseJson = JSONObject(body)
-                                    val matched = responseJson.optBoolean("matched", false)
-                                    if (matched) {
-                                        onTargetMatched(entry.sessionId)
+                                    val results = responseJson.optJSONArray("results") ?: return@let
+                                    for (i in 0 until results.length().coerceAtMost(entries.size)) {
+                                        val matched = results.getJSONObject(i).optBoolean("matched", false)
+                                        val entry = entries[i]
+                                        if (matched) {
+                                            onTargetMatched(entry.sessionId)
+                                        }
+                                        onPlateSent(entry.plateHash, matched, entry.sessionId)
                                     }
-                                    onPlateSent(entry.plateHash, matched, entry.sessionId)
                                 } catch (e: Exception) {
                                     DebugLog.w(TAG, "Failed to parse response: ${e.message}")
                                 }

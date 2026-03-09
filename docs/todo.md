@@ -82,6 +82,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
 - [x] **Pipeline integration** — Expand plates in `FrameProcessor.recordPlate()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
 
+### Persistence & Networking (cont.)
+- [x] **Drain queue regardless of session state** — Run the batch upload timer whenever there are pending items in the offline queue, even on the splash screen before a recording session starts. Currently the timer only runs during active foreground/background capture, so stale entries from a previous session are never retried (REQ-M-14)
+
 ### Debug & Release
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
@@ -154,6 +157,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Queue schema migration** — Add `substitutions INTEGER NOT NULL DEFAULT 0` column via `MIGRATION_2_3` (REQ-M-12a)
 - [x] **API substitutions field** — Send `substitutions` count with each plate hash submission (REQ-M-12a)
 - [x] **Pipeline integration** — Expand plates in `CaptureRepository.onPlatesDetected()`, hash all variants, queue with substitution counts, count as 1 plate (REQ-M-12a)
+
+### Persistence & Networking (cont.)
+- [x] **Drain queue regardless of session state** — Run the batch upload timer whenever there are pending items in the offline queue, even on the splash screen before a recording session starts. Currently the timer only runs during active foreground/background capture, so stale entries from a previous session are never retried (REQ-M-14)
 
 ### Debug & Release
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)

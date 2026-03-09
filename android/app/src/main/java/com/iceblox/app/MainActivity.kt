@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.messaging.FirebaseMessaging
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
@@ -105,6 +107,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 } else {
+                    val splashViewModel: MainViewModel = viewModel()
+                    val splashQueueDepth by splashViewModel.queueDepth.collectAsState()
                     SplashScreen(
                         onStartCamera = {
                             if (hasCameraPermission) {
@@ -115,7 +119,9 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
-                        }
+                        },
+                        queueDepth = splashQueueDepth,
+                        onClearQueue = { splashViewModel.clearUploadQueue() }
                     )
                 }
             }

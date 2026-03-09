@@ -187,15 +187,24 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 
 type plateResponse struct {
 	Status  string `json:"status"`
-	Matched bool   `json:"matched"`
+	Matched bool
+}
+
+type batchResponse struct {
+	Status  string                   `json:"status"`
+	Results []map[string]interface{} `json:"results"`
 }
 
 func postPlate(t *testing.T, baseURL, hash string, lat, lng float64) plateResponse {
 	t.Helper()
 	body, _ := json.Marshal(map[string]interface{}{
-		"plate_hash": hash,
-		"latitude":   lat,
-		"longitude":  lng,
+		"plates": []map[string]interface{}{
+			{
+				"plate_hash": hash,
+				"latitude":   lat,
+				"longitude":  lng,
+			},
+		},
 	})
 	resp, err := http.Post(baseURL+"/api/v1/plates", "application/json", strings.NewReader(string(body)))
 	if err != nil {
@@ -207,9 +216,13 @@ func postPlate(t *testing.T, baseURL, hash string, lat, lng float64) plateRespon
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	var pr plateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+	var br batchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&br); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	return pr
+	if len(br.Results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(br.Results))
+	}
+	matched, _ := br.Results[0]["matched"].(bool)
+	return plateResponse{Status: br.Status, Matched: matched}
 }

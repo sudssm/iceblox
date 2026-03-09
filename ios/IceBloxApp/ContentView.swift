@@ -142,6 +142,24 @@ struct ContentView: View {
                     }
                     .padding(.bottom, 12)
 
+                    if !offlineQueue.isEmpty {
+                        HStack(spacing: 8) {
+                            Text("\(offlineQueue.count) uploads queued")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.yellow)
+                            Button(action: clearUploadQueue) {
+                                Image(systemName: "xmark")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.7))
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.black.opacity(0.75))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 4)
+                    }
+
                     StatusBarView(
                         isConnected: connectivityMonitor.isConnected,
                         lastDetection: frameProcessor?.lastDetectionTime,
@@ -279,6 +297,13 @@ struct ContentView: View {
         alertClient?.stopTimer()
         pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
         showingSummary = true
+    }
+
+    private func clearUploadQueue() {
+        apiClient?.stopBatchTimer()
+        offlineQueue.clearAll()
+        pendingSessionUploads = 0
+        apiClient?.startBatchTimer()
     }
 
     private func returnToSplash() {

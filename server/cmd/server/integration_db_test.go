@@ -103,17 +103,21 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 	store.SetPlateIDs(mapping)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, nil))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
 	t.Run("matched plate creates sighting in database", func(t *testing.T) {
 		hash := e2eHMAC("ICE001", pepper)
 		body, _ := json.Marshal(map[string]interface{}{
-			"plate_hash": hash,
-			"latitude":   40.7128,
-			"longitude":  -74.0060,
-			"timestamp":  "2026-03-08T10:00:00Z",
+			"plates": []map[string]interface{}{
+				{
+					"plate_hash": hash,
+					"latitude":   40.7128,
+					"longitude":  -74.0060,
+					"timestamp":  "2026-03-08T10:00:00Z",
+				},
+			},
 		})
 
 		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/plates", strings.NewReader(string(body)))
@@ -132,7 +136,8 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		if result["matched"] != true {
+		results := result["results"].([]interface{})
+		if results[0].(map[string]interface{})["matched"] != true {
 			t.Fatal("expected matched=true")
 		}
 
@@ -147,9 +152,13 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 	t.Run("non-matched plate creates no sighting", func(t *testing.T) {
 		hash := e2eHMAC("NOTARGET", pepper)
 		body, _ := json.Marshal(map[string]interface{}{
-			"plate_hash": hash,
-			"latitude":   40.0,
-			"longitude":  -74.0,
+			"plates": []map[string]interface{}{
+				{
+					"plate_hash": hash,
+					"latitude":   40.0,
+					"longitude":  -74.0,
+				},
+			},
 		})
 
 		resp, err := http.Post(srv.URL+"/api/v1/plates", "application/json", strings.NewReader(string(body)))
@@ -160,7 +169,8 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		if result["matched"] != false {
+		results := result["results"].([]interface{})
+		if results[0].(map[string]interface{})["matched"] != false {
 			t.Fatal("expected matched=false")
 		}
 
@@ -175,9 +185,13 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 		hash := e2eHMAC("ICE002", pepper)
 		for i := range 3 {
 			body, _ := json.Marshal(map[string]interface{}{
-				"plate_hash": hash,
-				"latitude":   41.0 + float64(i),
-				"longitude":  -73.0,
+				"plates": []map[string]interface{}{
+					{
+						"plate_hash": hash,
+						"latitude":   41.0 + float64(i),
+						"longitude":  -73.0,
+					},
+				},
 			})
 			req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/plates", strings.NewReader(string(body)))
 			req.Header.Set("X-Device-ID", "e2e-device-002")
@@ -200,10 +214,14 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 	t.Run("sighting stores correct GPS and hardware_id", func(t *testing.T) {
 		hash := e2eHMAC("ICE003", pepper)
 		body, _ := json.Marshal(map[string]interface{}{
-			"plate_hash": hash,
-			"latitude":   33.4484,
-			"longitude":  -112.0740,
-			"timestamp":  "2026-03-08T15:45:00Z",
+			"plates": []map[string]interface{}{
+				{
+					"plate_hash": hash,
+					"latitude":   33.4484,
+					"longitude":  -112.0740,
+					"timestamp":  "2026-03-08T15:45:00Z",
+				},
+			},
 		})
 
 		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/plates", strings.NewReader(string(body)))

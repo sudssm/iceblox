@@ -215,4 +215,7 @@ CREATE TABLE IF NOT EXISTS device_tokens (
 CREATE INDEX IF NOT EXISTS idx_sightings_plate_id ON sightings(plate_id);
 CREATE INDEX IF NOT EXISTS idx_sightings_seen_at ON sightings(seen_at);
 CREATE INDEX IF NOT EXISTS idx_sightings_location ON sightings(latitude, longitude);
+
+-- migrations
+ALTER TABLE sightings ADD COLUMN IF NOT EXISTS substitutions INTEGER NOT NULL DEFAULT 0;
 `
