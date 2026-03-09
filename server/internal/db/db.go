@@ -199,37 +199,3 @@ func (d *DB) Close() error {
 	}
 	return sqlDB.Close()
 }
-
-const schema = `
-CREATE TABLE IF NOT EXISTS plates (
-	id SERIAL PRIMARY KEY,
-	plate TEXT NOT NULL,
-	hash VARCHAR(64) NOT NULL UNIQUE
-);
-
-CREATE TABLE IF NOT EXISTS sightings (
-	id SERIAL PRIMARY KEY,
-	plate_id INTEGER NOT NULL REFERENCES plates(id),
-	seen_at TIMESTAMPTZ NOT NULL,
-	latitude DOUBLE PRECISION NOT NULL,
-	longitude DOUBLE PRECISION NOT NULL,
-	hardware_id TEXT NOT NULL,
-	substitutions INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS device_tokens (
-	id SERIAL PRIMARY KEY,
-	hardware_id TEXT NOT NULL,
-	token TEXT NOT NULL,
-	platform TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
-	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-	UNIQUE(hardware_id, platform)
-);
-
-CREATE INDEX IF NOT EXISTS idx_sightings_plate_id ON sightings(plate_id);
-CREATE INDEX IF NOT EXISTS idx_sightings_seen_at ON sightings(seen_at);
-CREATE INDEX IF NOT EXISTS idx_sightings_location ON sightings(latitude, longitude);
-
--- migrations
-ALTER TABLE sightings ADD COLUMN IF NOT EXISTS substitutions INTEGER NOT NULL DEFAULT 0;
-`
