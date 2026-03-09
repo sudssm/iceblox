@@ -5,6 +5,7 @@ dockerfilePath = "server/Dockerfile"
 [deploy]
 healthcheckPath = "/healthz"
 healthcheckTimeout = 30
+preDeployCommand = "make migrate"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 startCommand = "/bin/sh -c \"export $(cat /.env | xargs) && exec /server --plates-file /data/plates.txt --port 80\""

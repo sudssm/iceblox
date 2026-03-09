@@ -184,7 +184,7 @@ CREATE TABLE device_tokens (
 3. When a submitted hash matches, a sighting is inserted with the plate's ID, timestamp, GPS, and device ID
 4. Non-matching hashes are never written to the database
 
-**Connection:** Configured via `--db-dsn` flag. Default: `postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable`. Migrations run automatically on startup using `CREATE TABLE IF NOT EXISTS`.
+**Connection:** Configured via `--db-dsn` flag. Default: `postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable`. Schema migrations MUST be executable via `make migrate`, which runs database-only migrations against `DATABASE_URL` or `DB_DSN` and exits without starting the HTTP server. Railway deployments MUST invoke this target as a predeploy command so schema changes complete before the new server instance starts receiving traffic. The server MAY also run the same idempotent migration path on startup as a safety check.
 
 ### REQ-S-9: Device Token Registration
 
@@ -353,6 +353,25 @@ When a new target plate match is detected via `POST /api/v1/plates`, the existin
 
 This proximity filtering MUST NOT block the plates handler HTTP response. It MUST run in the existing async notification goroutine.
 
+### REQ-S-17: Request Logging Middleware
+
+The server MUST wrap the HTTP mux with request logging middleware so operator logs are sufficient to debug unexpected `500 Internal Server Error` responses.
+
+**For every request, the middleware MUST log:**
+- HTTP method
+- URL path
+- Response status code
+- Request duration in milliseconds
+- `X-Device-ID` header value when present
+
+**Failure handling:**
+- Any response with status `>= 500` MUST be logged explicitly as a server error entry.
+- If a handler panics, the middleware MUST recover, log the panic value with the request metadata, and return `500 Internal Server Error`.
+
+**Scope:**
+- The middleware MUST apply to all server endpoints, including `/healthz`.
+- Logging MUST be additive only; it MUST NOT change successful response bodies or status codes from existing handlers.
+
 ## Out of Scope (v1)
 
 - Admin dashboard
@@ -461,11 +480,12 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, Sighting struct, composite geo index |
 | 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
+| 20 | Request logging middleware | REQ-S-17 | Wrap mux, record method/path/status/duration/device_id, recover panics as 500 |
 
 ### Key Technical Notes
 
 - **External dependency**: `github.com/jackc/pgx/v5` for PostgreSQL driver (via `database/sql` interface).
-- **Schema migrations**: Run on startup via `CREATE TABLE IF NOT EXISTS`. No migration framework needed for v1.
+- **Schema migrations**: Expose a database-only `make migrate` entrypoint for deploy-time execution. The implementation remains idempotent via `CREATE TABLE IF NOT EXISTS`, so startup can safely call the same migration path in development and as a production safety check. No migration framework is needed for v1.
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
 - **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
@@ -485,5 +505,5 @@ Each step is independently testable. Later steps depend on earlier ones.
 The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
-- **Railway config** (`server/railway.toml`): Configures the build to use the Dockerfile, with a `/healthz` healthcheck and ON_FAILURE restart policy.
+- **Railway config** (`railway.toml`): Configures the build to use the Dockerfile, runs `make migrate` as the predeploy command, exposes `/healthz` for health checks, and uses an ON_FAILURE restart policy.
 - **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. These override the CLI flag defaults.
