@@ -24,6 +24,7 @@ ios/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 # Server
 server/data/
 server/server
+server/fcm-service-account.json
 *.jsonl
 
 # IDE

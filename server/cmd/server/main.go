@@ -62,6 +62,37 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	if v := getenv("PLATES_FILE"); v != "" {
 		*platesFile = v
 	}
+	if v := getenv("APNS_KEY_FILE"); v != "" {
+		*apnsKeyFile = v
+	}
+	if v := getenv("APNS_KEY_ID"); v != "" {
+		*apnsKeyID = v
+	}
+	if v := getenv("APNS_TEAM_ID"); v != "" {
+		*apnsTeamID = v
+	}
+	if v := getenv("APNS_BUNDLE_ID"); v != "" {
+		*apnsBundleID = v
+	}
+	if v := getenv("APNS_PRODUCTION"); v != "" {
+		*apnsProduction = v == "true" || v == "1"
+	}
+	if v := getenv("FCM_SERVICE_ACCOUNT"); v != "" {
+		*fcmServiceAccount = v
+	}
+	if v := getenv("FCM_SERVICE_ACCOUNT_JSON"); v != "" && *fcmServiceAccount == "" {
+		f, err := os.CreateTemp("", "fcm-sa-*.json")
+		if err != nil {
+			return fmt.Errorf("failed to write FCM service account: %w", err)
+		}
+		defer os.Remove(f.Name())
+		if _, err := f.WriteString(v); err != nil {
+			f.Close()
+			return fmt.Errorf("failed to write FCM service account: %w", err)
+		}
+		f.Close()
+		*fcmServiceAccount = f.Name()
+	}
 
 	database, err := db.Connect(*dbDSN)
 	if err != nil {

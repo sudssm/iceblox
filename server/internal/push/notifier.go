@@ -70,6 +70,7 @@ func (n *Notifier) dispatch(sightingID int64, lat, lng float64) {
 	}
 
 	sightingIDStr := fmt.Sprintf("%d", sightingID)
+	sent := 0
 
 	for _, dt := range tokens {
 		sub, ok := activeSubscribers[dt.HardwareID]
@@ -124,6 +125,11 @@ func (n *Notifier) dispatch(sightingID int64, lat, lng float64) {
 
 		if sendErr != nil {
 			log.Printf("push: failed to send to device id=%d platform=%s: %v", dt.ID, dt.Platform, sendErr)
+		} else {
+			sent++
 		}
+	}
+	if sent > 0 {
+		log.Printf("push: sent %d notifications for sighting=%d", sent, sightingID)
 	}
 }
