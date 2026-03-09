@@ -1,10 +1,10 @@
+import CoreVideo
 import Foundation
-import onnxruntime
+import OnnxRuntimeBindings
 
 enum PlateOCR {
     private static let targetHeight = 64
     private static let targetWidth = 128
-    private static let maxPlateSlots = 9
     private static let alphabet: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_")
     private static let padChar: Character = "_"
 

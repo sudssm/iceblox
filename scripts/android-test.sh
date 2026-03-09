@@ -118,14 +118,14 @@ echo "Setting up adb reverse port forwarding (phone:8080 -> host:8080)..."
 adb -s "$DEVICE" reverse tcp:8080 tcp:8080
 
 # --- Step 6 (local only): Run Go server in foreground ---
-cd "$ROOT/server"
-if [ ! -f data/plates.txt ]; then
+cd "$ROOT"
+if [ ! -f server/data/plates.txt ]; then
     echo ""
     echo "Downloading and extracting plate data..."
     make setup
     make extract
 fi
 echo ""
-echo "=== App launched! Starting Go server with $(wc -l < data/plates.txt | tr -d ' ') plates (Ctrl+C to stop) ==="
+echo "=== App launched! Starting Go server with $(wc -l < server/data/plates.txt | tr -d ' ') plates (Ctrl+C to stop) ==="
 echo ""
 make run-server DB_DSN="$DB_DSN"
