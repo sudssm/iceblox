@@ -19,6 +19,7 @@ object AppConfig {
 
     const val BATCH_SIZE = 10
     const val BATCH_INTERVAL_MS = 30_000L
+    const val MAX_BATCH_WAIT_MS = 1_000L
     const val MAX_QUEUE_SIZE = 1000
 
     const val RETRY_INITIAL_DELAY_MS = 5_000L
