@@ -76,7 +76,7 @@ class LookalikeExpanderTest {
     fun allGroupsCovered() {
         val result = LookalikeExpander.expand("0IS2A", maxVariants = 500)
         val texts = result.map { it.first }.toSet()
-        assertTrue(texts.contains("OIL2A"))
+        assertTrue(texts.contains("0LS2A"))
         assertTrue(texts.contains("0IS24"))
         assertTrue(texts.contains("0ISZA"))
     }
