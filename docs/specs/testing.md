@@ -277,6 +277,7 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Background capture** (`tests/test_background_capture.sh`): Pushes a target plate image, starts the camera, then backgrounds the app via `KEYCODE_HOME`. Verifies the app process survives backgrounding, remains alive after the batch flush window, and produces at least one sighting while backgrounded.
 - **Batch upload** (`tests/test_batch_upload.sh`): Pushes a target plate image, starts the camera, verifies the upload queue banner appears while plates are queued, waits for the batch flush, then verifies the server received batch-format POSTs (with `count=` in logs), sightings were recorded, and the upload queue banner cleared after the flush.
 - **Match debug label** (`tests/test_match_debug_label.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies the server logged a match and the debug feed shows a `[MTCH]` label for the matched plate.
+- **Queued entries clear** (`tests/test_queued_clears.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies all detection feed entries have transitioned from QUEUED to either SENT or MATCHED (no entries remain stuck in QUEUED state).
 
 ### Prerequisites
 

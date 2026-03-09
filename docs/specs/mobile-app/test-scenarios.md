@@ -537,6 +537,19 @@ Then the server log contains MATCH DETECTED
 And the debug feed shows a [MTCH] label for the matched plate
 ```
 
+### TS-E2E-12: Android detection feed entries transition from QUEUED after batch flush
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the Android app is installed on the emulator
+When a target plate image is pushed and the app is launched in test mode
+And the camera is started
+And debug mode is enabled via triple-tap
+And the batch flush interval elapses
+Then no detection feed entries remain in QUEUED state
+And at least one entry shows SENT or MATCHED state
+```
+
 ### TS-E2E-9: iOS stop recording writes session summary artifact
 
 ```

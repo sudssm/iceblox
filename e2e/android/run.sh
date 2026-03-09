@@ -17,6 +17,7 @@ source "$SCRIPT_DIR/tests/test_proximity_alerts.sh"
 source "$SCRIPT_DIR/tests/test_background_capture.sh"
 source "$SCRIPT_DIR/tests/test_batch_upload.sh"
 source "$SCRIPT_DIR/tests/test_match_debug_label.sh"
+source "$SCRIPT_DIR/tests/test_queued_clears.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -64,6 +65,7 @@ run_test_proximity_app_subscribe
 run_test_background_capture
 run_test_batch_upload
 run_test_match_debug_label
+run_test_queued_clears
 
 echo ""
 echo "=========================================="
