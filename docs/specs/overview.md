@@ -73,7 +73,7 @@ License plates have a small keyspace (~2 billion US plates). An attacker with ac
 
 Target plates are sourced from the [StopICE Plate Tracker](https://www.stopice.net/platetracker/?data=1), a public database of ICE (Immigration and Customs Enforcement) vehicle license plates. As of March 2026, the database contains ~5,300 vehicle reports comprising ~2,600 unique plate numbers.
 
-The data is published as a nightly-compiled ZIP archive containing XML with plate records. A Makefile in `server/` automates downloading and extracting the plates into a plaintext file that the server loads at startup.
+The data is published as a nightly-compiled ZIP archive containing XML with plate records. The root `Makefile` automates downloading and extracting the plates into a plaintext file that the server loads at startup.
 
 ## Target Scale
 
@@ -87,7 +87,7 @@ The data is published as a nightly-compiled ZIP archive containing XML with plat
 
 - **iOS**: Swift, AVFoundation, Vision framework, Core ML (YOLOv8-nano)
 - **Android**: Kotlin, CameraX, ML Kit, TFLite (YOLOv8-nano)
-- **Server**: Go (`net/http`), PostgreSQL (via `pgx`), target plates from StopICE data (see `server/Makefile`)
+- **Server**: Go (`net/http`), PostgreSQL (via `pgx`), target plates from StopICE data (see root `Makefile`)
 
 ## Future Components
 

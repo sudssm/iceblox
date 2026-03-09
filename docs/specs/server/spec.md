@@ -424,12 +424,13 @@ server/
 │       └── logger.go            # JSONL file writer (legacy, optional)
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
-├── Makefile                     # setup, extract, db, run-server targets
 ├── Dockerfile                   # Multi-stage build for Railway deployment
 ├── railway.toml                 # Railway deployment config
 ├── go.mod
 └── go.sum
 ```
+
+The project's `Makefile` lives at the repository root (not inside `server/`). It provides both server targets (`server-test`, `server-test-db`, `server-lint`, `run-server`, `run-test-server`) and Android targets (`android-test`). Server targets use `cd server && ...` to run commands in the server directory.
 
 ### Implementation Order
 
