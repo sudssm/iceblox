@@ -49,6 +49,24 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ---
 
+## Push Notifications
+
+- [ ] **Descriptive push notification text** — Include plate info, location, and confidence in the notification body. Tapping the notification should open a map view showing alert location, confidence score, and user's current location.
+- [ ] **Dedupe push notifications** — Suppress duplicate notifications when the same location or vehicle is detected multiple times in a short window.
+- [ ] **Confidence score** — Calculate a confidence score based on the number of reports at a location and the number of character substitutions in the plate match.
+- [ ] **Enable iOS push notifications** — Integrate APNs, register device tokens, and wire up server-side delivery for iOS clients.
+- [ ] **Set up Android push notifications in prod** — Configure FCM credentials and delivery for the production environment.
+
+---
+
+## Client UI
+
+- [ ] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
+- [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
+- [ ] **Splash page** — Build a marketing/landing splash page for the project.
+
+---
+
 ## Future
 
 - [ ] **US-plate fine-tuned OCR model** — Fine-tune the CCT-XS model specifically for US license plates to improve accuracy beyond the current ~92-94% global model. Training data: OpenALPR US plate benchmark or similar. The [fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) project provides training infrastructure.
