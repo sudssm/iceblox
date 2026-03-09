@@ -10,10 +10,10 @@ Items are ordered by dependency — earlier items unblock later ones. Within a c
 
 Spec: [`specs/mobile-app/license_plate_detection.md`](specs/mobile-app/license_plate_detection.md)
 
-- [ ] Download license plate dataset (HuggingFace, 8,823 images)
-- [ ] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
-- [ ] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
-- [ ] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
+- [x] Download license plate dataset (HuggingFace, 8,823 images)
+- [x] Train YOLOv8-nano (fine-tune from COCO pretrained weights)
+- [x] Validate against quality gates (mAP@0.5 ≥ 0.80, recall ≥ 0.75)
+- [x] Create `models/CHANGELOG.md` with v1 metrics (after training completes)
 
 ---
 
