@@ -119,8 +119,7 @@ class CaptureRepository(private val application: Application) {
         _detectionFeed.value = emptyList()
     }
 
-    suspend fun countBySessionId(sessionId: String): Int =
-        queueDao.countBySessionId(sessionId)
+    suspend fun countBySessionId(sessionId: String): Int = queueDao.countBySessionId(sessionId)
 
     fun processTestImageIfPresent() {
         val testFile = File(application.filesDir, "test_plate.png")

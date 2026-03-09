@@ -16,11 +16,10 @@ fun CameraPreview(modifier: Modifier = Modifier, analyzer: ImageAnalysis.Analyze
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
 
     DisposableEffect(lifecycleOwner, analyzer) {
         onDispose {
-            runCatching { cameraProviderFuture.get().unbindAll() }
+            CameraCaptureBinder.unbindAll(context)
             analysisExecutor.shutdown()
         }
     }
