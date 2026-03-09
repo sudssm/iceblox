@@ -53,9 +53,14 @@ migrate:
 		cd server && go run ./cmd/server/... --migrate-only --db-dsn "$${DATABASE_URL:-$(DB_DSN)}"; \
 	fi
 
+FCM_SERVICE_ACCOUNT ?=
+APNS_KEY_FILE ?=
+
 ## run-server: Build and run the Go server
 run-server:
-	cd server && go run ./cmd/server/... --db-dsn "$(DB_DSN)"
+	cd server && go run ./cmd/server/... --db-dsn "$(DB_DSN)" \
+		$(if $(FCM_SERVICE_ACCOUNT),--fcm-service-account "$(FCM_SERVICE_ACCOUNT)") \
+		$(if $(APNS_KEY_FILE),--apns-key-file "$(APNS_KEY_FILE)")
 
 ## run-test-server: Run server with test plates (known plates for E2E testing)
 run-test-server:
