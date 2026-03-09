@@ -524,6 +524,19 @@ And the app process remains alive after the batch flush window
 And at least one sighting exists in the database (captured while backgrounded)
 ```
 
+### TS-E2E-11: Android match debug label shows MATCHED state
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the Android app is installed on the emulator
+When a target plate image is pushed and the app is launched in test mode
+And the camera is started
+And debug mode is enabled via triple-tap
+And the batch flush interval elapses
+Then the server log contains MATCH DETECTED
+And the debug feed shows a [MTCH] label for the matched plate
+```
+
 ### TS-E2E-9: iOS stop recording writes session summary artifact
 
 ```

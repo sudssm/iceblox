@@ -197,7 +197,7 @@ After hashing, the app MUST immediately discard the plaintext plate text from me
 #### REQ-M-14: Batch Upload
 
 The app MUST send hashed plates to the server via HTTPS POST using the batch API format (see server spec REQ-S-1). Each upload sends a `{"plates": [...]}` array and receives a positionally aligned `{"results": [...]}` array. The app MUST batch uploads:
-- Send a batch when the queue reaches 200 plates, OR
+- Send a batch when the queue reaches 65 plates, OR
 - Send a batch every 30 seconds if the queue is non-empty, OR
 - Send a batch immediately when connectivity is restored after an offline period
 - **(Android)**: Additionally, send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
@@ -210,7 +210,7 @@ The server response includes a `results` array with a per-plate `matched` boolea
 - Iterate over the `results` array and correlate each result with the corresponding queued entry by position
 - Increment the originating session target counter for each plate where `matched` is `true`
 - Display the updated target count in the status bar
-- NOT store which specific hashes matched (only the running count)
+- Map each variant hash back to its original plate's primary hash prefix (using an in-memory variant→primary mapping) and update the corresponding debug feed entry to MATCHED
 - NOT alert the user or provide any visual/audio feedback on matches
 
 #### REQ-M-14b: Final Flush on Session Stop

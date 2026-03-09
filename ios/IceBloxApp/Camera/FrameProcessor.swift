@@ -158,7 +158,12 @@ final class FrameProcessor: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var feed = self.detectionFeed
-            if let idx = feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state == .queued }) {
+            let idx: Int? = if matched {
+                feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state != .matched })
+            } else {
+                feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state == .queued })
+            }
+            if let idx {
                 feed[idx] = DetectionFeedEntry(
                     plateText: feed[idx].plateText,
                     hashPrefix: feed[idx].hashPrefix,

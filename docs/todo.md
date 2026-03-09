@@ -63,7 +63,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Persistence & Networking
 - [x] **Offline queue** — OfflineQueue.swift: SQLite-backed FIFO, max 1000 entries, oldest eviction (REQ-M-15)
 - [x] **Location services** — LocationManager.swift: CLLocationManager, GPS attach, "No GPS" warning (REQ-M-16)
-- [x] **Batch upload** — APIClient.swift: URLSession POST with batch `{"plates": [...]}` format, 200-plate or 30-second trigger, loop until queue drained, sends device timestamp in ISO 8601 (REQ-M-14)
+- [x] **Batch upload** — APIClient.swift: URLSession POST with batch `{"plates": [...]}` format, 65-plate or 30-second trigger, loop until queue drained, sends device timestamp in ISO 8601 (REQ-M-14)
 - [x] **Match response handling** — Parse positionally aligned `results` array with per-plate `matched` boolean, update target counter (REQ-M-14a)
 - [x] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
 - [x] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
@@ -143,7 +143,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Persistence & Networking
 - [x] **Offline queue** — Room database, max 1000 entries, oldest eviction (REQ-M-15)
 - [x] **Location services** — FusedLocationProviderClient, GPS warning in status bar (REQ-M-16)
-- [x] **Batch upload** — OkHttp POST with batch `{"plates": [...]}` format, 200-plate or 30-second trigger, loop until queue drained, sends device timestamp in ISO 8601 (REQ-M-14)
+- [x] **Batch upload** — OkHttp POST with batch `{"plates": [...]}` format, 65-plate or 30-second trigger, loop until queue drained, sends device timestamp in ISO 8601 (REQ-M-14)
 - [x] **Match response handling** — Parse positionally aligned `results` array with per-plate `matched` boolean, update target counter (REQ-M-14a)
 - [x] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
 - [x] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
@@ -182,6 +182,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 - [x] **Background capture E2E test** — Verify app process survives backgrounding and produces sightings while backgrounded (TS-E2E-10)
 - [x] **Batch upload E2E test** — Verify batch-format POSTs, upload queue banner visibility, sighting creation, and banner clearing after flush
+- [x] **Match debug label E2E test** — Verify debug feed shows [MTCH] label after server returns a match for a target plate (TS-E2E-11)
 - [ ] **CI integration** — Run E2E tests in GitHub Actions with emulator + Docker
 
 ---
