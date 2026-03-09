@@ -47,6 +47,10 @@ func main() {
 		*platesFile = v
 	}
 
+	if *pepper == "" {
+		log.Fatal("PEPPER is required: set via --pepper flag or PEPPER environment variable")
+	}
+
 	ctx := context.Background()
 
 	database, err := db.Connect(*dbDSN)
