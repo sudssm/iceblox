@@ -7,6 +7,7 @@ import java.util.concurrent.CyclicBarrier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -46,8 +47,6 @@ class DetectionFeedUpdateTest {
     @Test
     fun concurrentAddAndMarkSentPreservesBothUpdates() {
         val feed = MutableStateFlow<List<DetectionFeedEntry>>(emptyList())
-        val entry1 = DetectionFeedEntry("PLATE1", "aaa11111", DetectionState.QUEUED)
-        addFeedEntry(feed, entry1)
 
         val iterations = 200
         var lostUpdates = 0
@@ -108,7 +107,7 @@ class DetectionFeedUpdateTest {
 
         val found = markSent(feed, "abc12345")
 
-        assertTrue(!found)
+        assertFalse(found)
         assertEquals(DetectionState.SENT, feed.value[0].state)
     }
 }
