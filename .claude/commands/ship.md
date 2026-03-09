@@ -8,9 +8,9 @@ Run `git status` to check for uncommitted changes. If there are staged or unstag
 
 If the working tree is already clean, skip this step.
 
-## Step 1: Update local main
+## Step 1: Update local main and merge into branch
 
-Run `git fetch origin main` to get the latest remote main. Then update the local main branch: if main is checked out elsewhere (worktree), run `cd <main-worktree-path> && git pull origin main`; otherwise run `git branch -f main origin/main`. This ensures `git diff main...HEAD` only shows changes from this branch, not stale main drift.
+Run `git fetch origin main` to get the latest remote main. Then update the local main branch: if main is checked out elsewhere (worktree), run `cd <main-worktree-path> && git pull origin main`; otherwise run `git branch -f main origin/main`. Then merge main into the current branch with `git merge main`. If there are merge conflicts, resolve them and commit the merge. This ensures the branch is up to date with main and that `git diff main HEAD` only shows changes from this branch.
 
 ## Step 2: Understand the changes
 
