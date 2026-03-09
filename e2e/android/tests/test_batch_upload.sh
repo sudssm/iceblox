@@ -37,7 +37,7 @@ run_test_batch_upload() {
     local batch_lines
     batch_lines=$(grep -c 'count=[0-9]' "$E2E_SERVER_LOG" 2>/dev/null || echo "0")
     local total_plates
-    total_plates=$(grep -oP 'count=\K[0-9]+' "$E2E_SERVER_LOG" 2>/dev/null | awk '{s+=$1} END {print s+0}')
+    total_plates=$(grep -o 'count=[0-9]*' "$E2E_SERVER_LOG" 2>/dev/null | sed 's/count=//' | awk '{s+=$1} END {print s+0}')
 
     if [ "$batch_lines" -gt 0 ]; then
         echo "  PASS: Server received $batch_lines batch POST(s) totaling $total_plates plates"
