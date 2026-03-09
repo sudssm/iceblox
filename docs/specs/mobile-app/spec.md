@@ -196,18 +196,19 @@ After hashing, the app MUST immediately discard the plaintext plate text from me
 
 #### REQ-M-14: Batch Upload
 
-The app MUST send hashed plates to the server via HTTPS POST (see server spec for endpoint schema). The app MUST batch uploads:
-- Send a batch when the queue reaches 10 plates, OR
+The app MUST send hashed plates to the server via HTTPS POST using the batch API format (see server spec REQ-S-1). Each upload sends a `{"plates": [...]}` array and receives a positionally aligned `{"results": [...]}` array. The app MUST batch uploads:
+- Send a batch when the queue reaches 200 plates, OR
 - Send a batch every 30 seconds if the queue is non-empty, OR
 - Send a batch immediately when connectivity is restored after an offline period
 - **(Android)**: Additionally, send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
 
-Whichever condition is met first triggers the send.
+Whichever condition is met first triggers the send. When the queue contains more entries than the batch size, the app MUST send consecutive batches in a loop until the queue is drained or an error occurs.
 
 #### REQ-M-14a: Match Response Handling
 
-The server response includes a per-plate `match` boolean (see server spec REQ-S-4). The app MUST:
-- Increment the originating session target counter for each plate where `match` is `true`
+The server response includes a `results` array with a per-plate `matched` boolean (see server spec REQ-S-4). The `results` array is positionally aligned with the `plates` array in the request. The app MUST:
+- Iterate over the `results` array and correlate each result with the corresponding queued entry by position
+- Increment the originating session target counter for each plate where `matched` is `true`
 - Display the updated target count in the status bar
 - NOT store which specific hashes matched (only the running count)
 - NOT alert the user or provide any visual/audio feedback on matches
@@ -226,6 +227,7 @@ When the device has no network connectivity, the app MUST queue hashed plates in
 - Store a maximum of 1,000 entries (oldest entries are dropped when full)
 - Store only: hash, timestamp (UTC), location (if available), and local session identifier metadata
 - NOT store plaintext plate text or images
+- Entries older than 10 minutes MUST be pruned at the start of each batch upload cycle (stale entries are unlikely to be useful and could cause unbounded queue growth after extended offline periods)
 
 #### REQ-M-15a: Session Attribution for Queued Plates
 
@@ -431,14 +433,20 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 │                                                      │
 │                                                      │
 │                [Stop Recording]                      │
+│              12 uploads queued ✕                     │
 │  ● Online │ Last: 2s ago │ Plates: 47 │ Targets: 2  │
 └──────────────────────────────────────────────────────┘
 ```
 
 - **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session
-  - Positioned directly above the status bar
+  - Positioned directly above the upload queue banner (if visible) and the status bar
   - Tapping ends the current session and opens the session summary
+- **Upload queue banner** (conditional, between stop button and status bar):
+  - Shown only when the offline queue is non-empty (`queueDepth > 0`)
+  - Displays `"N uploads queued"` in amber/yellow monospace text on a semi-transparent black pill-shaped background
+  - Includes a dismiss button (✕) that clears the entire offline queue
+  - Also shown on the splash screen (bottom-center) when there are queued entries from a previous session
 - **Status bar** (bottom, always visible):
   - Connectivity indicator (● Online / ● Offline)
   - Time since last plate detected ("Last: 2s ago", or "Last: --" if none)
