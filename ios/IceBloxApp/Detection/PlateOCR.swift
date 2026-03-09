@@ -99,14 +99,14 @@ enum PlateOCR {
                 let pixelOffset = srcX * 4
 
                 // BGRA → RGB
-                let b = rowPtr[pixelOffset]
-                let g = rowPtr[pixelOffset + 1]
-                let r = rowPtr[pixelOffset + 2]
+                let blue = rowPtr[pixelOffset]
+                let green = rowPtr[pixelOffset + 1]
+                let red = rowPtr[pixelOffset + 2]
 
                 let baseIdx = (y * targetWidth + x) * 3
-                data[baseIdx]     = r
-                data[baseIdx + 1] = g
-                data[baseIdx + 2] = b
+                data[baseIdx]     = red
+                data[baseIdx + 1] = green
+                data[baseIdx + 2] = blue
             }
         }
 
@@ -138,11 +138,11 @@ enum PlateOCR {
 
                 var maxIdx = 0
                 var maxVal = floatPtr[base]
-                for c in 1..<alphabetSize {
-                    let val = floatPtr[base + c]
+                for ci in 1..<alphabetSize {
+                    let val = floatPtr[base + ci]
                     if val > maxVal {
                         maxVal = val
-                        maxIdx = c
+                        maxIdx = ci
                     }
                 }
 

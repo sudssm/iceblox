@@ -1,11 +1,11 @@
 package com.iceblox.app.detection
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.RectF
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.RectF
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import java.nio.ByteBuffer
@@ -66,6 +66,7 @@ class PlateOCR(context: Context) {
         OnnxTensor.createTensor(env, buffer, shape, ai.onnxruntime.OnnxJavaType.UINT8).use { inputTensor ->
             sess.run(mapOf(inputName to inputTensor)).use { output ->
                 val outputTensor = output[0].value
+
                 @Suppress("UNCHECKED_CAST")
                 val result = outputTensor as Array<Array<FloatArray>>
                 return fixedSlotDecode(result[0])
