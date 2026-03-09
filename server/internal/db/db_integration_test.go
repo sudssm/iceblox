@@ -26,9 +26,10 @@ func testDB(t *testing.T) *DB {
 		t.Fatalf("Migrate: %v", err)
 	}
 
-	// Clean tables before each test
-	database.pool.ExecContext(ctx, "DELETE FROM sightings")
-	database.pool.ExecContext(ctx, "DELETE FROM plates")
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sightings")
+	pool.ExecContext(ctx, "DELETE FROM device_tokens")
+	pool.ExecContext(ctx, "DELETE FROM plates")
 
 	return database
 }
@@ -37,17 +38,16 @@ func TestMigrate_CreatesTablesIdempotently(t *testing.T) {
 	database := testDB(t)
 	ctx := context.Background()
 
-	// Running migrate again should not error
 	if err := database.Migrate(ctx); err != nil {
 		t.Fatalf("second Migrate should be idempotent: %v", err)
 	}
 
-	// Verify tables exist by querying them
+	pool := database.Pool()
 	var count int
-	if err := database.pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM plates").Scan(&count); err != nil {
+	if err := pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM plates").Scan(&count); err != nil {
 		t.Fatalf("plates table should exist: %v", err)
 	}
-	if err := database.pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sightings").Scan(&count); err != nil {
+	if err := pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sightings").Scan(&count); err != nil {
 		t.Fatalf("sightings table should exist: %v", err)
 	}
 }
@@ -93,7 +93,6 @@ func TestUpsertPlates_UpdatesExistingPlate(t *testing.T) {
 	}
 	id1 := mapping1[hash]
 
-	// Upsert again with updated plate text
 	plates[0].Plate = "NEW123"
 	mapping2, err := database.UpsertPlates(ctx, plates)
 	if err != nil {
@@ -105,9 +104,9 @@ func TestUpsertPlates_UpdatesExistingPlate(t *testing.T) {
 		t.Errorf("expected same plate_id after upsert, got %d and %d", id1, id2)
 	}
 
-	// Verify plate text was updated
+	pool := database.Pool()
 	var plate string
-	err = database.pool.QueryRowContext(ctx, "SELECT plate FROM plates WHERE hash = $1", hash).Scan(&plate)
+	err = pool.QueryRowContext(ctx, "SELECT plate FROM plates WHERE hash = $1", hash).Scan(&plate)
 	if err != nil {
 		t.Fatalf("query plate: %v", err)
 	}
@@ -136,13 +135,14 @@ func TestRecordSighting_InsertsSighting(t *testing.T) {
 		t.Errorf("expected positive sighting_id, got %d", sightingID)
 	}
 
+	pool := database.Pool()
 	var (
-		gotPlateID    int64
-		gotSeenAt     time.Time
+		gotPlateID     int64
+		gotSeenAt      time.Time
 		gotLat, gotLng float64
-		gotHardwareID string
+		gotHardwareID  string
 	)
-	err = database.pool.QueryRowContext(ctx,
+	err = pool.QueryRowContext(ctx,
 		"SELECT plate_id, seen_at, latitude, longitude, hardware_id FROM sightings WHERE plate_id = $1",
 		plateID).Scan(&gotPlateID, &gotSeenAt, &gotLat, &gotLng, &gotHardwareID)
 	if err != nil {
@@ -185,8 +185,9 @@ func TestRecordSighting_MultipleSightingsPerPlate(t *testing.T) {
 		}
 	}
 
+	pool := database.Pool()
 	var count int
-	err = database.pool.QueryRowContext(ctx,
+	err = pool.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM sightings WHERE plate_id = $1", plateID).Scan(&count)
 	if err != nil {
 		t.Fatalf("count sightings: %v", err)
