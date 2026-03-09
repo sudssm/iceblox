@@ -1,12 +1,15 @@
 FROM golang:1.26-alpine AS builder
 
-RUN apk add --no-cache curl unzip
+RUN apk add --no-cache curl unzip make
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY server/go.mod server/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY server/ .
+COPY Makefile pepper.config ./
+
+RUN make .env
 
 # Fetch and extract plate data
 RUN mkdir -p data && \
@@ -29,6 +32,7 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /server /server
 COPY --from=builder /app/data /data
+COPY --from=builder /app/.env /.env
 EXPOSE 80
 ENTRYPOINT ["/server"]
 CMD ["--plates-file", "/data/plates.txt"]
