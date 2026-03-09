@@ -23,7 +23,7 @@ data class ProcessedPlate(val normalizedText: String, val boundingBox: RectF, va
 class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<ProcessedPlate>) -> Unit) :
     ImageAnalysis.Analyzer {
     private val detector = PlateDetector(context)
-    private val ocr = PlateOCR()
+    private val ocr = PlateOCR(context)
 
     private val rotationMatrix = Matrix()
     private var frameCount = 0
@@ -169,6 +169,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
     fun close() {
         detector.close()
+        ocr.close()
     }
 
     companion object {

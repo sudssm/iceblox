@@ -30,6 +30,7 @@
 		A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */; };
 		A1B2C3D4E5F60001000034 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */; };
 		A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */; };
+		A1B2C3D4E5F60001000043 /* plate_ocr.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000043 /* plate_ocr.mlpackage */; };
 		A1B2C3D4E5F60001000036 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000036 /* DebugLog.swift */; };
 		A1B2C3D4E5F60001000037 /* DebugLogPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */; };
 		A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000038 /* SplashScreenView.swift */; };
@@ -75,6 +76,7 @@
 		A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugOverlayView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = plate_detector.mlpackage; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000043 /* plate_ocr.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = plate_ocr.mlpackage; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000036 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogPanel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000038 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
@@ -240,6 +242,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */,
+				A1B2C3D4E5F60002000043 /* plate_ocr.mlpackage */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -358,6 +361,7 @@
 				A1B2C3D4E5F60001000032 /* FrameProcessor.swift in Sources */,
 				A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */,
 				A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */,
+				A1B2C3D4E5F60001000043 /* plate_ocr.mlpackage in Sources */,
 				A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */,
 				A1B2C3D4E5F60001000039 /* SimulatorCamera.swift in Sources */,
 				A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */,

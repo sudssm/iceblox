@@ -87,7 +87,6 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.tensorflow.lite)
-    implementation(libs.mlkit.text.recognition)
     implementation(libs.play.services.tasks)
     implementation(libs.play.services.location)
     implementation(platform(libs.firebase.bom))

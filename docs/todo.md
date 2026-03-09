@@ -60,7 +60,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Frame-to-inference bridge** — Extract `CVPixelBuffer` from `CMSampleBuffer`, `VNImageRequestHandler`, `VNCoreMLRequest` (REQ-M-6)
 - [x] **Detection result parsing** — `VNRecognizedObjectObservation` bounding boxes, Vision→pixel coordinate conversion (REQ-M-6)
 - [x] **Confidence threshold** — Filter detections below 0.7 (REQ-M-7)
-- [x] **OCR** — PlateOCR.swift: Vision `VNRecognizeTextRequest` `.accurate` on cropped regions (REQ-M-9)
+- [x] **OCR** — PlateOCR.swift: Vision `VNRecognizeTextRequest` `.accurate` on cropped regions (REQ-M-9) — being replaced by PP-OCRv3 CoreML model, see OCR Model section
 - [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
 - [x] **Plate normalization** — PlateNormalizer.swift: uppercase, strip, validate 2-8 chars (REQ-M-10)
 - [x] **Deduplication** — DeduplicationCache.swift: 60-second time-windowed set (REQ-M-8)
@@ -134,7 +134,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Frame-to-inference bridge** — Convert `ImageProxy` to `Bitmap`, resize to 640×640, normalize pixels to `[0,1]` float range, pack into reusable `ByteBuffer`, call `interpreter.run()` (REQ-M-6)
 - [x] **Raw output parsing** — Parse `[1, N, 8400]` tensor (N=5 for trained plate model, N=84 for COCO placeholder) into per-candidate detections, convert from center-format to corner-format `[x1, y1, x2, y2]`, scale from 640×640 model space to original bitmap coordinates. Channel count auto-detected from model at init. (REQ-M-6)
 - [x] **Post-processing / NMS** — Filter by confidence ≥ 0.7, apply greedy NMS with IoU threshold ~0.45 to suppress overlapping boxes (REQ-M-7)
-- [x] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9)
+- [x] **OCR** — ML Kit Text Recognition on cropped bitmaps (REQ-M-9) — being replaced by PP-OCRv3 TFLite model, see OCR Model section
 - [x] **OCR confidence filter** — Discard results below 0.6 (REQ-M-11)
 - [x] **Plate normalization** — Uppercase, strip, validate 2-8 chars (REQ-M-10)
 - [x] **Deduplication** — 60-second time-windowed cache via DeduplicationCache (REQ-M-8)
@@ -230,6 +230,30 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md) REQ-S-13 through REQ-S-16, 
 - [x] **Recent sightings handling** — Parse `recent_sightings` response, log to DebugLog, increment counter (REQ-M-67)
 - [x] **Lifecycle integration** — Start/stop with pipeline lifecycle, subscribe on stop to refresh TTL (REQ-M-64, REQ-M-68)
 - [x] **AppConfig** — Add `SUBSCRIBE_ENDPOINT`, `SUBSCRIBE_INTERVAL_MS`, `DEFAULT_RADIUS_MILES` constants
+
+---
+
+## OCR Model (PP-OCRv3)
+
+Spec: [`specs/mobile-app/license_plate_ocr.md`](specs/mobile-app/license_plate_ocr.md)
+
+### Model Pipeline
+- [x] **Export script** — Create `models/training/export_ocr.py`: download fine-tuned PP-OCRv3, convert to ONNX, export to CoreML + TFLite
+- [x] **Makefile targets** — Add `download-ocr`, `export-ocr`, `deploy-ocr`, `evaluate-ocr` to `models/Makefile`
+- [x] **Requirements** — Add `paddle2onnx`, `onnxslim`, `coremltools`, `onnx2tf`, `onnx`, `onnxruntime` to `models/training/requirements.txt`
+- [ ] **Model conversion** — Download and convert fine-tuned PP-OCRv3 to ONNX, CoreML, TFLite
+- [x] **Validation gate** — Create `models/training/evaluate_ocr.py`: test ONNX model on real plate images from stopice.net, print accuracy table, must pass ≥70% exact match before proceeding
+
+### iOS
+- [x] **Rewrite PlateOCR.swift** — Replace Vision `VNRecognizeTextRequest` with CoreML PP-OCRv3 inference + CTC decode (REQ-M-9)
+- [ ] **Bundle model** — Add `plate_ocr.mlpackage` to Xcode project
+- [x] **Verify confidence threshold** — Ensure CTC-derived confidence works with existing 0.6 threshold (REQ-M-11)
+
+### Android
+- [x] **Rewrite PlateOCR.kt** — Replace ML Kit `TextRecognition` with TFLite PP-OCRv3 inference + CTC decode (REQ-M-9)
+- [ ] **Bundle model** — Add `plate_ocr.tflite` to assets
+- [x] **Update FrameAnalyzer.kt** — Pass `Context` to PlateOCR constructor, add `ocr.close()` in `close()`
+- [x] **Remove ML Kit dependency** — Remove `mlkit.text.recognition` from `build.gradle.kts` and `libs.versions.toml`
 
 ---
 
