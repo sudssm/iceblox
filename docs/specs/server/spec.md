@@ -38,7 +38,8 @@ X-Device-ID: <device identifier>
   "plate_hash": "string (64-char hex, HMAC-SHA256)",
   "latitude": number,
   "longitude": number,
-  "timestamp": "string (ISO 8601 / RFC 3339, optional)"
+  "timestamp": "string (ISO 8601 / RFC 3339, optional)",
+  "substitutions": number (integer >= 0, optional, default 0)
 }
 ```
 
@@ -47,6 +48,7 @@ X-Device-ID: <device identifier>
 - `latitude`: Required. MUST be in range [-90, 90].
 - `longitude`: Required. MUST be in range [-180, 180].
 - `timestamp`: Optional. ISO 8601 / RFC 3339 format (e.g., `"2026-03-08T14:30:00Z"`). If omitted or unparseable, defaults to the server's current UTC time. Represents when the plate was seen by the device.
+- `substitutions`: Optional. Non-negative integer indicating how many character positions were changed from the original OCR reading due to lookalike character expansion (see mobile spec REQ-M-12a). Defaults to 0 if omitted. The server MUST validate that the value is >= 0 and store it with matched sightings.
 
 **Headers:**
 - `X-Device-ID`: Optional. Identifies the submitting device. If omitted, recorded as `"unknown"`. Maps to `hardware_id` in the sightings table.
@@ -77,6 +79,7 @@ When a plate hash matches a target, the server MUST insert a record into the `si
 - `seen_at`: Timestamp from the request (or server time if omitted)
 - `latitude` / `longitude`: GPS coordinates from the request
 - `hardware_id`: Device identifier from the `X-Device-ID` header
+- `substitutions`: Number of lookalike character substitutions from the request (default 0)
 
 Non-matching hashes MUST NOT be persisted (privacy model: non-target plates are never stored).
 
@@ -150,12 +153,13 @@ CREATE TABLE plates (
 **Table: `sightings`** — records of matched target plate observations
 ```sql
 CREATE TABLE sightings (
-    id          SERIAL PRIMARY KEY,
-    plate_id    INTEGER NOT NULL REFERENCES plates(id),  -- FK to matched plate
-    seen_at     TIMESTAMPTZ NOT NULL,                    -- when the plate was seen
-    latitude    DOUBLE PRECISION NOT NULL,               -- GPS latitude
-    longitude   DOUBLE PRECISION NOT NULL,               -- GPS longitude
-    hardware_id TEXT NOT NULL                             -- device identifier
+    id              SERIAL PRIMARY KEY,
+    plate_id        INTEGER NOT NULL REFERENCES plates(id),  -- FK to matched plate
+    seen_at         TIMESTAMPTZ NOT NULL,                    -- when the plate was seen
+    latitude        DOUBLE PRECISION NOT NULL,               -- GPS latitude
+    longitude       DOUBLE PRECISION NOT NULL,               -- GPS longitude
+    hardware_id     TEXT NOT NULL,                            -- device identifier
+    substitutions   INTEGER NOT NULL DEFAULT 0               -- lookalike character substitution count
 );
 
 CREATE INDEX idx_sightings_plate_id ON sightings(plate_id);

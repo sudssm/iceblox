@@ -152,6 +152,38 @@ The app MUST compute HMAC-SHA256 of the normalized plate text using a shared pep
 
 Output: 64-character lowercase hex string.
 
+#### REQ-M-12a: Lookalike Character Expansion
+
+The CCT-XS OCR model (64×128px input, ~18px per character) frequently confuses visually similar characters. To compensate, the app MUST expand each OCR'd plate into all "lookalike" variants before hashing.
+
+**Lookalike character groups:**
+
+| Group | Characters | Rationale |
+|-------|-----------|-----------|
+| G1 | `0, O, D, Q, 8, B` | Round/oval/loop shapes merge at 18px |
+| G2 | `1, I, L` | Vertical strokes |
+| G3 | `5, S` | Similar curves |
+| G4 | `2, Z` | Angular strokes |
+| G5 | `A, 4` | Triangular top + crossbar |
+
+**Expansion algorithm (BFS by substitution distance):**
+1. Identify positions in the plate text that contain a confusable character
+2. Start with the original text (substitutions = 0)
+3. Generate all 1-substitution variants, then 2-substitution, etc.
+4. Stop when reaching `maxVariants` cap (default: 64)
+5. Each variant is paired with its substitution count (number of character positions changed from the original OCR reading)
+
+This BFS ordering ensures the most likely variants (fewest substitutions) are always included when the cap is hit.
+
+**Queue and upload behavior:**
+- Each variant MUST be hashed independently and queued as a separate offline queue entry with its substitution count
+- The substitution count MUST be sent to the server with each plate hash submission
+- The plate counter MUST increment by 1 per original OCR reading (not per variant)
+
+**Debug feed format:**
+- Feed entry MUST show `"ABC1234 (+5)"` format where 5 is the number of additional variants (total minus 1)
+- The hash prefix shown MUST be from the original (0-substitution) variant
+
 #### REQ-M-13: No Plaintext Persistence
 
 After hashing, the app MUST immediately discard the plaintext plate text from memory. Normalized plate text MUST NOT be:
@@ -511,6 +543,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 | Session stop behavior | Stop immediately halts capture/detection, triggers a final flush attempt, then shows a summary |
 | Session summary semantics | Plates = unique queued reads, ICE = confirmed matches attributed to that session, duration = start-to-stop elapsed time |
 | OCR model | fast-plate-ocr CCT-XS (global, 65+ countries), deployed as ONNX to both platforms with native fixed-slot decoding |
+| Lookalike handling | Client-side expansion with substitution count (not canonical collapse). Expansion preserves substitution distance for confidence scoring; collapse loses this signal. |
 
 ## Open Questions
 
