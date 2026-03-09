@@ -21,10 +21,12 @@ final class OfflineQueue {
                     plate_hash TEXT NOT NULL,
                     timestamp REAL NOT NULL,
                     latitude REAL,
-                    longitude REAL
+                    longitude REAL,
+                    session_id TEXT NOT NULL DEFAULT ''
                 )
                 """
             sqlite3_exec(db, sql, nil, nil, nil)
+            ensureSessionIDColumn()
         }
     }
 
@@ -35,7 +37,10 @@ final class OfflineQueue {
     func enqueue(_ entry: OfflineQueueEntry) {
         queue.sync {
             evictIfNeeded()
-            let sql = "INSERT INTO queue (plate_hash, timestamp, latitude, longitude) VALUES (?, ?, ?, ?)"
+            let sql = """
+                INSERT INTO queue (plate_hash, timestamp, latitude, longitude, session_id)
+                VALUES (?, ?, ?, ?, ?)
+                """
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
             defer { sqlite3_finalize(stmt) }
@@ -52,13 +57,19 @@ final class OfflineQueue {
             } else {
                 sqlite3_bind_null(stmt, 4)
             }
+            sqlite3_bind_text(stmt, 5, (entry.sessionID as NSString).utf8String, -1, SQLITE_TRANSIENT)
             sqlite3_step(stmt)
         }
     }
 
     func dequeue(limit: Int) -> [OfflineQueueEntry] {
         queue.sync {
-            let sql = "SELECT id, plate_hash, timestamp, latitude, longitude FROM queue ORDER BY id ASC LIMIT ?"
+            let sql = """
+                SELECT id, plate_hash, timestamp, latitude, longitude, session_id
+                FROM queue
+                ORDER BY id ASC
+                LIMIT ?
+                """
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
             defer { sqlite3_finalize(stmt) }
@@ -71,9 +82,30 @@ final class OfflineQueue {
                 let ts = Date(timeIntervalSince1970: sqlite3_column_double(stmt, 2))
                 let lat: Double? = sqlite3_column_type(stmt, 3) != SQLITE_NULL ? sqlite3_column_double(stmt, 3) : nil
                 let lng: Double? = sqlite3_column_type(stmt, 4) != SQLITE_NULL ? sqlite3_column_double(stmt, 4) : nil
-                entries.append(OfflineQueueEntry(id: id, plateHash: hash, timestamp: ts, latitude: lat, longitude: lng))
+                let sessionID = String(cString: sqlite3_column_text(stmt, 5))
+                entries.append(
+                    OfflineQueueEntry(
+                        id: id,
+                        plateHash: hash,
+                        timestamp: ts,
+                        latitude: lat,
+                        longitude: lng,
+                        sessionID: sessionID
+                    )
+                )
             }
             return entries
+        }
+    }
+
+    func count(sessionID: String) -> Int {
+        queue.sync {
+            let sql = "SELECT COUNT(*) FROM queue WHERE session_id = ?"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, (sessionID as NSString).utf8String, -1, SQLITE_TRANSIENT)
+            return sqlite3_step(stmt) == SQLITE_ROW ? Int(sqlite3_column_int(stmt, 0)) : 0
         }
     }
 
@@ -110,6 +142,34 @@ final class OfflineQueue {
         defer { sqlite3_finalize(stmt) }
         sqlite3_bind_int(stmt, 1, Int32(excess))
         sqlite3_step(stmt)
+    }
+
+    private func ensureSessionIDColumn() {
+        guard let db else { return }
+
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(queue)", -1, &stmt, nil) == SQLITE_OK else { return }
+
+        var hasSessionID = false
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let cName = sqlite3_column_text(stmt, 1) else { continue }
+            if String(cString: cName) == "session_id" {
+                hasSessionID = true
+                break
+            }
+        }
+
+        if !hasSessionID {
+            sqlite3_exec(
+                db,
+                "ALTER TABLE queue ADD COLUMN session_id TEXT NOT NULL DEFAULT ''",
+                nil,
+                nil,
+                nil
+            )
+        }
     }
 
     private static func databasePath() -> String {

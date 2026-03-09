@@ -26,8 +26,8 @@ class ApiClient(
     context: Context,
     private val queueDao: OfflineQueueDao,
     private val retryManager: RetryManager,
-    private val onTargetMatched: () -> Unit,
-    private val onPlateSent: (hash: String, matched: Boolean) -> Unit = { _, _ -> },
+    private val onTargetMatched: (sessionId: String) -> Unit,
+    private val onPlateSent: (hash: String, matched: Boolean, sessionId: String) -> Unit = { _, _, _ -> },
     private val onQueueDepthChanged: (Int) -> Unit = { }
 ) {
     private val client = OkHttpClient()
@@ -139,9 +139,9 @@ class ApiClient(
                                     val responseJson = JSONObject(body)
                                     val matched = responseJson.optBoolean("matched", false)
                                     if (matched) {
-                                        onTargetMatched()
+                                        onTargetMatched(entry.sessionId)
                                     }
-                                    onPlateSent(entry.plateHash, matched)
+                                    onPlateSent(entry.plateHash, matched, entry.sessionId)
                                 } catch (e: Exception) {
                                     DebugLog.w(TAG, "Failed to parse response: ${e.message}")
                                 }

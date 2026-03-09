@@ -18,6 +18,9 @@ interface OfflineQueueDao {
     @Query("SELECT COUNT(*) FROM offline_queue")
     suspend fun count(): Int
 
+    @Query("SELECT COUNT(*) FROM offline_queue WHERE session_id = :sessionId")
+    suspend fun countBySessionId(sessionId: String): Int
+
     @Query("DELETE FROM offline_queue WHERE id IN (SELECT id FROM offline_queue ORDER BY id ASC LIMIT :count)")
     suspend fun deleteOldest(count: Int)
 }

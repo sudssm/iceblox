@@ -17,8 +17,9 @@ fun CameraPreview(modifier: Modifier = Modifier, analyzer: ImageAnalysis.Analyze
     val lifecycleOwner = LocalLifecycleOwner.current
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(lifecycleOwner, analyzer) {
         onDispose {
+            CameraCaptureBinder.unbindAll(context)
             analysisExecutor.shutdown()
         }
     }

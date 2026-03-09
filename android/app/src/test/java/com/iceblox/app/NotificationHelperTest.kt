@@ -28,7 +28,7 @@ class NotificationHelperTest {
         NotificationHelper.createChannel(context)
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = manager.getNotificationChannel("plate_alerts")
+        val channel = notificationChannel(manager)
         assertNotNull(channel)
     }
 
@@ -38,7 +38,7 @@ class NotificationHelperTest {
         NotificationHelper.createChannel(context)
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = manager.getNotificationChannel("plate_alerts")
+        val channel = requireNotNull(notificationChannel(manager))
         assertEquals(NotificationManager.IMPORTANCE_HIGH, channel.importance)
     }
 
@@ -49,7 +49,7 @@ class NotificationHelperTest {
         NotificationHelper.createChannel(context)
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = manager.getNotificationChannel("plate_alerts")
+        val channel = notificationChannel(manager)
         assertNotNull(channel)
     }
 
@@ -62,4 +62,8 @@ class NotificationHelperTest {
         val id2 = "sighting-2".hashCode()
         assertNotEquals(id1, id2)
     }
+
+    private fun notificationChannel(manager: NotificationManager): NotificationChannel? = Shadows.shadowOf(manager)
+        .notificationChannels
+        .firstOrNull { it.id == NotificationHelper.CHANNEL_ID }
 }

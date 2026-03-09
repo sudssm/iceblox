@@ -247,7 +247,7 @@ scripts/simulator/screenshot.sh ios
 
 ## E2E Testing
 
-End-to-end tests validate the full pipeline: Android app detects a plate from an injected image, hashes it, posts to the Go server, and the server persists a sighting in PostgreSQL.
+End-to-end tests validate the full pipeline: the Android and iOS apps detect a plate from injected images, hash it, post it to the Go server, and the server persists a sighting in PostgreSQL.
 
 ### Entry Point
 
@@ -264,8 +264,8 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 2. **App**: Builds and installs the debug app on the target simulator/emulator
 3. **Injection**:
    - **Android**: Pushes fixture images to `filesDir/test_images/` and launches with `--ez test_mode true`
-   - **iOS**: Launches to the splash screen, triggers the same start-camera path used by the "Start Camera" button, then copies fixture images into `Library/Application Support/test_images/` while the app is already running in camera mode
-4. **Verification**: Queries the database directly (via `docker exec psql`) to check for sightings
+   - **iOS**: Launches to the splash screen, triggers the same start-camera path used by the "Start Camera" button, then copies fixture images into `Library/Application Support/test_images/` while the app is already running in camera mode. The harness can also touch an Application Support stop-trigger file and wait for a session-summary artifact written by the app.
+4. **Verification**: Queries the database directly (via `docker exec psql`) to check for sightings, then verifies stop-summary behavior from UI state (Android) or the summary artifact (iOS)
 5. **Cleanup**: `trap EXIT` stops the app, kills the server, and removes the postgres container
 
 ### Test Scenarios
@@ -273,6 +273,7 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **No-plate image** (`tests/test_no_plate.sh`): Pushes an image with no license plates. After the batch flush interval, verifies zero sightings in the database.
 - **Non-target plate image** (`tests/test_non_target_plate.sh`): Pushes an image containing a real plate that is NOT in `test_plates.txt`. After the batch flush interval, verifies zero sightings (the app detects and uploads the plate, but the server does not match it).
 - **Target plate image** (`tests/test_target_plate.sh`): Pushes an image containing a known test plate. After the batch flush interval, verifies at least one matched sighting exists in the database.
+- **Stop recording summary**: The Android target-plate test taps `Stop Recording` and inspects the summary overlay. The iOS target-plate test triggers stop via an Application Support file and validates the summary artifact fields emitted by the app.
 
 ### Prerequisites
 
@@ -293,6 +294,7 @@ For iOS simulator E2E, optional same-basename `.txt` sidecars can accompany inje
 
 When present, the simulator camera injects that normalized plate string into the post-detection pipeline. This keeps iOS E2E deterministic even when simulator OCR differs from device behavior.
 The iOS harness still launches on the real splash screen first; it only uses the sidecar after the splash-to-camera transition has happened.
+For stop-summary verification, the iOS harness sets `E2E_USE_STOP_RECORDING_TRIGGER=1`, touches `Library/Application Support/e2e_stop_recording.trigger`, and waits for `Library/Application Support/e2e_session_summary.txt`.
 
 ### Timing
 

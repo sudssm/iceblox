@@ -4,9 +4,11 @@ import android.graphics.RectF
 import com.iceblox.app.detection.DetectedPlate
 import com.iceblox.app.detection.PlateDetector
 import com.iceblox.app.network.RetryManager
+import com.iceblox.app.persistence.OfflineQueueEntry
 import com.iceblox.app.processing.DeduplicationCache
 import com.iceblox.app.processing.PlateHasher
 import com.iceblox.app.processing.PlateNormalizer
+import com.iceblox.app.ui.formatSessionDuration
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -199,5 +201,25 @@ class RetryManagerTest {
         assertFalse(manager.isRateLimited)
         manager.handleRateLimit(60)
         assertTrue(manager.isRateLimited)
+    }
+}
+
+class SessionSummaryTest {
+    @Test
+    fun formatSessionDurationUsesMinutesAndSeconds() {
+        assertEquals("7m 05s", formatSessionDuration(425_000))
+    }
+
+    @Test
+    fun offlineQueueEntryRetainsSessionId() {
+        val entry = OfflineQueueEntry(
+            plateHash = "abc123",
+            timestamp = 1234L,
+            latitude = 1.0,
+            longitude = 2.0,
+            sessionId = "session-1"
+        )
+
+        assertEquals("session-1", entry.sessionId)
     }
 }

@@ -1,10 +1,13 @@
 package com.iceblox.app.ui
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,11 +43,17 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.iceblox.app.BuildConfig
 import com.iceblox.app.MainViewModel
+import com.iceblox.app.SessionSummary
 import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.debug.DebugLog
 
 @Composable
-fun CameraScreen(modifier: Modifier = Modifier, isTestMode: Boolean = false, viewModel: MainViewModel = viewModel()) {
+fun CameraScreen(
+    modifier: Modifier = Modifier,
+    isTestMode: Boolean = false,
+    onSessionFinished: () -> Unit = {},
+    viewModel: MainViewModel = viewModel()
+) {
     val plateCount by viewModel.plateCount.collectAsState()
     val targetCount by viewModel.targetCount.collectAsState()
     val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
@@ -53,6 +65,7 @@ fun CameraScreen(modifier: Modifier = Modifier, isTestMode: Boolean = false, vie
     val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
     val detectionFeed by viewModel.detectionFeed.collectAsState()
     val logEntries by DebugLog.entries.collectAsState()
+    val sessionSummary by viewModel.sessionSummary.collectAsState()
 
     val testBitmap by viewModel.testBitmap.collectAsState()
     val testStatus by viewModel.testStatus.collectAsState()
@@ -98,7 +111,13 @@ fun CameraScreen(modifier: Modifier = Modifier, isTestMode: Boolean = false, vie
     }
 
     Box(modifier = modifier.fillMaxSize().then(tripleTapModifier)) {
-        if (isTestMode) {
+        if (sessionSummary != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            )
+        } else if (isTestMode) {
             TestImagePreview(
                 bitmap = testBitmap,
                 status = testStatus,
@@ -126,7 +145,7 @@ fun CameraScreen(modifier: Modifier = Modifier, isTestMode: Boolean = false, vie
             )
         }
 
-        if (BuildConfig.DEBUG && debugMode) {
+        if (BuildConfig.DEBUG && debugMode && sessionSummary == null) {
             DebugOverlay(
                 detections = debugDetections,
                 rawDetections = rawDetections,
@@ -138,16 +157,40 @@ fun CameraScreen(modifier: Modifier = Modifier, isTestMode: Boolean = false, vie
             )
         }
 
-        StatusBar(
-            isConnected = isConnected,
-            platesDetected = plateCount,
-            targetCount = targetCount,
-            lastDetectionTime = lastDetectionTime,
-            hasGps = hasGps,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        )
+        if (sessionSummary == null) {
+            Button(
+                onClick = { viewModel.stopRecordingSession() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 24.dp, end = 24.dp)
+                    .testTag("stop_recording_button")
+            ) {
+                Text("Stop Recording")
+            }
+
+            StatusBar(
+                isConnected = isConnected,
+                platesDetected = plateCount,
+                targetCount = targetCount,
+                lastDetectionTime = lastDetectionTime,
+                hasGps = hasGps,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            )
+        }
+
+        sessionSummary?.let { summary ->
+            SessionSummaryOverlay(
+                summary = summary,
+                onDone = {
+                    viewModel.dismissSessionSummary()
+                    onSessionFinished()
+                },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 }
 
@@ -172,6 +215,69 @@ fun TestImagePreview(bitmap: Bitmap?, status: String, modifier: Modifier = Modif
             )
         }
     }
+}
+
+@Composable
+fun SessionSummaryOverlay(summary: SessionSummary, onDone: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.padding(24.dp),
+        color = Color.Black.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Session Summary",
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Plates seen: ${summary.platesSeen}",
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    "ICE vehicles: ${summary.iceVehicles}",
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    "Duration: ${formatSessionDuration(summary.durationMs)}",
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
+                if (summary.pendingUploads > 0) {
+                    Text(
+                        "Pending sync: ${summary.pendingUploads} uploads",
+                        color = Color(0xFFFFB300),
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        "ICE vehicles reflects confirmed matches received so far.",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+                Text("Done")
+            }
+        }
+    }
+}
+
+fun formatSessionDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs.coerceAtLeast(0L) / 1000L).toInt()
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "${minutes}m ${seconds.toString().padStart(2, '0')}s"
 }
 
 @Composable

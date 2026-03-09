@@ -2,14 +2,25 @@
 
 ## Camera Capture
 
-### TS-1: App launch starts camera
+### TS-1: App launch shows splash screen
 
 ```
 Given the app is launched
 When the main screen appears
+Then the splash screen is visible
+And a "Start Camera" button is shown
+And the rear camera is not yet active
+```
+
+### TS-1a: Start Camera begins a new recording session
+
+```
+Given the app is showing the splash screen
+When the user taps "Start Camera"
 Then the rear camera activates within 2 seconds
 And the camera preview displays in landscape orientation
-And frame processing begins without user interaction
+And frame processing begins
+And the session counters start at zero
 ```
 
 ### TS-2: Orientation locked to landscape
@@ -24,10 +35,54 @@ And camera capture is uninterrupted
 ### TS-3: Camera resumes after foreground
 
 ```
-Given the app was backgrounded
+Given an active recording session was backgrounded
 When the app returns to foreground
 Then camera capture resumes within 1 second
 And the detection pipeline restarts
+```
+
+### TS-3a: Stop Recording button is visible during a session
+
+```
+Given a recording session is active
+When the camera screen is visible
+Then a "Stop Recording" button is visible in the top-right corner
+And it remains tappable above the camera preview
+```
+
+### TS-3b: Stop Recording ends detection and shows session summary
+
+```
+Given a recording session is active
+And 12 plates have been scanned
+And 2 ICE vehicle matches have been confirmed
+When the user taps "Stop Recording"
+Then no new frames are accepted for plate detection
+And the session summary is shown
+And the summary displays 12 plates seen
+And the summary displays 2 ICE vehicles identified
+```
+
+### TS-3c: Session summary shows duration and resets to idle
+
+```
+Given a recording session started 7 minutes and 5 seconds ago
+When the user taps "Stop Recording"
+Then the session summary shows a duration of 7m 05s
+When the user dismisses the summary
+Then the splash screen is shown again
+And starting a new session resets the counters to zero
+```
+
+### TS-3d: Session summary indicates provisional ICE count when uploads are pending
+
+```
+Given a recording session is active
+And 3 queued uploads from this session have not been acknowledged
+When the user taps "Stop Recording"
+Then the session summary is shown
+And it displays a pending-sync indicator
+And the ICE vehicle count is labeled as confirmed matches received so far
 ```
 
 ## License Plate Detection
@@ -377,9 +432,9 @@ Then a "No test images found" status is logged
 And the UI shows "Loading test images..." indefinitely
 ```
 
-## E2E Tests (Android)
+## E2E Tests
 
-### TS-E2E-1: No-plate image produces zero sightings
+### TS-E2E-1: Android no-plate image produces zero sightings
 
 ```
 Given an ephemeral postgres and Go server are running with test plates
@@ -389,7 +444,7 @@ And the batch flush interval elapses (35 seconds)
 Then zero sightings exist in the database
 ```
 
-### TS-E2E-2: Non-target plate image produces zero sightings
+### TS-E2E-2: Android non-target plate image produces zero sightings
 
 ```
 Given an ephemeral postgres and Go server are running with test plates
@@ -400,7 +455,7 @@ Then zero sightings exist in the database
 And the app logcat shows FrameAnalyzer detected plates from the test image
 ```
 
-### TS-E2E-3: Target plate image produces matched sighting
+### TS-E2E-3: Android target plate image produces matched sighting
 
 ```
 Given an ephemeral postgres and Go server are running with test plates
@@ -437,10 +492,35 @@ When POST /api/v1/subscribe is called with coordinates on the opposite side of t
 Then recent_sightings is an empty array
 ```
 
-### TS-E2E-7: App AlertClient subscribes on startup
+### TS-E2E-7: Android AlertClient subscribes on startup
 
 ```
 Given the Android app is installed and launched in test mode with a target plate image
 And the batch flush interval elapses
 Then the app logcat contains AlertClient log entries showing the subscribe timer fired
+```
+
+### TS-E2E-8: Android stop recording shows session summary
+
+```
+Given TS-E2E-3 has passed in the current Android app session
+When the operator taps "Stop Recording"
+Then a "Session Summary" overlay appears
+And it shows "Plates seen", "ICE vehicles", and "Duration"
+And "Plates seen" is at least 1
+And "ICE vehicles" is at least 1
+```
+
+### TS-E2E-9: iOS stop recording writes session summary artifact
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the iOS app is installed on the simulator
+When a target plate image is injected into the running camera session
+And the batch flush interval elapses
+And the E2E stop-recording trigger is fired
+Then the app writes a session summary artifact in its Application Support directory
+And the artifact reports "plates_seen", "ice_vehicles", and "duration_seconds"
+And "plates_seen" is at least 1
+And "ice_vehicles" is at least 1
 ```

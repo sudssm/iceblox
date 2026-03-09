@@ -54,6 +54,13 @@ clear_test_images() {
     rm -rf "$container/Library/Application Support/$E2E_IOS_TEST_IMAGES_DIRNAME"
 }
 
+clear_session_summary_artifacts() {
+    local container
+    container="$(app_data_container)"
+    rm -f "$container/Library/Application Support/$E2E_IOS_STOP_RECORDING_TRIGGER_FILENAME"
+    rm -f "$container/Library/Application Support/$E2E_IOS_SESSION_SUMMARY_FILENAME"
+}
+
 push_test_images() {
     local image_dir="$1"
     local container
@@ -89,7 +96,10 @@ launch_app() {
     SIMCTL_CHILD_E2E_BATCH_INTERVAL_SECONDS="$E2E_IOS_BATCH_INTERVAL_SECONDS" \
     SIMCTL_CHILD_E2E_SERVER_BASE_URL="http://localhost:$E2E_SERVER_PORT" \
     SIMCTL_CHILD_E2E_USE_SPLASH_TRIGGER=1 \
+    SIMCTL_CHILD_E2E_USE_STOP_RECORDING_TRIGGER=1 \
     SIMCTL_CHILD_E2E_SPLASH_TRIGGER_FILENAME="$E2E_IOS_SPLASH_TRIGGER_FILENAME" \
+    SIMCTL_CHILD_E2E_STOP_RECORDING_TRIGGER_FILENAME="$E2E_IOS_STOP_RECORDING_TRIGGER_FILENAME" \
+    SIMCTL_CHILD_E2E_SESSION_SUMMARY_FILENAME="$E2E_IOS_SESSION_SUMMARY_FILENAME" \
     SIMCTL_CHILD_SIMULATOR_FRAME_INTERVAL_MS="$E2E_IOS_FRAME_INTERVAL_MS" \
     SIMCTL_CHILD_SIMULATOR_TEST_IMAGES_DIRNAME="$E2E_IOS_TEST_IMAGES_DIRNAME" \
     xcrun simctl launch "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null
@@ -253,6 +263,32 @@ PY
 
 stop_app() {
     xcrun simctl terminate "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null 2>&1 || true
+}
+
+trigger_stop_recording() {
+    local container
+    container="$(app_data_container)"
+    mkdir -p "$container/Library/Application Support"
+    touch "$container/Library/Application Support/$E2E_IOS_STOP_RECORDING_TRIGGER_FILENAME"
+}
+
+wait_for_session_summary_artifact() {
+    local timeout_seconds="${1:-10}"
+    local elapsed=0
+    local container
+    container="$(app_data_container)"
+    local summary_path="$container/Library/Application Support/$E2E_IOS_SESSION_SUMMARY_FILENAME"
+
+    while [ "$elapsed" -lt "$timeout_seconds" ]; do
+        if [ -f "$summary_path" ]; then
+            echo "$summary_path"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+
+    return 1
 }
 
 wait_for_batch_flush() {

@@ -35,6 +35,10 @@ class CaptureRepository(private val application: Application) {
     private val queueDao = database.queueDao()
     private val retryManager = RetryManager()
 
+    @Volatile
+    var activeSessionId: String? = null
+        private set
+
     val locationProvider = LocationProvider(application)
     val connectivityMonitor = ConnectivityMonitor(application)
     val alertClient = AlertClient(
@@ -61,8 +65,8 @@ class CaptureRepository(private val application: Application) {
         context = application,
         queueDao = queueDao,
         retryManager = retryManager,
-        onTargetMatched = { _targetCount.update { it + 1 } },
-        onPlateSent = { hash, matched -> onPlateSent(hash, matched) },
+        onTargetMatched = { sessionId -> onTargetMatched(sessionId) },
+        onPlateSent = { hash, matched, sessionId -> onPlateSent(hash, matched, sessionId) },
         onQueueDepthChanged = { depth -> _queueDepth.value = depth }
     )
 
@@ -106,6 +110,17 @@ class CaptureRepository(private val application: Application) {
         updateSharedComponents()
     }
 
+    fun resetSessionState(sessionId: String) {
+        activeSessionId = sessionId
+        deduplicationCache.reset()
+        _plateCount.value = 0L
+        _targetCount.value = 0
+        _lastDetectionTime.value = 0L
+        _detectionFeed.value = emptyList()
+    }
+
+    suspend fun countBySessionId(sessionId: String): Int = queueDao.countBySessionId(sessionId)
+
     fun processTestImageIfPresent() {
         val testFile = File(application.filesDir, "test_plate.png")
         if (!testFile.exists()) return
@@ -133,6 +148,8 @@ class CaptureRepository(private val application: Application) {
     }
 
     private fun onPlatesDetected(plates: List<ProcessedPlate>) {
+        val sessionId = activeSessionId ?: return
+
         for (plate in plates) {
             if (deduplicationCache.isDuplicate(plate.normalizedText)) continue
 
@@ -145,7 +162,8 @@ class CaptureRepository(private val application: Application) {
                         plateHash = hash,
                         timestamp = System.currentTimeMillis(),
                         latitude = loc?.latitude,
-                        longitude = loc?.longitude
+                        longitude = loc?.longitude,
+                        sessionId = sessionId
                     )
                 )
                 enforceMaxQueueSize()
@@ -166,7 +184,13 @@ class CaptureRepository(private val application: Application) {
         }
     }
 
-    private fun onPlateSent(hash: String, matched: Boolean) {
+    private fun onTargetMatched(sessionId: String) {
+        if (sessionId == activeSessionId) {
+            _targetCount.update { it + 1 }
+        }
+    }
+
+    private fun onPlateSent(hash: String, matched: Boolean, sessionId: String) {
         val prefix = hash.take(8)
         val newState = if (matched) DetectionState.MATCHED else DetectionState.SENT
         val current = _detectionFeed.value.toMutableList()

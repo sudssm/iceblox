@@ -7,12 +7,22 @@ import androidx.lifecycle.viewModelScope
 import com.iceblox.app.camera.TestFrameFeeder
 import com.iceblox.app.capture.CaptureRepository
 import com.iceblox.app.debug.DebugLog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+data class SessionSummary(
+    val sessionId: String,
+    val platesSeen: Long,
+    val iceVehicles: Int,
+    val durationMs: Long,
+    val pendingUploads: Int
+)
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: CaptureRepository =
@@ -27,6 +37,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val detectionFeed = repository.detectionFeed
     val alertClient = repository.alertClient
     val apiClient = repository.apiClient
+
+    private val _sessionSummary = MutableStateFlow<SessionSummary?>(null)
+    val sessionSummary: StateFlow<SessionSummary?> = _sessionSummary
+
+    private var activeSessionId: String? = null
+    private var sessionStartedAt: Long = 0L
 
     private val _testFrameFeeder = MutableStateFlow<TestFrameFeeder?>(null)
     val testFrameFeeder: StateFlow<TestFrameFeeder?> = _testFrameFeeder
@@ -44,6 +60,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val frameAnalyzer = repository.frameAnalyzer
 
     fun startForegroundPipeline(isTestMode: Boolean = false) {
+        if (_sessionSummary.value != null) return
+        if (activeSessionId == null) {
+            startNewSession()
+        }
         repository.setForegroundActive(true)
         if (isTestMode) {
             startTestMode()
@@ -69,6 +89,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.setForegroundActive(false)
     }
 
+    fun stopRecordingSession() {
+        val sessionId = activeSessionId ?: return
+        val stoppedAt = System.currentTimeMillis()
+        val durationMs = (stoppedAt - sessionStartedAt).coerceAtLeast(0L)
+
+        activeSessionId = null
+        stopForegroundPipeline()
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val pendingUploads = repository.countBySessionId(sessionId)
+            _sessionSummary.value = SessionSummary(
+                sessionId = sessionId,
+                platesSeen = plateCount.value,
+                iceVehicles = targetCount.value,
+                durationMs = durationMs,
+                pendingUploads = pendingUploads
+            )
+        }
+    }
+
+    fun dismissSessionSummary() {
+        _sessionSummary.value = null
+    }
+
     companion object {
         private const val TAG = "MainViewModel"
     }
@@ -76,5 +120,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         _testFrameFeeder.value?.stop()
+    }
+
+    private fun startNewSession() {
+        activeSessionId = java.util.UUID.randomUUID().toString()
+        sessionStartedAt = System.currentTimeMillis()
+        repository.resetSessionState(activeSessionId!!)
+        _sessionSummary.value = null
     }
 }

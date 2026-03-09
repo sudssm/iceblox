@@ -27,7 +27,7 @@ android/
         │   ├── java/com/iceblox/app/
         │   │   ├── IceBloxApplication.kt   # Application-scoped capture repository
         │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow, notification channel, service handoff
-        │   │   ├── MainViewModel.kt        # Foreground UI state wrapper around shared capture repository
+        │   │   ├── MainViewModel.kt        # Foreground UI state wrapper around shared capture repository, session lifecycle
         │   │   ├── capture/
         │   │   │   └── CaptureRepository.kt # Shared pipeline state used by UI + background service
         │   │   ├── camera/
@@ -54,7 +54,7 @@ android/
         │   │   ├── persistence/
         │   │   │   ├── OfflineQueueDao.kt  # Room DAO: insert, dequeue, delete, count
         │   │   │   ├── OfflineQueueDatabase.kt # Room database singleton
-        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng
+        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id
         │   │   ├── processing/
         │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, XOR pepper
@@ -64,7 +64,7 @@ android/
         │   │   ├── debug/
         │   │   │   └── DebugLog.kt           # Singleton logger: ring buffer + StateFlow for UI
         │   │   └── ui/
-        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
+        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay

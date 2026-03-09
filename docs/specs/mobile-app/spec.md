@@ -29,6 +29,48 @@ The app MUST use a resolution sufficient for plate detection at distances of 3�
 
 When the app is opened, it MUST display a splash screen with the app name and a "Start Camera" button. Camera capture and plate detection MUST begin when the user taps the button. This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
+#### REQ-M-3a: Recording Session Lifecycle
+
+The app MUST model scanning as an explicit recording session with four UI states:
+- **Idle**: splash screen visible, no camera capture or frame analysis running
+- **Recording**: camera preview, detection pipeline, uploads, and live counters active
+- **Stopping**: user has requested stop; no new detections are accepted while shutdown and final upload work runs
+- **Summary**: session statistics are displayed; the camera preview and detection pipeline remain stopped
+
+Tapping "Start Camera" MUST create a new session, reset session-scoped counters, and record a session start timestamp.
+
+#### REQ-M-3b: Stop Recording Control
+
+While a recording session is active, the camera view MUST display a persistent "Stop Recording" button.
+
+- Placement: top-right corner inside the safe area
+- Visibility: rendered above the camera preview and not hidden by debug UI
+- Interaction: one tap ends the active session
+
+When tapped, the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
+
+#### REQ-M-3c: Session Summary
+
+When a recording session ends, the app MUST present a session summary before returning to idle. The summary MUST include:
+- Total plates seen this session
+- Total ICE vehicles identified this session
+- Session duration
+
+Metric definitions:
+- **Total plates seen**: count of unique normalized plates that passed deduplication and were enqueued during the session
+- **Total ICE vehicles identified**: count of `match=true` server responses for hashes first enqueued during the session
+- **Session duration**: elapsed wall-clock time from session start to the user tapping "Stop Recording", displayed in minutes and seconds
+
+If uploads from the stopped session are still pending when the summary is shown, the UI MUST indicate that the ICE vehicle count reflects only confirmed matches received so far.
+
+#### REQ-M-3d: Session Reset After Summary
+
+When the user dismisses the session summary, the app MUST return to the idle splash screen. Starting a new session MUST reset:
+- Last-detected timestamp
+- Session plate count
+- Session ICE vehicle count
+- Session duration timer
+
 #### REQ-M-4: Auto-Rotation Support
 
 The app MUST support all device orientations (portrait, portrait upside-down, landscape left, landscape right) and rotate the UI automatically. The camera capture pipeline MUST compensate for device orientation so that frames are always correctly oriented for the detection model:
@@ -131,18 +173,32 @@ Whichever condition is met first triggers the send.
 #### REQ-M-14a: Match Response Handling
 
 The server response includes a per-plate `match` boolean (see server spec REQ-S-4). The app MUST:
-- Increment the session target counter for each plate where `match` is `true`
+- Increment the originating session target counter for each plate where `match` is `true`
 - Display the updated target count in the status bar
 - NOT store which specific hashes matched (only the running count)
 - NOT alert the user or provide any visual/audio feedback on matches
+
+#### REQ-M-14b: Final Flush on Session Stop
+
+When the user taps "Stop Recording", the app MUST trigger an immediate upload attempt for queued hashes after halting new detections. If the upload attempt fails or the device is offline:
+- Queued hashes MUST remain in the offline queue
+- Normal retry behavior from REQ-M-17 and REQ-M-17a MUST still apply
+- The session summary MAY be shown before all uploads complete, but it MUST indicate when match totals are still provisional
 
 #### REQ-M-15: Offline Queue
 
 When the device has no network connectivity, the app MUST queue hashed plates in local storage. The queue MUST:
 - Persist across app restarts (stored in a local database)
 - Store a maximum of 1,000 entries (oldest entries are dropped when full)
-- Store only: hash, timestamp (UTC), and location (if available)
+- Store only: hash, timestamp (UTC), location (if available), and local session identifier metadata
 - NOT store plaintext plate text or images
+
+#### REQ-M-15a: Session Attribution for Queued Plates
+
+Each queued hash MUST be tagged with a local session identifier that is never transmitted to the server. The app MUST use this identifier to:
+- Attribute match responses to the session in which the hash was captured
+- Prevent delayed responses from a prior session from incrementing counters in a newer session
+- Preserve correct attribution across app restarts until the queued entry is acknowledged or dropped
 
 #### REQ-M-16: Location Attachment
 
@@ -335,6 +391,7 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 
 ```
 ┌──────────────────────────────────────────────────────┐
+│                                   [Stop Recording]   │
 │                                                      │
 │                  Camera Preview                      │
 │                  (full screen)                       │
@@ -344,6 +401,9 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 └──────────────────────────────────────────────────────┘
 ```
 
+- **Top-right control**:
+  - "Stop Recording" button, always visible during an active session
+  - Tapping ends the current session and opens the session summary
 - **Status bar** (bottom, always visible):
   - Connectivity indicator (● Online / ● Offline)
   - Time since last plate detected ("Last: 2s ago", or "Last: --" if none)
@@ -351,6 +411,27 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
   - Total target plates detected this session (from server match responses)
 - Camera preview fills the entire screen
 - Minimal UI — this is a "set and forget" dashboard app
+
+### Session Summary
+
+```
+┌────────────────────────────────────────────┐
+│           Session Summary                  │
+│                                            │
+│  Plates seen: 47                           │
+│  ICE vehicles: 2                           │
+│  Duration: 12m 08s                         │
+│                                            │
+│  Pending sync: 3 uploads                   │
+│                                            │
+│              [Done]                        │
+└────────────────────────────────────────────┘
+```
+
+- Presented as a modal sheet/dialog after the user stops recording
+- Shows only session-scoped metrics
+- `Pending sync` is shown only when uploads from the stopped session have not all been acknowledged yet
+- Dismissing the summary returns the user to the splash screen
 
 ### Debug Overlay (Debug Mode Only)
 
@@ -418,12 +499,14 @@ When foregrounded again, the app MUST resume the visible camera preview within 1
 |---|---|
 | ML model | YOLOv8-nano, exported to Core ML (iOS) and TFLite (Android) |
 | Plate formats | US only |
-| Status bar content | Last detected timestamp, total plates, total targets |
+| Status bar content | Last detected timestamp, total plates, total targets; stop control lives separately in the camera overlay |
 | Detection feedback | None (no sound, no vibration) |
 | HMAC pepper provisioning | Hardcoded at build time, obfuscated in binary |
 | device_id | Hardware ID (`identifierForVendor` / `ANDROID_ID`) |
 | Training data (Phase 1) | HuggingFace license-plate-object-detection (8,823 images), fine-tuned from COCO |
 | Targets counter styling | No special color treatment |
+| Session stop behavior | Stop immediately halts capture/detection, triggers a final flush attempt, then shows a summary |
+| Session summary semantics | Plates = unique queued reads, ICE = confirmed matches attributed to that session, duration = start-to-stop elapsed time |
 
 ## Open Questions
 
@@ -447,7 +530,7 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ```
 ios/IceBloxApp/
 ├── IceBloxApp.swift                    # App entry point, landscape lock, splash→camera flow
-├── ContentView.swift                   # Root view, wires all managers
+├── ContentView.swift                   # Root view, wires all managers, session lifecycle, stop control, session summary card
 ├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
 ├── Views/
 │   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
@@ -487,24 +570,25 @@ ios/IceBloxApp/
 |---|---|---|---|
 | 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 16 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
-| 3 | UI shell | REQ-M-3, UI spec | Splash screen with Start Camera button → full-screen camera preview + status bar |
+| 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Splash screen with Start Camera button → full-screen camera preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | Vision text recognition on cropped plate regions, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper obfuscation, immediate plaintext discard |
 | 7 | Deduplication | REQ-M-8 | Time-windowed cache keyed by normalized text |
 | 8 | Frame processor | REQ-M-30 | Wire pipeline: frame → detect → OCR → normalize → dedup → hash → queue |
-| 9 | Offline queue | REQ-M-15 | SQLite persistence, max 1000 entries, oldest eviction |
+| 9 | Offline queue | REQ-M-15, REQ-M-15a | SQLite persistence, max 1000 entries, oldest eviction, local session attribution |
 | 10 | Location | REQ-M-16 | CLLocationManager, attach GPS to each queue entry, "No GPS" warning |
-| 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-17, REQ-M-17a | Batch POST, match response parsing, exponential backoff, 429 handling |
-| 12 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, targets count |
-| 13 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
-| 14 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
-| 15 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |
-| 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
-| 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
-| 18 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
-| 19 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
-| 20 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer on active, subscribe+stop on background (refresh TTL for post-close notifications) |
+| 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-14b, REQ-M-17, REQ-M-17a | Batch POST, match response parsing, final flush on stop, exponential backoff, 429 handling |
+| 12 | Session UX | REQ-M-3c, REQ-M-3d | Session summary sheet, reset to idle after dismissal |
+| 13 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, targets count |
+| 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
+| 15 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
+| 16 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |
+| 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
+| 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
+| 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
+| 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
+| 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer on active, subscribe+stop on background (refresh TTL for post-close notifications) |
 
 ### Key Technical Notes
 
@@ -546,11 +630,11 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 android/app/src/main/java/com/iceblox/app/
 ├── IceBloxApplication.kt               # Application-scoped capture repository
 ├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
-├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
+├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates, session lifecycle
 ├── capture/
-│   └── CaptureRepository.kt             # Shared pipeline state used by UI + service
+│   └── CaptureRepository.kt             # Shared pipeline state used by UI + background service
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
 │   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
@@ -599,24 +683,25 @@ android/app/src/debug/
 |---|---|---|---|
 | 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation in manifest, permissions, min API 31 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | CameraX preview + ImageAnalysis, 1080p resolution |
-| 3 | UI shell | REQ-M-3, UI spec | Compose: splash screen with Start Camera button → full-screen preview + status bar |
+| 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Compose: splash screen with Start Camera button → full-screen preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ML Kit on cropped bitmaps, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper obfuscation, plaintext discard |
 | 7 | Deduplication | REQ-M-8 | Time-windowed cache |
 | 8 | Frame analyzer | REQ-M-30 | Wire pipeline in ImageAnalysis.Analyzer callback |
-| 9 | Offline queue | REQ-M-15 | Room database, max 1000 entries, oldest eviction |
+| 9 | Offline queue | REQ-M-15, REQ-M-15a | Room database, max 1000 entries, oldest eviction, local session attribution |
 | 10 | Location | REQ-M-16 | FusedLocationProviderClient, permission flow, GPS warning |
-| 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-17, REQ-M-17a | OkHttp POST, batch, match parsing, backoff, 429 |
-| 12 | Status bar | UI spec | Wire ViewModel state to Compose UI |
-| 13 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
-| 14 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
-| 15 | Background/crash | REQ-M-50, REQ-M-51 | Start camera foreground service on background, keep analysis/upload running, and reattach preview on foreground |
-| 16 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
-| 17 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
-| 18 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
-| 19 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
-| 20 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer with the foreground/background capture lifecycle and subscribe on stop to refresh TTL |
+| 11 | Network layer | REQ-M-14, REQ-M-14a, REQ-M-14b, REQ-M-17, REQ-M-17a | OkHttp POST, batch, match parsing, final flush on stop, backoff, 429 |
+| 12 | Session UX | REQ-M-3c, REQ-M-3d | Session summary dialog, reset to idle after dismissal |
+| 13 | Status bar | UI spec | Wire ViewModel state to Compose UI |
+| 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
+| 15 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
+| 16 | Background/crash | REQ-M-50, REQ-M-51 | Start camera foreground service on background, keep analysis/upload running, and reattach preview on foreground |
+| 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
+| 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
+| 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
+| 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
+| 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer with the foreground/background capture lifecycle and subscribe on stop to refresh TTL |
 
 ### Key Technical Notes
 
