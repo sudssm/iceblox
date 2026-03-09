@@ -17,7 +17,8 @@ E2E_SERVER_PORT=8080
 E2E_SERVER_PID=""
 E2E_SERVER_LOG="/tmp/cameras-e2e-ios-server-$$.log"
 E2E_PLATES_FILE="$PROJECT_ROOT/server/testdata/test_plates.txt"
-E2E_PEPPER="default-pepper-change-me"
+source "$SCRIPT_DIR/../../.env"
+E2E_PEPPER="$PEPPER"
 
 # Fixtures
 E2E_FIXTURES_DIR="$PROJECT_ROOT/e2e/android/fixtures"

@@ -38,7 +38,7 @@ final class IceBloxAppTests: XCTestCase {
 
     func testHashMatchesServer() {
         let hash = PlateHasher.hash(normalizedPlate: "ABC1234")
-        XCTAssertEqual(hash, "05be670b85dd08fcf6aec15df8235688d89327be73c71bb36c6d5008e5f0f51b")
+        XCTAssertEqual(hash, "2140a5e08c8fb11078d5710075b2743be04f84ee01577c47513865bf79231787")
     }
 
     // MARK: - DeduplicationCache

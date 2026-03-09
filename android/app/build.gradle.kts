@@ -13,6 +13,11 @@ val localProperties = Properties().apply {
     if (file.exists()) load(file.inputStream())
 }
 
+val envProperties = Properties().apply {
+    val file = rootProject.file("../.env")
+    if (file.exists()) load(file.inputStream())
+}
+
 android {
     namespace = "com.iceblox.app"
     compileSdk = 35
@@ -25,6 +30,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val pepper = envProperties.getProperty("PEPPER")
+            ?: error("PEPPER not found in ../.env")
+        buildConfigField("String", "PEPPER", "\"$pepper\"")
     }
 
     signingConfigs {
