@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the OCR model, conversion pipeline, and integration approach for on-device license plate text recognition. This replaces the generic text recognition engines (Apple Vision `VNRecognizeTextRequest` on iOS, Google ML Kit Text Recognition on Android) with a specialized model fine-tuned for US license plates.
+Define the OCR model, conversion pipeline, and integration approach for on-device license plate text recognition. This replaces the generic text recognition engines (Apple Vision `VNRecognizeTextRequest` on iOS, Google ML Kit Text Recognition on Android) with a specialized model trained on license plate images.
 
 ## Motivation
 
@@ -12,110 +12,83 @@ Generic text recognition engines achieve ~49% accuracy on license plates because
 - Support thousands of character classes when only 36 are needed (A-Z, 0-9)
 - Are not trained on dashboard-camera degradation (motion blur, glare, angle distortion)
 
-A fine-tuned PaddleOCR PP-OCRv3 model achieves **98.79% accuracy** on US license plates.
-
 ## Model Overview
 
 | Property | Value |
 |---|---|
-| Architecture | PaddleOCR PP-OCRv3 (PP-LCNet backbone + 2-layer SVTR transformer + CTC decoder) |
-| Base model | `en_PP-OCRv3_rec` (English recognition, ~9.6 MB) |
-| Fine-tuned variant | USLicensePlateOCR (trained on OpenALPR US plate benchmark) |
-| Input shape | `(1, 3, 48, 320)` — batch, channels (RGB), height, width |
-| Input normalization | `(pixel / 255.0 - 0.5) / 0.5` → range `[-1, 1]` |
-| Output shape | `(1, 40, 97)` — CTC softmax probabilities (95 characters + blank + unknown) |
-| Character set | 95 printable ASCII characters (`en_dict.txt`) + CTC blank at index 0 + unknown at index 96 |
-| Export targets | ONNX (`.onnx`) for both iOS and Android via ONNX Runtime |
-| Model size | ~5–10 MB |
+| Architecture | CCT-XS (Compact Convolutional Transformer, Extra Small) |
+| Source | [fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) `cct_xs_v1_global` |
+| Training data | 220k+ license plate images from 65+ countries |
+| Input shape | `(1, 64, 128, 3)` — batch, height, width, channels (BHWC, uint8) |
+| Input normalization | **None** — normalization baked into model, raw uint8 RGB pixels |
+| Output shape | `(1, 9, 37)` — batch, slots, alphabet (softmax probabilities) |
+| Decoding | Fixed-slot argmax (9 character slots, strip `_` padding) |
+| Character set | `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_` (37 chars, `_` = padding) |
+| Export format | ONNX (`.onnx`) for both iOS and Android via ONNX Runtime |
+| Model size | **2.0 MB** |
+| Accuracy | ~92-94% on license plates |
 
 ## Input Preprocessing
 
 Before inference, the cropped plate region must be preprocessed:
 
-1. **Resize** to height = 48 pixels, maintaining aspect ratio
-2. **Pad** width to 320 pixels (right-pad with zeros / black pixels). If the resized width exceeds 320, scale down to fit.
-3. **Normalize** pixel values: `(pixel / 255.0 - 0.5) / 0.5` to map `[0, 255]` → `[-1, 1]`
-4. **Arrange** as CHW format `(3, 48, 320)` — channels first (R, G, B)
+1. **Resize** to exactly 64×128 pixels (height × width), no aspect ratio preservation
+2. **Convert** pixel format to RGB uint8 (BGRA→RGB on iOS, ARGB→RGB on Android)
+3. **Pack** as HWC byte array of shape `(64, 128, 3)`
+
+No float normalization is required — the model accepts raw uint8 pixel values and has normalization baked into its first layers.
 
 ## Output Decoding
 
-The model outputs softmax probabilities of shape `(1, 40, 97)`. Decoding uses CTC greedy decode:
+The model outputs softmax probabilities of shape `(1, 9, 37)`. Decoding uses fixed-slot argmax:
 
-1. **Argmax** at each timestep to get the most likely character index
-2. **Collapse** consecutive duplicate indices (e.g., `A A A B B` → `A B`)
-3. **Remove** blank tokens (index 0)
-4. **Map** remaining indices to characters via the dictionary (indices 1–95; index 96 is unknown/padding, ignored)
+1. **Argmax** at each of the 9 character slots to get the most likely character index
+2. **Map** each index to the corresponding character in the alphabet
+3. **Strip** padding characters (`_` at index 36)
 
-**Confidence** is computed as the average softmax probability of the decoded (non-blank, non-duplicate) characters. Since the model outputs softmax probabilities directly (not raw logits), the max value at each timestep is used directly as the character confidence. The existing OCR confidence threshold (default 0.6, `AppConfig.ocrConfidenceThreshold`) is applied to this value.
+There is no CTC collapse step — each slot independently predicts one character.
 
-## Character Dictionary
+**Confidence** is computed as the average softmax probability of the decoded non-padding characters. The existing OCR confidence threshold (default 0.6, `AppConfig.ocrConfidenceThreshold`) is applied to this value.
 
-The PP-OCRv3 English dictionary (`en_dict.txt`) contains 95 printable ASCII characters. Index 0 is reserved for the CTC blank token. Index 96 is unknown/padding (ignored). The dictionary is hardcoded in the platform OCR implementations (not loaded from a file) since it is small and stable.
+## Character Alphabet
 
-**Important:** The dictionary order is NOT ASCII order. It follows PaddleOCR's `en_dict.txt` ordering:
+The alphabet is 37 characters in ASCII order:
 
 ```
-Index 0:   <blank> (CTC)
-Index 1:   ' ' (space)
-Index 2-11:  0-9
-Index 12-38: : ; < = > ? @ A-Z
-Index 39-64: [ \ ] ^ _ ` a-z
-Index 65-70: { | } ~
-Index 71-85: ! " # $ % & ' ( ) * + , - . /
-Index 96:  <unknown/padding> (ignored)
+Index 0-9:   0-9
+Index 10-35: A-Z
+Index 36:    _ (padding)
 ```
 
-The full 95-character string (indices 1–95):
-```
- 0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~!"#$%&'()*+,-./
-```
+Full string: `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_`
 
-After CTC decoding, the output is passed to `PlateNormalizer` which strips non-alphanumeric characters, uppercases, and validates length — so only A-Z and 0-9 survive.
+After decoding, the output is passed to `PlateNormalizer` which strips non-alphanumeric characters, uppercases, and validates length — so only A-Z and 0-9 survive.
 
-## Conversion Pipeline
+## Export Pipeline
 
 ### Overview
 
 ```
-Fine-tuned PaddlePaddle model (Tier 1)
-    ↓ (paddle2onnx, opset 11)
-ONNX model ←── or download pre-converted from HuggingFace (Tier 3)
-    ↓ (onnxslim, optional)
+Pre-trained CCT-XS ONNX model (GitHub releases)
+    ↓ (download + verify)
 plate_ocr.onnx  →  deployed to both iOS and Android
 ```
 
-CoreML and TFLite conversions were attempted but failed due to the SVTR transformer architecture's incompatibility with those runtimes. ONNX Runtime is used on both platforms instead, ensuring zero conversion drift.
-
 ### Steps
 
-1. **Download** — tiered fallback: (1) fine-tuned from Google Drive, (2) base en_PP-OCRv3_rec from PaddleOCR, (3) pre-converted ONNX from HuggingFace
-2. **Convert to ONNX** (if PaddlePaddle format): `paddle2onnx --opset_version 11`
-3. **Optimize** (optional): `onnxslim` to reduce model size
-4. **Verify**: run dummy inference, check input/output shapes
-5. **Deploy**: copy `plate_ocr.onnx` to iOS `Models/` directory and Android `assets/` directory
+1. **Download** — primary: `cct_xs_v1_global.onnx` from GitHub releases; fallback: `cct_s_v1_global.onnx` (larger CCT-S variant)
+2. **Verify** — run dummy inference, check uint8 input, softmax output (sums to ~1.0 per slot), shape `[1, 9, 37]`
+3. **Deploy** — copy `plate_ocr.onnx` to iOS `Models/` directory and Android `assets/` directory
 
 ### Dependencies
 
 ```
-paddle2onnx>=1.0.0    # Only needed if converting from PaddlePaddle
-onnxslim>=0.1.0       # Optional optimization
 onnx>=1.14.0
 onnxruntime>=1.16.0
+pyyaml>=6.0
+Pillow>=10.0.0
+numpy>=1.24.0
 ```
-
-## Fallback Strategy
-
-The fine-tuned model from Google Drive is the riskiest dependency. If unavailable:
-
-| Tier | Source | Format | US Plate Accuracy |
-|---|---|---|---|
-| 1 | USLicensePlateOCR fine-tuned model (Google Drive) | PaddlePaddle | ~98.79% |
-| 2 | Base `en_PP-OCRv3_rec` from PaddleOCR releases | PaddlePaddle | ~49% standalone, higher with YOLO pre-crop + normalizer |
-| 3 | Pre-converted ONNX from HuggingFace (deepghs/paddleocr) | ONNX | ~49% standalone |
-
-If only the base model is available, the effective accuracy is higher than 49% because:
-- YOLO detection pre-crops the plate region (the 49% figure is on full images)
-- `PlateNormalizer` filters non-alphanumeric characters and validates length
 
 ## Validation Criteria
 
@@ -123,18 +96,18 @@ The model MUST meet these thresholds before being bundled into the app:
 
 | Metric | Minimum | Target |
 |---|---|---|
-| Full-plate exact match (US plates) | 70% | 95% |
+| Full-plate exact match | 70% | 95% |
 | Inference time (iPhone 12) | < 50ms | < 15ms |
 | Inference time (Pixel 6) | < 50ms | < 15ms |
 | Model size (exported) | < 10 MB | < 5 MB |
 
 ### Pre-Integration Validation
 
-Before integrating into iOS or Android, the converted ONNX model MUST be validated in Python against real license plate images:
+Before integrating into iOS or Android, the ONNX model MUST be validated in Python against real license plate images:
 
-1. Download test plate images from public sources (e.g., stopice.net/platetracker/)
-2. Run YOLO detection to crop plate regions
-3. Run PP-OCRv3 ONNX inference + CTC decode on crops
+1. Download test plate images from public sources
+2. Run YOLO detection to crop plate regions (if detector available)
+3. Run CCT-XS ONNX inference + fixed-slot decode on crops
 4. Compare output against ground truth
 5. **Go/no-go gate**: if exact match rate is below 70%, do not proceed to mobile integration
 
@@ -142,9 +115,9 @@ Before integrating into iOS or Android, the converted ONNX model MUST be validat
 
 - C-1: Model must be < 10 MB to keep app bundle size reasonable
 - C-2: Must work entirely on-device (no network connectivity required)
-- C-3: Fixed input height 48px, padded width 320px
-- C-4: CTC decoding must be implemented natively on each platform (no PaddlePaddle runtime dependency)
-- C-5: The character dictionary is hardcoded in source code, not loaded from a bundled file
+- C-3: Fixed input size 64×128 pixels, uint8 RGB
+- C-4: Fixed-slot decoding must be implemented natively on each platform (no Python runtime dependency)
+- C-5: The character alphabet is hardcoded in source code, not loaded from a bundled file
 
 ## Platform Integration
 
@@ -152,17 +125,17 @@ Before integrating into iOS or Android, the converted ONNX model MUST be validat
 
 - Load `plate_ocr.onnx` via ONNX Runtime (`ORTEnv`, `ORTSession`, `ORTValue`)
 - ONNX Runtime added via Swift Package Manager (`onnxruntime-swift-package-manager`)
-- Preprocessing uses Accelerate framework for efficient fill
-- Input packed as `NSMutableData` of shape `[1, 3, 48, 320]`
-- CTC decode implemented in Swift, using softmax probabilities directly
+- Preprocessing: nearest-neighbor resize from CVPixelBuffer, BGRA→RGB byte conversion
+- Input packed as `NSMutableData` of uint8 bytes, shape `[1, 64, 128, 3]`
+- Fixed-slot decode implemented in Swift
 - Signature unchanged: `PlateOCR.recognizeText(in: CVPixelBuffer) -> String?`
 
 ### Android
 
 - Load `plate_ocr.onnx` via ONNX Runtime (`OrtEnvironment`, `OrtSession`, `OnnxTensor`)
 - Constructor accepts `Context` to load model from assets
-- Input packed as `FloatArray` in CHW format via `FloatBuffer`
-- CTC decode implemented in Kotlin, using softmax probabilities directly
+- Input packed as `ByteArray` (uint8 RGB HWC) via `ByteBuffer` with `OnnxJavaType.UINT8`
+- Fixed-slot decode implemented in Kotlin
 - Signature unchanged: `PlateOCR.recognizeText(bitmap: Bitmap, region: RectF) -> OCRResult?`
 - ML Kit Text Recognition dependency removed from build
 
@@ -170,28 +143,26 @@ Before integrating into iOS or Android, the converted ONNX model MUST be validat
 
 ```
 models/
-├── Makefile                          # Existing detection targets + new OCR targets
+├── Makefile                          # Existing detection targets + OCR targets
 ├── training/
 │   ├── train.py                      # Existing: YOLO detection training
-│   ├── export_ocr.py                 # NEW: PP-OCRv3 download, convert, export
-│   ├── evaluate_ocr.py              # NEW: validate OCR model on real plate images
-│   └── requirements.txt              # Updated with conversion dependencies
+│   ├── export_ocr.py                 # Download + verify CCT-XS ONNX model
+│   ├── evaluate_ocr.py              # Validate OCR model on real plate images
+│   └── requirements.txt              # Dependencies
 ├── exports/
 │   ├── plate_detector.mlpackage      # Existing
 │   ├── plate_detector.tflite         # Existing
-│   └── plate_ocr.onnx               # NEW: ONNX model (deployed to both platforms)
+│   └── plate_ocr.onnx               # CCT-XS ONNX model (deployed to both platforms)
 ```
 
 ## Implementation Order
 
 | Step | Description |
 |---|---|
-| 1 | Create `models/training/export_ocr.py` — download + convert pipeline |
+| 1 | Create `models/training/export_ocr.py` — download + verify pipeline |
 | 2 | Add Makefile targets (`download-ocr`, `export-ocr`, `deploy-ocr`, `evaluate-ocr`) |
-| 3 | Run conversion, validate output models have correct shapes |
+| 3 | Run download, validate output model has correct shapes |
 | 4 | Run `evaluate_ocr.py` against real plate images — **go/no-go gate** |
-| 5 | Rewrite iOS `PlateOCR.swift` — ONNX Runtime model loading + preprocessing + CTC decode |
-| 6 | Rewrite Android `PlateOCR.kt` — ONNX Runtime model loading + preprocessing + CTC decode |
-| 7 | Update `FrameAnalyzer.kt` to pass `Context`, add `close()` call |
-| 8 | Remove ML Kit dependency from Android build files |
-| 9 | Test full pipeline on both platforms with real plate images |
+| 5 | Rewrite iOS `PlateOCR.swift` — ONNX Runtime model loading + preprocessing + fixed-slot decode |
+| 6 | Rewrite Android `PlateOCR.kt` — ONNX Runtime model loading + preprocessing + fixed-slot decode |
+| 7 | Test full pipeline on both platforms with real plate images |

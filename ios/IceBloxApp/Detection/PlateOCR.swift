@@ -1,18 +1,12 @@
 import Foundation
-import Accelerate
 import onnxruntime
 
 enum PlateOCR {
-    private static let targetHeight = 48
-    private static let targetWidth = 320
-
-    // PP-OCRv3 en_dict.txt character order (NOT ASCII order).
-    // Index 0 = CTC blank; indices 1..95 map to characters in this string.
-    // Index 96 = unknown/padding (ignored).
-    // Order: space, 0-9, :-~, !-/
-    private static let dictionary: [Character] = Array(
-        " 0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~!\"#$%&'()*+,-./"
-    )
+    private static let targetHeight = 64
+    private static let targetWidth = 128
+    private static let maxPlateSlots = 9
+    private static let alphabet: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_")
+    private static let padChar: Character = "_"
 
     private static let env: ORTEnv? = {
         try? ORTEnv(loggingLevel: .warning)
@@ -38,8 +32,8 @@ enum PlateOCR {
     }()
 
     private static let inputName: String = {
-        guard let session else { return "x" }
-        return (try? session.inputNames().first) ?? "x"
+        guard let session else { return "input" }
+        return (try? session.inputNames().first) ?? "input"
     }()
 
     static func recognizeText(in pixelBuffer: CVPixelBuffer) -> String? {
@@ -49,17 +43,16 @@ enum PlateOCR {
         let srcHeight = CVPixelBufferGetHeight(pixelBuffer)
         guard srcWidth > 0, srcHeight > 0 else { return nil }
 
-        var inputData = preprocessImage(pixelBuffer, srcWidth: srcWidth, srcHeight: srcHeight)
+        guard let inputData = preprocessImage(pixelBuffer, srcWidth: srcWidth, srcHeight: srcHeight) else {
+            return nil
+        }
 
         do {
-            let inputShape: [NSNumber] = [1, 3, NSNumber(value: targetHeight), NSNumber(value: targetWidth)]
-            let data = NSMutableData(
-                bytes: &inputData,
-                length: inputData.count * MemoryLayout<Float>.size
-            )
+            let inputShape: [NSNumber] = [1, NSNumber(value: targetHeight), NSNumber(value: targetWidth), 3]
+            let data = NSMutableData(bytes: inputData, length: inputData.count)
             let inputTensor = try ORTValue(
                 tensorData: data,
-                elementType: .float,
+                elementType: .uInt8,
                 shape: inputShape
             )
 
@@ -74,7 +67,7 @@ enum PlateOCR {
             let outputData = try outputTensor.tensorData()
             let shapeInfo = try outputTensor.tensorTypeAndShapeInfo()
 
-            return ctcDecode(data: outputData as Data, shape: shapeInfo.shape)
+            return fixedSlotDecode(data: outputData as Data, shape: shapeInfo.shape)
         } catch {
             DebugLog.shared.w("PlateOCR", "OCR failed: \(error.localizedDescription)")
             return nil
@@ -85,70 +78,67 @@ enum PlateOCR {
         _ pixelBuffer: CVPixelBuffer,
         srcWidth: Int,
         srcHeight: Int
-    ) -> [Float] {
-        let scale = Float(targetHeight) / Float(srcHeight)
-        let scaledWidth = min(Int(Float(srcWidth) * scale), targetWidth)
-
-        let hw = targetHeight * targetWidth
-        var data = [Float](repeating: -1.0, count: 3 * hw)
-
+    ) -> [UInt8]? {
         CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
 
-        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else { return data }
+        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
         let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
 
+        // Pack as HWC uint8 RGB, exact resize to 64x128
+        let totalPixels = targetHeight * targetWidth
+        var data = [UInt8](repeating: 0, count: totalPixels * 3)
+
         for y in 0..<targetHeight {
-            let srcY = min(Int(Float(y) / scale), srcHeight - 1)
+            let srcY = y * (srcHeight - 1) / max(targetHeight - 1, 1)
             let rowPtr = baseAddress.advanced(by: srcY * bytesPerRow)
                 .assumingMemoryBound(to: UInt8.self)
 
-            for x in 0..<scaledWidth {
-                let srcX = min(Int(Float(x) / scale), srcWidth - 1)
+            for x in 0..<targetWidth {
+                let srcX = x * (srcWidth - 1) / max(targetWidth - 1, 1)
                 let pixelOffset = srcX * 4
 
-                // BGRA pixel format
-                let b = Float(rowPtr[pixelOffset])
-                let g = Float(rowPtr[pixelOffset + 1])
-                let r = Float(rowPtr[pixelOffset + 2])
+                // BGRA → RGB
+                let b = rowPtr[pixelOffset]
+                let g = rowPtr[pixelOffset + 1]
+                let r = rowPtr[pixelOffset + 2]
 
-                let idx = y * targetWidth + x
-                data[0 * hw + idx] = (r / 255.0 - 0.5) / 0.5
-                data[1 * hw + idx] = (g / 255.0 - 0.5) / 0.5
-                data[2 * hw + idx] = (b / 255.0 - 0.5) / 0.5
+                let baseIdx = (y * targetWidth + x) * 3
+                data[baseIdx]     = r
+                data[baseIdx + 1] = g
+                data[baseIdx + 2] = b
             }
         }
 
         return data
     }
 
-    private static func ctcDecode(data: Data, shape: [NSNumber]) -> String? {
-        let seqLen: Int
-        let numClasses: Int
+    private static func fixedSlotDecode(data: Data, shape: [NSNumber]) -> String? {
+        let numSlots: Int
+        let alphabetSize: Int
 
         if shape.count == 3 {
-            seqLen = shape[1].intValue
-            numClasses = shape[2].intValue
+            numSlots = shape[1].intValue
+            alphabetSize = shape[2].intValue
         } else if shape.count == 2 {
-            seqLen = shape[0].intValue
-            numClasses = shape[1].intValue
+            numSlots = shape[0].intValue
+            alphabetSize = shape[1].intValue
         } else {
             return nil
         }
 
         var decoded: [Character] = []
         var totalConfidence: Float = 0
-        var prevIndex = -1
 
         data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
             let floatPtr = ptr.bindMemory(to: Float.self)
 
-            for t in 0..<seqLen {
-                let base = t * numClasses
+            for slot in 0..<numSlots {
+                let base = slot * alphabetSize
 
                 var maxIdx = 0
                 var maxVal = floatPtr[base]
-                for c in 1..<numClasses {
+                for c in 1..<alphabetSize {
                     let val = floatPtr[base + c]
                     if val > maxVal {
                         maxVal = val
@@ -156,16 +146,12 @@ enum PlateOCR {
                     }
                 }
 
-                // Skip blank (index 0) and collapse consecutive duplicates
-                if maxIdx != 0 && maxIdx != prevIndex {
-                    // Model outputs softmax probabilities — use max value directly
-                    let charIdx = maxIdx - 1
-                    if charIdx < dictionary.count {
-                        decoded.append(dictionary[charIdx])
-                        totalConfidence += maxVal
-                    }
+                guard maxIdx < alphabet.count else { continue }
+                let ch = alphabet[maxIdx]
+                if ch != padChar {
+                    decoded.append(ch)
+                    totalConfidence += maxVal
                 }
-                prevIndex = maxIdx
             }
         }
 

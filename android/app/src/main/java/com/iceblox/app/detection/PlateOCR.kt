@@ -8,9 +8,8 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
-import java.nio.FloatBuffer
-import kotlin.math.min
-import kotlin.math.roundToInt
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 data class OCRResult(val text: String, val confidence: Float)
 
@@ -18,7 +17,7 @@ class PlateOCR(context: Context) {
     private var session: OrtSession? = null
     private val env = OrtEnvironment.getEnvironment()
 
-    private var inputName = "x"
+    private var inputName = "input"
 
     init {
         try {
@@ -55,59 +54,55 @@ class PlateOCR(context: Context) {
 
     private fun runInference(sess: OrtSession, cropped: Bitmap): OCRResult? {
         val inputData = preprocessImage(cropped)
-        val shape = longArrayOf(1, 3, TARGET_HEIGHT.toLong(), TARGET_WIDTH.toLong())
+        val shape = longArrayOf(1, TARGET_HEIGHT.toLong(), TARGET_WIDTH.toLong(), 3)
 
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(inputData), shape).use { inputTensor ->
+        val buffer = ByteBuffer.allocateDirect(inputData.size).order(ByteOrder.nativeOrder())
+        buffer.put(inputData)
+        buffer.rewind()
+
+        OnnxTensor.createTensor(env, buffer, shape, ai.onnxruntime.OnnxJavaType.UINT8).use { inputTensor ->
             sess.run(mapOf(inputName to inputTensor)).use { output ->
                 val outputTensor = output[0].value
                 @Suppress("UNCHECKED_CAST")
                 val result = outputTensor as Array<Array<FloatArray>>
-                return ctcDecode(result[0])
+                return fixedSlotDecode(result[0])
             }
         }
     }
 
-    private fun preprocessImage(bitmap: Bitmap): FloatArray {
-        val h = bitmap.height
-        val w = bitmap.width
+    private fun preprocessImage(bitmap: Bitmap): ByteArray {
+        val resized = Bitmap.createScaledBitmap(bitmap, TARGET_WIDTH, TARGET_HEIGHT, true)
+        val pixels = IntArray(TARGET_WIDTH * TARGET_HEIGHT)
+        resized.getPixels(pixels, 0, TARGET_WIDTH, 0, 0, TARGET_WIDTH, TARGET_HEIGHT)
 
-        val scale = TARGET_HEIGHT.toFloat() / h
-        val scaledWidth = min((w * scale).roundToInt(), TARGET_WIDTH)
-
-        val resized = Bitmap.createScaledBitmap(bitmap, scaledWidth, TARGET_HEIGHT, true)
-        val pixels = IntArray(scaledWidth * TARGET_HEIGHT)
-        resized.getPixels(pixels, 0, scaledWidth, 0, 0, scaledWidth, TARGET_HEIGHT)
-
-        val hw = TARGET_HEIGHT * TARGET_WIDTH
-        val data = FloatArray(3 * hw) { -1.0f }
+        // Pack as HWC uint8 RGB
+        val data = ByteArray(TARGET_HEIGHT * TARGET_WIDTH * 3)
 
         for (y in 0 until TARGET_HEIGHT) {
-            for (x in 0 until scaledWidth) {
-                val pixel = pixels[y * scaledWidth + x]
-                val r = ((pixel shr 16) and 0xFF).toFloat()
-                val g = ((pixel shr 8) and 0xFF).toFloat()
-                val b = (pixel and 0xFF).toFloat()
+            for (x in 0 until TARGET_WIDTH) {
+                val pixel = pixels[y * TARGET_WIDTH + x]
+                val r = ((pixel shr 16) and 0xFF).toByte()
+                val g = ((pixel shr 8) and 0xFF).toByte()
+                val b = (pixel and 0xFF).toByte()
 
-                val idx = y * TARGET_WIDTH + x
-                data[0 * hw + idx] = (r / 255.0f - 0.5f) / 0.5f
-                data[1 * hw + idx] = (g / 255.0f - 0.5f) / 0.5f
-                data[2 * hw + idx] = (b / 255.0f - 0.5f) / 0.5f
+                val baseIdx = (y * TARGET_WIDTH + x) * 3
+                data[baseIdx] = r
+                data[baseIdx + 1] = g
+                data[baseIdx + 2] = b
             }
         }
 
         return data
     }
 
-    private fun ctcDecode(output: Array<FloatArray>): OCRResult? {
+    private fun fixedSlotDecode(output: Array<FloatArray>): OCRResult? {
         val decoded = StringBuilder()
         var totalConfidence = 0.0f
         var decodedCount = 0
-        var prevIndex = -1
 
-        for (t in output.indices) {
-            val scores = output[t]
+        for (slot in output.indices) {
+            val scores = output[slot]
 
-            // Argmax
             var maxIdx = 0
             var maxVal = scores[0]
             for (c in 1 until scores.size) {
@@ -117,19 +112,14 @@ class PlateOCR(context: Context) {
                 }
             }
 
-            // Skip blank (index 0) and collapse consecutive duplicates
-            if (maxIdx != 0 && maxIdx != prevIndex) {
-                // Model outputs softmax probabilities — use max value directly
-                val prob = maxVal
-
-                val charIdx = maxIdx - 1
-                if (charIdx < DICTIONARY.length) {
-                    decoded.append(DICTIONARY[charIdx])
-                    totalConfidence += prob
+            if (maxIdx < ALPHABET.length) {
+                val ch = ALPHABET[maxIdx]
+                if (ch != PAD_CHAR) {
+                    decoded.append(ch)
+                    totalConfidence += maxVal
                     decodedCount++
                 }
             }
-            prevIndex = maxIdx
         }
 
         if (decodedCount == 0) return null
@@ -146,14 +136,9 @@ class PlateOCR(context: Context) {
 
     companion object {
         private const val TAG = "PlateOCR"
-        private const val TARGET_HEIGHT = 48
-        private const val TARGET_WIDTH = 320
-
-        // PP-OCRv3 en_dict.txt character order (NOT ASCII order).
-        // Index 0 = CTC blank; indices 1..95 map to characters in this string.
-        // Index 96 = unknown/padding (ignored).
-        // Order: space, 0-9, :-~, !-/
-        private const val DICTIONARY =
-            " 0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~!\"#\$%&'()*+,-./"
+        private const val TARGET_HEIGHT = 64
+        private const val TARGET_WIDTH = 128
+        private const val ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+        private const val PAD_CHAR = '_'
     }
 }

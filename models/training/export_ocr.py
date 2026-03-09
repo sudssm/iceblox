@@ -1,378 +1,162 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""PP-OCRv3 model download, conversion, and export pipeline.
+"""License plate OCR model download and export pipeline.
 
-Downloads the fine-tuned USLicensePlateOCR PP-OCRv3 model and converts it to
-ONNX, CoreML (.mlpackage), and TFLite (.tflite) for on-device inference.
+Downloads a pre-trained CCT (Compact Convolutional Transformer) ONNX model
+from the fast-plate-ocr project for on-device license plate recognition.
 
 Usage:
     python export_ocr.py                    # Full pipeline
     python export_ocr.py --download-only    # Just download
-    python export_ocr.py --onnx-only        # Download + ONNX only
-    python export_ocr.py --skip-tflite      # Skip TFLite conversion
 """
 
 import argparse
-import os
 import shutil
-import subprocess
 import sys
-import tarfile
-import tempfile
 import urllib.request
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Source model URLs (tiered fallback)
+# Model: fast-plate-ocr CCT-XS (global, 65+ countries)
+# https://github.com/ankandrew/fast-plate-ocr
+# TODO: Replace with US-plate fine-tuned model when available
 # ---------------------------------------------------------------------------
-# Tier 1: Fine-tuned USLicensePlateOCR model on Google Drive
-GDRIVE_FILE_ID = "1-1p2dySPit9VJbJk6VH-4z6CsROiMVBr"
-
-# Tier 2: Base PaddleOCR en_PP-OCRv3_rec
-PADDLE_BASE_URL = (
-    "https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_infer.tar"
+ONNX_URL = (
+    "https://github.com/ankandrew/fast-plate-ocr/releases/download/"
+    "arg-plates/cct_xs_v1_global.onnx"
+)
+CONFIG_URL = (
+    "https://github.com/ankandrew/fast-plate-ocr/releases/download/"
+    "arg-plates/cct_xs_v1_global_plate_config.yaml"
 )
 
-# Tier 3: Pre-converted ONNX from HuggingFace (deepghs/paddleocr)
-HF_ONNX_URL = (
-    "https://huggingface.co/deepghs/paddleocr/resolve/main/"
-    "rec/en_PP-OCRv3_rec/model.onnx"
+# Fallback: CCT-S (larger, same architecture)
+FALLBACK_ONNX_URL = (
+    "https://github.com/ankandrew/fast-plate-ocr/releases/download/"
+    "arg-plates/cct_s_v1_global.onnx"
 )
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 EXPORT_DIR = SCRIPT_DIR.parent / "exports"
 MODEL_DIR = SCRIPT_DIR / "ocr_model"
 
-INPUT_SHAPE = [1, 3, 48, 320]
+# Expected model properties (verified from ONNX inspection)
+INPUT_SHAPE = [1, 64, 128, 3]  # BHWC, uint8
+OUTPUT_SHAPE = [1, 9, 37]      # batch, slots, alphabet
+ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 
 
-def download_finetuned(dest: Path) -> bool:
-    """Tier 1: Download fine-tuned model from Google Drive via gdown."""
+def download_model(url: str, dest: Path, label: str) -> bool:
+    """Download a file from URL to dest."""
+    print(f"  Downloading {label} from {url}...")
     try:
-        import gdown
-    except ImportError:
-        print("  gdown not installed, skipping Google Drive download")
-        return False
-
-    print("Tier 1: Downloading fine-tuned USLicensePlateOCR model...")
-    url = f"https://drive.google.com/uc?id={GDRIVE_FILE_ID}"
-    output = dest / "finetuned.tar"
-    try:
-        gdown.download(url, str(output), quiet=False)
-        if not output.exists() or output.stat().st_size < 1_000:
-            print("  Download too small or failed, skipping")
-            output.unlink(missing_ok=True)
-            return False
-        with tarfile.open(output) as tar:
-            tar.extractall(path=dest)
-        output.unlink()
-        # Find the inference model files
-        for dirpath, _dirnames, filenames in os.walk(dest):
-            if "inference.pdmodel" in filenames:
-                return True
-        print("  No inference.pdmodel found in archive")
+        urllib.request.urlretrieve(url, dest)
+        if dest.exists() and dest.stat().st_size > 1_000:
+            size_mb = dest.stat().st_size / (1024 * 1024)
+            print(f"  Downloaded: {dest.name} ({size_mb:.1f} MB)")
+            return True
+        print(f"  Download too small or failed")
+        dest.unlink(missing_ok=True)
         return False
     except Exception as e:
-        print(f"  Tier 1 failed: {e}")
-        output.unlink(missing_ok=True)
+        print(f"  Download failed: {e}")
+        dest.unlink(missing_ok=True)
         return False
-
-
-def download_base_paddle(dest: Path) -> bool:
-    """Tier 2: Download base en_PP-OCRv3_rec from PaddleOCR."""
-    print("Tier 2: Downloading base en_PP-OCRv3_rec model...")
-    output = dest / "base_model.tar"
-    try:
-        urllib.request.urlretrieve(PADDLE_BASE_URL, output)
-        with tarfile.open(output) as tar:
-            tar.extractall(path=dest)
-        output.unlink()
-        for dirpath, _dirnames, filenames in os.walk(dest):
-            if "inference.pdmodel" in filenames:
-                return True
-        print("  No inference.pdmodel found")
-        return False
-    except Exception as e:
-        print(f"  Tier 2 failed: {e}")
-        output.unlink(missing_ok=True)
-        return False
-
-
-def download_hf_onnx(dest: Path) -> Path | None:
-    """Tier 3: Download pre-converted ONNX from HuggingFace."""
-    print("Tier 3: Downloading pre-converted ONNX from HuggingFace...")
-    output = dest / "en_PP-OCRv3_rec_infer.onnx"
-    try:
-        urllib.request.urlretrieve(HF_ONNX_URL, output)
-        if output.exists() and output.stat().st_size > 1_000:
-            return output
-        print("  Download failed or too small")
-        output.unlink(missing_ok=True)
-        return None
-    except Exception as e:
-        print(f"  Tier 3 failed: {e}")
-        return None
-
-
-def find_paddle_model(model_dir: Path) -> tuple[Path, Path] | None:
-    """Find inference.pdmodel and inference.pdiparams in model_dir."""
-    for dirpath, _dirnames, filenames in os.walk(model_dir):
-        dp = Path(dirpath)
-        pdmodel = dp / "inference.pdmodel"
-        pdiparams = dp / "inference.pdiparams"
-        if pdmodel.exists() and pdiparams.exists():
-            return pdmodel, pdiparams
-    return None
-
-
-def convert_paddle_to_onnx(pdmodel: Path, pdiparams: Path, output: Path) -> bool:
-    """Convert PaddlePaddle model to ONNX via paddle2onnx."""
-    print(f"Converting PaddlePaddle → ONNX: {output}")
-    cmd = [
-        sys.executable, "-m", "paddle2onnx",
-        "--model_dir", str(pdmodel.parent),
-        "--model_filename", pdmodel.name,
-        "--params_filename", pdiparams.name,
-        "--save_file", str(output),
-        "--opset_version", "11",
-        "--enable_onnx_checker", "true",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"  paddle2onnx failed: {result.stderr}")
-        return False
-    return output.exists()
-
-
-def optimize_onnx(input_path: Path, output_path: Path) -> bool:
-    """Optimize ONNX model with onnxslim."""
-    print(f"Optimizing ONNX: {input_path} → {output_path}")
-    try:
-        import onnxslim
-        onnxslim.slim(str(input_path), str(output_path))
-        return output_path.exists()
-    except Exception as e:
-        print(f"  onnxslim failed: {e}, using unoptimized model")
-        shutil.copy2(input_path, output_path)
-        return True
 
 
 def verify_onnx(onnx_path: Path) -> bool:
-    """Verify ONNX model loads and has expected shapes."""
+    """Verify ONNX model has expected input/output shapes."""
     print(f"Verifying ONNX model: {onnx_path}")
     try:
         import onnxruntime as ort
+        import numpy as np
+
         sess = ort.InferenceSession(str(onnx_path))
         inp = sess.get_inputs()[0]
         out = sess.get_outputs()[0]
         print(f"  Input:  name={inp.name}, shape={inp.shape}, dtype={inp.type}")
         print(f"  Output: name={out.name}, shape={out.shape}, dtype={out.type}")
 
-        # Quick inference test with dummy data
-        import numpy as np
-        dummy = np.random.randn(*INPUT_SHAPE).astype(np.float32)
+        # Verify input accepts uint8
+        if "uint8" not in inp.type:
+            print(f"  WARNING: Expected uint8 input, got {inp.type}")
+
+        # Quick inference test
+        dummy = np.random.randint(0, 255, INPUT_SHAPE, dtype=np.uint8)
         result = sess.run(None, {inp.name: dummy})
         print(f"  Test inference output shape: {result[0].shape}")
+
+        # Verify output shape
+        if list(result[0].shape) != OUTPUT_SHAPE:
+            print(f"  WARNING: Expected output {OUTPUT_SHAPE}, got {list(result[0].shape)}")
+
+        # Verify output is softmax (sums to ~1.0 per slot)
+        slot_sums = result[0][0].sum(axis=1)
+        if not all(abs(s - 1.0) < 0.01 for s in slot_sums):
+            print(f"  WARNING: Output does not sum to 1.0 per slot: {slot_sums}")
+
+        print("  Verification passed")
         return True
     except Exception as e:
         print(f"  Verification failed: {e}")
         return False
 
 
-def convert_to_coreml(onnx_path: Path, output_path: Path) -> bool:
-    """Convert ONNX to CoreML .mlpackage (runs in isolated subprocess)."""
-    print(f"Converting ONNX → CoreML: {output_path}")
-    # Run in isolated subprocess to avoid tensorflow/coremltools conflicts.
-    # Load ONNX model object explicitly so coremltools detects the framework.
-    script = f"""
-import onnx
-import coremltools as ct
-m = onnx.load("{onnx_path}")
-model = ct.convert(
-    m,
-    inputs=[ct.TensorType(name="x", shape={INPUT_SHAPE})],
-    minimum_deployment_target=ct.target.iOS17,
-    convert_to="mlprogram",
-)
-model.save("{output_path}")
-print("CoreML model saved")
-"""
-    # Strip tensorflow from sys.path to prevent coremltools from detecting it
-    env = {**os.environ, "TF_CPP_MIN_LOG_LEVEL": "3"}
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        capture_output=True, text=True, env=env,
-    )
-    if result.returncode != 0:
-        print(f"  CoreML conversion failed: {result.stderr.strip()}")
-        return False
-    print(f"  CoreML model saved: {output_path}")
-    return output_path.exists()
-
-
-def convert_to_tflite(onnx_path: Path, output_dir: Path) -> bool:
-    """Convert ONNX to TFLite via onnx2tf (runs in isolated subprocess)."""
-    print(f"Converting ONNX → TFLite: {output_dir / 'plate_ocr.tflite'}")
-    try:
-        tflite_tmp = output_dir / "tflite_tmp"
-        cmd = [
-            sys.executable, "-m", "onnx2tf",
-            "-i", str(onnx_path),
-            "-o", str(tflite_tmp),
-            "-osd",
-            "--non_verbose",
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"  onnx2tf failed: {result.stderr}")
-            return False
-
-        # Find the generated .tflite file
-        tflite_files = list(tflite_tmp.rglob("*.tflite"))
-        if not tflite_files:
-            print("  No .tflite file generated")
-            return False
-
-        # Use the float32 version
-        target = output_dir / "plate_ocr.tflite"
-        for f in tflite_files:
-            if "float32" in f.name or len(tflite_files) == 1:
-                shutil.copy2(f, target)
-                break
-        else:
-            shutil.copy2(tflite_files[0], target)
-
-        # Cleanup temp dir
-        shutil.rmtree(tflite_tmp, ignore_errors=True)
-        print(f"  TFLite model saved: {target}")
-        return target.exists()
-    except Exception as e:
-        print(f"  TFLite conversion failed: {e}")
-        return False
-
-
 def main():
-    parser = argparse.ArgumentParser(description="PP-OCRv3 export pipeline")
+    parser = argparse.ArgumentParser(description="License plate OCR model export")
     parser.add_argument("--download-only", action="store_true", help="Only download model")
-    parser.add_argument("--onnx-only", action="store_true", help="Stop after ONNX conversion")
-    parser.add_argument("--skip-tflite", action="store_true", help="Skip TFLite conversion")
-    parser.add_argument("--skip-coreml", action="store_true", help="Skip CoreML conversion")
     args = parser.parse_args()
 
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     onnx_path = EXPORT_DIR / "plate_ocr.onnx"
-    onnx_optimized = EXPORT_DIR / "plate_ocr.onnx"
-    coreml_path = EXPORT_DIR / "plate_ocr.mlpackage"
-    tflite_path = EXPORT_DIR / "plate_ocr.tflite"
+    config_path = MODEL_DIR / "config.yaml"
 
     # ── Step 1: Download ────────────────────────────────────────────────
     print("=" * 60)
-    print("Step 1: Download PP-OCRv3 model")
+    print("Step 1: Download fast-plate-ocr CCT-XS model")
     print("=" * 60)
 
-    have_paddle = False
-    have_onnx = False
+    downloaded = False
+    if not downloaded:
+        downloaded = download_model(ONNX_URL, onnx_path, "CCT-XS ONNX")
 
-    # Try tiered download
-    if not find_paddle_model(MODEL_DIR):
-        if download_finetuned(MODEL_DIR):
-            have_paddle = True
-            print("  ✓ Fine-tuned model downloaded")
-        elif download_base_paddle(MODEL_DIR):
-            have_paddle = True
-            print("  ✓ Base PP-OCRv3 model downloaded (fallback)")
-        else:
-            result = download_hf_onnx(MODEL_DIR)
-            if result:
-                have_onnx = True
-                shutil.copy2(result, onnx_path)
-                print("  ✓ Pre-converted ONNX downloaded (fallback)")
-            else:
-                print("ERROR: All download tiers failed")
-                sys.exit(1)
-    else:
-        have_paddle = True
-        print("  ✓ PaddlePaddle model already present")
+    if not downloaded:
+        print("  CCT-XS failed, trying CCT-S fallback...")
+        downloaded = download_model(FALLBACK_ONNX_URL, onnx_path, "CCT-S ONNX (fallback)")
+
+    if not downloaded:
+        print("ERROR: All downloads failed")
+        sys.exit(1)
+
+    # Download config YAML for reference
+    download_model(CONFIG_URL, config_path, "config YAML")
 
     if args.download_only:
         print("\n--download-only: stopping here")
         return
 
-    # ── Step 2: Convert to ONNX ─────────────────────────────────────────
-    if have_paddle and not have_onnx:
-        print("\n" + "=" * 60)
-        print("Step 2: Convert PaddlePaddle → ONNX")
-        print("=" * 60)
-
-        paddle_files = find_paddle_model(MODEL_DIR)
-        conversion_ok = False
-        if paddle_files:
-            raw_onnx = EXPORT_DIR / "plate_ocr_raw.onnx"
-            if convert_paddle_to_onnx(paddle_files[0], paddle_files[1], raw_onnx):
-                if optimize_onnx(raw_onnx, onnx_path):
-                    conversion_ok = True
-                raw_onnx.unlink(missing_ok=True)
-
-        if not conversion_ok:
-            print("  Paddle→ONNX conversion failed, falling back to Tier 3 (HuggingFace ONNX)")
-            result = download_hf_onnx(MODEL_DIR)
-            if result:
-                shutil.copy2(result, onnx_path)
-                have_onnx = True
-                print("  ✓ Pre-converted ONNX downloaded (fallback)")
-            else:
-                print("ERROR: All conversion paths failed")
-                sys.exit(1)
-    elif have_onnx:
-        print("\n  ONNX model already available, skipping conversion")
-
-    # ── Step 3: Verify ONNX ─────────────────────────────────────────────
+    # ── Step 2: Verify ──────────────────────────────────────────────────
     print("\n" + "=" * 60)
-    print("Step 3: Verify ONNX model")
+    print("Step 2: Verify ONNX model")
     print("=" * 60)
     if not verify_onnx(onnx_path):
         print("ERROR: ONNX verification failed")
         sys.exit(1)
 
-    if args.onnx_only:
-        print("\n--onnx-only: stopping here")
-        return
-
-    # ── Step 4: Convert to CoreML ───────────────────────────────────────
-    if not args.skip_coreml:
-        print("\n" + "=" * 60)
-        print("Step 4: Convert ONNX → CoreML (.mlpackage)")
-        print("=" * 60)
-        if not convert_to_coreml(onnx_path, coreml_path):
-            print("WARNING: CoreML conversion failed (macOS only)")
-
-    # ── Step 5: Convert to TFLite ───────────────────────────────────────
-    if not args.skip_tflite:
-        print("\n" + "=" * 60)
-        print("Step 5: Convert ONNX → TFLite (.tflite)")
-        print("=" * 60)
-        if not convert_to_tflite(onnx_path, EXPORT_DIR):
-            print("WARNING: TFLite conversion failed")
-
     # ── Summary ─────────────────────────────────────────────────────────
     print("\n" + "=" * 60)
     print("Export Summary")
     print("=" * 60)
-    for path, label in [
-        (onnx_path, "ONNX"),
-        (coreml_path, "CoreML"),
-        (tflite_path, "TFLite"),
-    ]:
-        if path.exists():
-            size_mb = path.stat().st_size / (1024 * 1024) if path.is_file() else sum(
-                f.stat().st_size for f in path.rglob("*") if f.is_file()
-            ) / (1024 * 1024)
-            print(f"  ✓ {label}: {path} ({size_mb:.1f} MB)")
-        else:
-            print(f"  ✗ {label}: not generated")
+    size_mb = onnx_path.stat().st_size / (1024 * 1024)
+    print(f"  Model: {onnx_path} ({size_mb:.1f} MB)")
+    print(f"  Input: uint8 {INPUT_SHAPE} (BHWC)")
+    print(f"  Output: float32 {OUTPUT_SHAPE} (batch, slots, alphabet)")
+    print(f"  Alphabet: {ALPHABET}")
+    print(f"\n  Deploy to iOS:     cp {onnx_path} ios/IceBloxApp/Models/plate_ocr.onnx")
+    print(f"  Deploy to Android: cp {onnx_path} android/app/src/main/assets/plate_ocr.onnx")
 
 
 if __name__ == "__main__":

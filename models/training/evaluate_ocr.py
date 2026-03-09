@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""Validate PP-OCRv3 OCR model on real license plate images.
+"""Validate license plate OCR model on real plate images.
 
 Downloads test plate images, runs YOLO detection to crop plate regions,
-then runs the PP-OCRv3 ONNX model with CTC decode. Prints an accuracy
+then runs the CCT-XS ONNX model with fixed-slot decode. Prints an accuracy
 report. This is a go/no-go gate before mobile integration.
 
 Usage:
@@ -24,75 +24,60 @@ EXPORT_DIR = SCRIPT_DIR.parent / "exports"
 ONNX_MODEL = EXPORT_DIR / "plate_ocr.onnx"
 YOLO_MODEL = SCRIPT_DIR / "runs" / "plate-detector-v1" / "weights" / "best.pt"
 
-# PP-OCRv3 English character dictionary (en_dict.txt)
-# Index 0 = CTC blank; indices 1-95 = printable ASCII (space through tilde)
-CHAR_DICT = [" "] + [chr(c) for c in range(33, 127)]  # space, then ! through ~
+ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+PAD_CHAR = "_"
 
-INPUT_HEIGHT = 48
-INPUT_WIDTH = 320
+INPUT_HEIGHT = 64
+INPUT_WIDTH = 128
 
 GO_NOGO_THRESHOLD = 0.70
 
 
 def preprocess_plate(image: np.ndarray) -> np.ndarray:
-    """Preprocess a plate crop for PP-OCRv3 inference.
+    """Preprocess a plate crop for CCT-XS inference.
 
     Args:
         image: BGR uint8 image (H, W, 3) from OpenCV
 
     Returns:
-        Float32 array of shape (1, 3, 48, 320) normalized to [-1, 1]
+        uint8 array of shape (1, 64, 128, 3) in RGB order
     """
+    import cv2
+
     h, w = image.shape[:2]
     if h <= 0 or w <= 0:
-        return np.zeros((1, 3, INPUT_HEIGHT, INPUT_WIDTH), dtype=np.float32) - 1.0
+        return np.zeros((1, INPUT_HEIGHT, INPUT_WIDTH, 3), dtype=np.uint8)
 
-    # Resize to height 48, maintain aspect ratio
-    scale = INPUT_HEIGHT / h
-    new_w = min(int(w * scale), INPUT_WIDTH)
-    import cv2
-    resized = cv2.resize(image, (new_w, INPUT_HEIGHT))
+    # Resize to exact 64x128 (no aspect ratio preservation)
+    resized = cv2.resize(image, (INPUT_WIDTH, INPUT_HEIGHT), interpolation=cv2.INTER_LINEAR)
 
-    # Pad to width 320
-    padded = np.zeros((INPUT_HEIGHT, INPUT_WIDTH, 3), dtype=np.uint8)
-    padded[:, :new_w, :] = resized
+    # BGR -> RGB
+    rgb = resized[:, :, ::-1].copy()
 
-    # BGR → RGB, normalize to [-1, 1], CHW format
-    rgb = padded[:, :, ::-1].astype(np.float32)
-    normalized = (rgb / 255.0 - 0.5) / 0.5
-    chw = normalized.transpose(2, 0, 1)
-    return chw[np.newaxis, ...]
+    return rgb[np.newaxis, ...].astype(np.uint8)
 
 
-def ctc_decode(logits: np.ndarray) -> tuple[str, float]:
-    """CTC greedy decode on logits of shape (1, seq_len, num_classes).
+def fixed_slot_decode(output: np.ndarray) -> tuple[str, float]:
+    """Fixed-slot argmax decode on output of shape (1, 9, 37).
 
     Returns:
         Tuple of (decoded_text, average_confidence)
     """
-    if logits.ndim == 3:
-        logits = logits[0]  # (seq_len, num_classes)
+    if output.ndim == 3:
+        output = output[0]  # (9, 37)
 
-    # Argmax per timestep
-    indices = logits.argmax(axis=1)
-
-    # Softmax for confidence
-    max_vals = logits.max(axis=1, keepdims=True)
-    exp_vals = np.exp(logits - max_vals)
-    softmax = exp_vals / exp_vals.sum(axis=1, keepdims=True)
-    probs = softmax[np.arange(len(indices)), indices]
-
-    # Collapse duplicates and remove blanks
     chars = []
     confidences = []
-    prev_idx = -1
-    for i, idx in enumerate(indices):
-        if idx != 0 and idx != prev_idx:
-            char_idx = idx - 1
-            if char_idx < len(CHAR_DICT):
-                chars.append(CHAR_DICT[char_idx])
-                confidences.append(float(probs[i]))
-        prev_idx = idx
+
+    for slot in range(output.shape[0]):
+        scores = output[slot]
+        max_idx = int(scores.argmax())
+        max_val = float(scores[max_idx])
+
+        ch = ALPHABET[max_idx]
+        if ch != PAD_CHAR:
+            chars.append(ch)
+            confidences.append(max_val)
 
     text = "".join(chars)
     avg_conf = float(np.mean(confidences)) if confidences else 0.0
@@ -116,11 +101,9 @@ def load_test_images(test_dir: Path | None) -> list[tuple[np.ndarray, str]]:
             if img_path.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp"):
                 img = cv2.imread(str(img_path))
                 if img is not None:
-                    # Use filename stem as "ground truth" hint
                     images.append((img, img_path.stem))
     else:
         print("No test directory provided or found. Creating synthetic test images...")
-        # Create simple synthetic plate images for basic testing
         for text in ["ABC1234", "XYZ789", "TEST123"]:
             img = np.ones((60, 300, 3), dtype=np.uint8) * 255
             cv2.putText(img, text, (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 3)
@@ -144,7 +127,6 @@ def run_evaluation(test_dir: Path | None, threshold: float) -> bool:
     print(f"  Input: {input_name}, shape={sess.get_inputs()[0].shape}")
     print(f"  Output: {sess.get_outputs()[0].name}, shape={sess.get_outputs()[0].shape}")
 
-    # Load YOLO detector if available
     detector = None
     if YOLO_MODEL.exists():
         try:
@@ -166,14 +148,11 @@ def run_evaluation(test_dir: Path | None, threshold: float) -> bool:
 
     total = 0
     correct = 0
-    results = []
 
     for img, label in images:
         crops = []
 
         if detector:
-            # Use YOLO to detect plate regions
-            import cv2
             det_results = detector(img, verbose=False)
             for r in det_results:
                 for box in r.boxes:
@@ -188,15 +167,13 @@ def run_evaluation(test_dir: Path | None, threshold: float) -> bool:
                             crops.append(crop)
 
         if not crops:
-            # Use full image as the plate crop
             crops = [img]
 
         for crop in crops:
             preprocessed = preprocess_plate(crop)
             output = sess.run(None, {input_name: preprocessed})
-            logits = output[0]
 
-            raw_text, confidence = ctc_decode(logits)
+            raw_text, confidence = fixed_slot_decode(output[0])
             normalized = normalize_plate(raw_text)
 
             total += 1
@@ -204,15 +181,8 @@ def run_evaluation(test_dir: Path | None, threshold: float) -> bool:
             if is_match:
                 correct += 1
 
-            status = "✓" if is_match else "✗" if normalize_plate(label) else "?"
+            status = "Y" if is_match else "N" if normalize_plate(label) else "?"
             print(f"{label:<30} {raw_text:<20} {normalized:<12} {confidence:>5.2f}  {status}")
-            results.append({
-                "label": label,
-                "raw_ocr": raw_text,
-                "normalized": normalized,
-                "confidence": confidence,
-                "match": is_match,
-            })
 
     print("-" * 70)
 
@@ -222,16 +192,16 @@ def run_evaluation(test_dir: Path | None, threshold: float) -> bool:
 
     passed = accuracy >= threshold
     if passed:
-        print(f"\n✓ PASSED — accuracy {accuracy:.1%} >= {threshold:.0%}")
+        print(f"\nPASSED — accuracy {accuracy:.1%} >= {threshold:.0%}")
     else:
-        print(f"\n✗ FAILED — accuracy {accuracy:.1%} < {threshold:.0%}")
+        print(f"\nFAILED — accuracy {accuracy:.1%} < {threshold:.0%}")
         print("  Do NOT proceed to mobile integration.")
 
     return passed
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate PP-OCRv3 on plate images")
+    parser = argparse.ArgumentParser(description="Evaluate plate OCR model")
     parser.add_argument("--test-dir", type=Path, help="Directory with test plate images")
     parser.add_argument(
         "--threshold", type=float, default=GO_NOGO_THRESHOLD,
