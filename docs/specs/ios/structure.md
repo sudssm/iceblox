@@ -12,7 +12,7 @@ ios/
 │   └── project.pbxproj
 ├── IceBloxApp/
 │   ├── IceBloxApp.swift           # App entry point (@main), landscape lock, splash→camera flow
-│   ├── ContentView.swift          # Root view, wires all managers
+│   ├── ContentView.swift          # Root view, wires all managers, session lifecycle, stop control, session summary card
 │   ├── SplashScreenView.swift     # Splash screen with app name and Start Camera button
 │   ├── Assets.xcassets/           # Asset catalog (icons, colors)
 │   │   ├── AppIcon.appiconset/    # 1024×1024 app icon
@@ -21,11 +21,8 @@ ios/
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
 │   ├── Views/
 │   │   ├── StatusBarView.swift        # Bottom status bar (connectivity, last detected, counts)
-│   │   ├── SessionSummaryView.swift   # Modal session summary shown after Stop Recording
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
 │   │   └── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
-│   ├── Session/
-│   │   └── RecordingSession.swift     # Session lifecycle state, timestamps, per-session counters
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer

@@ -26,7 +26,7 @@ android/
         │   ├── AndroidManifest.xml
         │   ├── java/com/iceblox/app/
         │   │   ├── MainActivity.kt         # Activity entry point, permission requests, splash→camera flow, notification channel
-        │   │   ├── MainViewModel.kt        # Pipeline state coordinator
+        │   │   ├── MainViewModel.kt        # Pipeline state coordinator, session lifecycle
         │   │   ├── camera/
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
         │   │   │   ├── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
@@ -50,18 +50,15 @@ android/
         │   │   ├── persistence/
         │   │   │   ├── OfflineQueueDao.kt  # Room DAO: insert, dequeue, delete, count
         │   │   │   ├── OfflineQueueDatabase.kt # Room database singleton
-        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng
+        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id
         │   │   ├── processing/
         │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, XOR pepper
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
         │   │   ├── debug/
         │   │   │   └── DebugLog.kt           # Singleton logger: ring buffer + StateFlow for UI
-        │   │   ├── session/
-        │   │   │   └── RecordingSession.kt # Session lifecycle state, timestamps, per-session counters
         │   │   └── ui/
-        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
-        │   │       ├── SessionSummaryDialog.kt # Modal session summary shown after Stop Recording
+        │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay

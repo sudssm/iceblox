@@ -50,9 +50,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Full-screen camera preview** — Landscape, camera fills screen
 - [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
 - [x] **Wire live data** — StatusBarView connected to FrameProcessor, APIClient, ConnectivityMonitor, LocationManager
-- [ ] **Recording session state** — Idle/recording/stopping/summary state machine with per-session timestamps and counters (REQ-M-3a, REQ-M-3d)
-- [ ] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
-- [ ] **Session summary sheet** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
+- [x] **Recording session state** — Session lifecycle with per-session timestamps and counters, managed in ContentView.swift (REQ-M-3a, REQ-M-3d)
+- [x] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
+- [x] **Session summary sheet** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
 
 ### Detection Pipeline
 - [x] **Core ML model bundled** — plate_detector.mlpackage: YOLOv8-nano trained on license plate dataset, exported with NMS pipeline (5.9 MB)
@@ -76,8 +76,8 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Location services** — LocationManager.swift: CLLocationManager, GPS attach, "No GPS" warning (REQ-M-16)
 - [x] **Batch upload** — APIClient.swift: URLSession POST, 10-plate or 30-second trigger, sends device timestamp in ISO 8601 (REQ-M-14)
 - [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
-- [ ] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
-- [ ] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
+- [x] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
+- [x] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
 - [x] **Retry logic** — RetryManager.swift: exponential backoff, max 10 retries (REQ-M-17)
 - [x] **429 handling** — Read Retry-After header, pause uploads (REQ-M-17a)
 - [x] **Connectivity monitor** — ConnectivityMonitor.swift: NWPathMonitor, flush queue on reconnect (REQ-M-14)
@@ -125,9 +125,9 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Full-screen camera preview** — Landscape Compose layout
 - [x] **Status bar** — Connectivity, last detected, plates count, targets count, GPS warning — wired to live pipeline state
 - [x] **Wire ViewModel** — MainViewModel with StateFlow, CameraScreen observes via collectAsState
-- [ ] **Recording session state** — Idle/recording/stopping/summary state machine with per-session timestamps and counters (REQ-M-3a, REQ-M-3d)
-- [ ] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
-- [ ] **Session summary dialog** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
+- [x] **Recording session state** — Session lifecycle with per-session timestamps and counters, managed in MainViewModel.kt (REQ-M-3a, REQ-M-3d)
+- [x] **Stop Recording button** — Persistent top-right control that halts new detections immediately (REQ-M-3b)
+- [x] **Session summary dialog** — Show plates seen, ICE vehicles identified, duration, and pending-sync note after stop (REQ-M-3c, REQ-M-14b)
 
 ### Detection Pipeline
 - [x] **TFLite model loading** — Load `.tflite` from assets, create `Interpreter` with thread count options, allocate reusable input `ByteBuffer` (640×640×3×float32) and output tensor buffer (REQ-M-5, REQ-M-6)
@@ -149,8 +149,8 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [x] **Location services** — FusedLocationProviderClient, GPS warning in status bar (REQ-M-16)
 - [x] **Batch upload** — OkHttp POST, 10-plate or 30-second trigger, sends device timestamp in ISO 8601 (REQ-M-14)
 - [x] **Match response handling** — Parse per-plate `matched` boolean, update target counter (REQ-M-14a)
-- [ ] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
-- [ ] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
+- [x] **Session attribution metadata** — Persist local session identifiers with queued hashes and route late match responses to the originating session (REQ-M-14a, REQ-M-15a)
+- [x] **Final flush on stop** — Trigger immediate upload attempt when user ends a session and surface provisional stats if uploads remain pending (REQ-M-14b)
 - [x] **Retry logic** — Exponential backoff on failure (REQ-M-17)
 - [x] **429 handling** — Read Retry-After, pause uploads (REQ-M-17a)
 - [x] **Connectivity monitor** — ConnectivityManager.NetworkCallback, flush on reconnect (REQ-M-14)

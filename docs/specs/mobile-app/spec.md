@@ -530,14 +530,11 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 ```
 ios/IceBloxApp/
 ├── IceBloxApp.swift                    # App entry point, landscape lock, splash→camera flow
-├── ContentView.swift                   # Root view, wires all managers
+├── ContentView.swift                   # Root view, wires all managers, session lifecycle, stop control, session summary card
 ├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
 ├── Views/
 │   ├── StatusBarView.swift             # Bottom status bar (online, last detected, counts)
-│   ├── SessionSummaryView.swift        # Modal session summary shown after Stop Recording
 │   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS, detection feed
-├── Session/
-│   └── RecordingSession.swift          # Session lifecycle state, timestamps, per-session counters
 ├── Camera/
 │   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
 │   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
@@ -632,15 +629,12 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 ```
 android/app/src/main/java/com/iceblox/app/
 ├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
-├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates
+├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates, session lifecycle
 ├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar (includes StatusBar, TestImagePreview composables)
-│   ├── SessionSummaryDialog.kt          # Modal session summary shown after Stop Recording
+│   ├── CameraScreen.kt                  # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
 │   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
 │   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
 │   └── theme/                           # Material 3 theme, colors, typography
-├── session/
-│   └── RecordingSession.kt              # Session lifecycle state, timestamps, per-session counters
 ├── camera/
 │   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
 │   ├── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
