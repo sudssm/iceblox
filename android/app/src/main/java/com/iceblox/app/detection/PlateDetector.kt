@@ -145,7 +145,11 @@ class PlateDetector(context: Context) {
         }
 
         if (detections.isNotEmpty()) {
-            DebugLog.d(TAG, "parseDetections: maxConf=%.4f, passed=${detections.size}/$NUM_DETECTIONS".format(maxConfSeen))
+            DebugLog.d(
+                TAG,
+                "parseDetections: maxConf=%.4f, passed=${detections.size}/$NUM_DETECTIONS"
+                    .format(maxConfSeen)
+            )
         }
         return detections
     }
