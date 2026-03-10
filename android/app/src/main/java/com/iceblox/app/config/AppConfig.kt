@@ -33,6 +33,13 @@ object AppConfig {
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6
 
+    const val ZOOM_RETRY_ENABLED = true
+    const val ZOOM_RETRY_COOLDOWN_MS = 2_000L
+    const val ZOOM_RETRY_MARGIN = 0.8f
+    const val ZOOM_RETRY_MAX_WAIT_MS = 500L
+    const val ZOOM_RETRY_MIN_RATIO = 1.5f
+    const val ZOOM_RETRY_LOW_CONFIDENCE_THRESHOLD = 0.4f
+
     const val SUBSCRIBE_ENDPOINT = "/api/v1/subscribe"
     const val SUBSCRIBE_INTERVAL_MS = 600_000L // 10 minutes
     const val DEFAULT_RADIUS_MILES = 100.0

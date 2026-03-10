@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import CoreVideo
+import UIKit
 
 struct FrameResult {
     let plateText: String
@@ -14,6 +15,18 @@ struct RawDetectionBox {
     let confidence: Float
     let imageWidth: Int
     let imageHeight: Int
+}
+
+struct FailedDetection {
+    let boundingBox: CGRect
+    let imageWidth: Int
+    let imageHeight: Int
+}
+
+struct DetectionResult {
+    let results: [FrameResult]
+    let rawBoxes: [RawDetectionBox]
+    let failedDetections: [FailedDetection]
 }
 
 enum DetectionState {
@@ -43,7 +56,13 @@ final class FrameProcessor: ObservableObject {
     @Published var detectionFeed: [DetectionFeedEntry] = []
     @Published var fps: Double = 0
 
+    @Published var zoomRetryFrozen = false
+    @Published var frozenPreviewImage: UIImage?
+
     var isAcceptingDetections = true
+    var zoomController: ZoomController?
+    var isThrottled = false
+    var debugMode = false
 
     private var frameCount = 0
     private var fpsFrameCount = 0
@@ -51,6 +70,11 @@ final class FrameProcessor: ObservableObject {
     private var variantHashMap: [String: String] = [:]
     private var pendingVariants: [String: Int] = [:]
     private let variantHashQueue = DispatchQueue(label: "com.iceblox.variantHashMap")
+
+    private var awaitingZoomedFrame = false
+    private var zoomRetryStartTime: Date?
+    private var framesToSkipAfterZoom = 0
+    private let ciContext = CIContext()
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient, sessionID: String) {
         self.offlineQueue = offlineQueue
@@ -63,7 +87,31 @@ final class FrameProcessor: ObservableObject {
     func processFrame(_ sampleBuffer: CMSampleBuffer, skipCount: Int) {
         guard isAcceptingDetections else { return }
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        processFrame(pixelBuffer, skipCount: skipCount)
+
+        if awaitingZoomedFrame {
+            if framesToSkipAfterZoom > 0 {
+                framesToSkipAfterZoom -= 1
+                return
+            }
+            processZoomedFrame(pixelBuffer)
+            return
+        }
+
+        frameCount += 1
+        if frameCount % (skipCount + 1) != 0 { return }
+
+        updateFPS()
+
+        let detection = detectAndProcess(pixelBuffer: pixelBuffer)
+
+        if !detection.failedDetections.isEmpty {
+            attemptZoomRetry(failedDetections: detection.failedDetections, sampleBuffer: sampleBuffer)
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.currentDetections = detection.results
+            self?.rawDetections = detection.rawBoxes
+        }
     }
 
     func processFrame(_ pixelBuffer: CVPixelBuffer, skipCount: Int) {
@@ -73,6 +121,15 @@ final class FrameProcessor: ObservableObject {
 
         updateFPS()
 
+        let detection = detectAndProcess(pixelBuffer: pixelBuffer)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.currentDetections = detection.results
+            self?.rawDetections = detection.rawBoxes
+        }
+    }
+
+    private func detectAndProcess(pixelBuffer: CVPixelBuffer) -> DetectionResult {
         let detections = detector.detect(pixelBuffer: pixelBuffer)
         DebugLog.shared.d("FrameProcessor", "\(detections.count) raw detections")
 
@@ -88,6 +145,91 @@ final class FrameProcessor: ObservableObject {
         }
 
         var results: [FrameResult] = []
+        var failedDetections: [FailedDetection] = []
+
+        for detection in detections {
+            guard isAcceptingDetections else { break }
+            guard let cropped = PlateDetector.cropPlateRegion(
+                from: detection.pixelBuffer,
+                rect: detection.boundingBox
+            ) else { continue }
+
+            if let rawText = PlateOCR.recognizeText(in: cropped) {
+                guard let normalized = PlateNormalizer.normalize(rawText) else { continue }
+                guard let result = recordPlate(
+                    rawText: rawText,
+                    normalizedText: normalized,
+                    boundingBox: detection.boundingBox,
+                    confidence: detection.confidence
+                ) else { continue }
+                results.append(result)
+            } else {
+                failedDetections.append(FailedDetection(
+                    boundingBox: detection.boundingBox,
+                    imageWidth: imageWidth,
+                    imageHeight: imageHeight
+                ))
+            }
+        }
+
+        return DetectionResult(results: results, rawBoxes: rawBoxes, failedDetections: failedDetections)
+    }
+
+    private func attemptZoomRetry(
+        failedDetections: [FailedDetection],
+        sampleBuffer: CMSampleBuffer
+    ) {
+        guard let zoomController,
+              zoomController.isZoomRetryAvailable,
+              !zoomController.isOnCooldown(),
+              !isThrottled else { return }
+
+        guard zoomController.bestCandidateIndex(detections: failedDetections) != nil else { return }
+
+        let frozenImage = debugMode ? nil : imageFromSampleBuffer(sampleBuffer)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.frozenPreviewImage = frozenImage
+            self?.zoomRetryFrozen = true
+        }
+
+        guard zoomController.zoomIn() else {
+            DispatchQueue.main.async { [weak self] in
+                self?.zoomRetryFrozen = false
+                self?.frozenPreviewImage = nil
+            }
+            return
+        }
+
+        awaitingZoomedFrame = true
+        zoomRetryStartTime = Date()
+        framesToSkipAfterZoom = 2
+        DebugLog.shared.d("FrameProcessor", "Zoom retry: zooming to \(zoomController.maxOpticalZoom)x")
+    }
+
+    private func processZoomedFrame(_ pixelBuffer: CVPixelBuffer) {
+        defer {
+            awaitingZoomedFrame = false
+            zoomRetryStartTime = nil
+            zoomController?.restoreZoom()
+            DispatchQueue.main.async { [weak self] in
+                self?.zoomRetryFrozen = false
+                self?.frozenPreviewImage = nil
+            }
+        }
+
+        if let startTime = zoomRetryStartTime {
+            let elapsedMs = Date().timeIntervalSince(startTime) * 1000
+            if elapsedMs > Double(AppConfig.zoomRetryMaxWaitMs) {
+                DebugLog.shared.w("FrameProcessor", "Zoom retry timed out after \(Int(elapsedMs))ms")
+                return
+            }
+        }
+
+        let detections = detector.detect(pixelBuffer: pixelBuffer)
+        DebugLog.shared.d("FrameProcessor", "Zoom retry: \(detections.count) detections in zoomed frame")
+
+        var zoomedResults: [FrameResult] = []
 
         for detection in detections {
             guard isAcceptingDetections else { break }
@@ -103,16 +245,28 @@ final class FrameProcessor: ObservableObject {
                 normalizedText: normalized,
                 boundingBox: detection.boundingBox,
                 confidence: detection.confidence
-            ) else {
-                continue
-            }
-            results.append(result)
+            ) else { continue }
+
+            zoomedResults.append(result)
+            zoomController?.recordSuccess()
+            DebugLog.shared.d("FrameProcessor", "Zoom retry SUCCESS: \(normalized)")
         }
 
-        DispatchQueue.main.async { [weak self] in
-            self?.currentDetections = results
-            self?.rawDetections = rawBoxes
+        if !zoomedResults.isEmpty {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                var current = self.currentDetections
+                current.append(contentsOf: zoomedResults)
+                self.currentDetections = current
+            }
         }
+    }
+
+    private func imageFromSampleBuffer(_ sampleBuffer: CMSampleBuffer) -> UIImage? {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 
     func processSimulatedPlate(_ plateText: String, imageWidth: Int, imageHeight: Int) {

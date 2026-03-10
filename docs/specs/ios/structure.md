@@ -28,8 +28,10 @@ ios/
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   │   ├── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue
-│   │   └── SimulatorCamera.swift      # Timer-driven frame generator for simulator testing (simulator-only)
+│   │   ├── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue → zoom retry on failed OCR
+│   │   ├── PreviewFreezer.swift       # Frozen-frame overlay for zoom retry UX (UIImageView over preview layer)
+│   │   ├── SimulatorCamera.swift      # Timer-driven frame generator for simulator testing (simulator-only)
+│   │   └── ZoomController.swift       # Optical zoom detection, eligibility check, zoom-capture-restore
 │   ├── Detection/
 │   │   ├── PlateDetector.swift        # Core ML inference, bounding box extraction
 │   │   └── PlateOCR.swift             # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped regions
@@ -50,7 +52,7 @@ ios/
 │   ├── Location/
 │   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning
 │   ├── Config/
-│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL
+│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL, zoom retry constants
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
 │   ├── Debug/
 │   │   └── DebugLog.swift             # Singleton logger: ring buffer + @Published entries for UI
@@ -61,7 +63,8 @@ ios/
     ├── IceBloxAppTests.swift          # Unit tests
     ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
     ├── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
-    └── LookalikeExpanderTests.swift   # Lookalike character expansion tests (REQ-M-12a)
+    ├── LookalikeExpanderTests.swift   # Lookalike character expansion tests (REQ-M-12a)
+    └── ZoomControllerTests.swift      # Zoom eligibility, safe zoom ratio, best candidate selection tests
 ```
 
 ## Architecture

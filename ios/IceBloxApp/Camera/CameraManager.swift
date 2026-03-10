@@ -7,6 +7,8 @@ final class CameraManager: NSObject, ObservableObject {
     private let sessionQueue = DispatchQueue(label: "camera.session")
     private let frameQueue = DispatchQueue(label: "camera.frames")
     private var videoOutput: AVCaptureVideoDataOutput?
+    private(set) var captureDevice: AVCaptureDevice?
+    private(set) var zoomController: ZoomController?
 
     @Published var isRunning = false
     @Published var permissionGranted = false
@@ -20,6 +22,7 @@ final class CameraManager: NSObject, ObservableObject {
 
     var frameProcessor: FrameProcessor? {
         didSet {
+            frameProcessor?.zoomController = zoomController
             #if targetEnvironment(simulator)
             simulatorCamera?.frameProcessor = frameProcessor
             #endif
@@ -102,7 +105,7 @@ final class CameraManager: NSObject, ObservableObject {
         guard session.inputs.isEmpty else { return }
 
         session.beginConfiguration()
-        session.sessionPreset = .hd1920x1080
+        session.sessionPreset = .hd4K3840x2160
 
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: camera) else {
@@ -125,6 +128,9 @@ final class CameraManager: NSObject, ObservableObject {
         }
 
         session.commitConfiguration()
+
+        captureDevice = camera
+        zoomController = ZoomController(device: camera)
     }
 
     private func updateVideoOrientation() {
@@ -166,6 +172,7 @@ final class CameraManager: NSObject, ObservableObject {
 
 extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        frameProcessor?.isThrottled = isThrottled
         frameProcessor?.processFrame(sampleBuffer, skipCount: currentFrameSkip)
     }
 }
