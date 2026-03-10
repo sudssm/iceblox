@@ -8,6 +8,7 @@ import androidx.camera.core.Camera
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.sqrt
 
 class ZoomController(context: Context) {
@@ -42,74 +43,62 @@ class ZoomController(context: Context) {
         return onCooldown
     }
 
-    fun isPlateEligibleForZoom(boundingBox: RectF, imageWidth: Int, imageHeight: Int): Boolean {
+    fun maxSafeZoomRatio(boundingBox: RectF, imageWidth: Int, imageHeight: Int): Float {
         if (maxOpticalZoom <= 1.0f) {
-            DebugLog.d(TAG, "Eligibility: no optical zoom (maxOpticalZoom=$maxOpticalZoom)")
-            return false
+            DebugLog.d(TAG, "SafeZoom: no optical zoom (maxOpticalZoom=$maxOpticalZoom)")
+            return 0f
         }
-        val w = imageWidth.toFloat()
-        val h = imageHeight.toFloat()
-        if (w <= 0f || h <= 0f) return false
-
-        val nx0 = boundingBox.left / w
-        val ny0 = boundingBox.top / h
-        val nx1 = boundingBox.right / w
-        val ny1 = boundingBox.bottom / h
-
-        val limit = 0.5f * (1.0f / maxOpticalZoom) * AppConfig.ZOOM_RETRY_MARGIN
-
-        val corners = arrayOf(
-            nx0 to ny0, nx1 to ny0, nx0 to ny1, nx1 to ny1
-        )
-        for ((cx, cy) in corners) {
-            if (abs(cx - 0.5f) > limit || abs(cy - 0.5f) > limit) {
-                DebugLog.d(TAG, "Eligibility FAIL: corner(${String.format("%.3f", cx)}, ${String.format("%.3f", cy)}) outside limit=${"%.3f".format(limit)} (dist from center: dx=${"%.3f".format(abs(cx - 0.5f))}, dy=${"%.3f".format(abs(cy - 0.5f))})")
-                return false
-            }
+        val ratio = safeZoomRatio(boundingBox, imageWidth, imageHeight, maxOpticalZoom, AppConfig.ZOOM_RETRY_MARGIN)
+        if (ratio < AppConfig.ZOOM_RETRY_MIN_RATIO) {
+            DebugLog.d(TAG, "SafeZoom FAIL: safeRatio=${"%.2f".format(ratio)}x < min=${AppConfig.ZOOM_RETRY_MIN_RATIO}x (box=[${String.format("%.1f", boundingBox.left)},${String.format("%.1f", boundingBox.top)},${String.format("%.1f", boundingBox.right)},${String.format("%.1f", boundingBox.bottom)}] in ${imageWidth}x${imageHeight})")
+            return 0f
         }
-        DebugLog.d(TAG, "Eligibility PASS: box=[${String.format("%.1f", boundingBox.left)},${String.format("%.1f", boundingBox.top)},${String.format("%.1f", boundingBox.right)},${String.format("%.1f", boundingBox.bottom)}] in ${imageWidth}x${imageHeight}, limit=${"%.3f".format(limit)}")
-        return true
+        DebugLog.d(TAG, "SafeZoom PASS: ${"%.2f".format(ratio)}x (max=${maxOpticalZoom}x, box=[${String.format("%.1f", boundingBox.left)},${String.format("%.1f", boundingBox.top)},${String.format("%.1f", boundingBox.right)},${String.format("%.1f", boundingBox.bottom)}] in ${imageWidth}x${imageHeight})")
+        return ratio
     }
 
-    fun bestCandidateIndex(
+    fun bestCandidate(
         detections: List<Triple<RectF, Int, Int>>
-    ): Int? {
-        DebugLog.d(TAG, "bestCandidateIndex: evaluating ${detections.size} failed detections")
+    ): Pair<Int, Float>? {
+        DebugLog.d(TAG, "bestCandidate: evaluating ${detections.size} failed detections")
         var bestIdx: Int? = null
         var bestDist = Float.MAX_VALUE
+        var bestRatio = 0f
 
         for ((i, det) in detections.withIndex()) {
             val (box, imgW, imgH) = det
-            if (!isPlateEligibleForZoom(box, imgW, imgH)) {
+            val ratio = maxSafeZoomRatio(box, imgW, imgH)
+            if (ratio <= 0f) {
                 DebugLog.d(TAG, "  candidate[$i] NOT eligible")
                 continue
             }
             val cx = (box.centerX() / imgW.toFloat()) - 0.5f
             val cy = (box.centerY() / imgH.toFloat()) - 0.5f
             val dist = sqrt(cx * cx + cy * cy)
-            DebugLog.d(TAG, "  candidate[$i] eligible, distFromCenter=${"%.4f".format(dist)}")
+            DebugLog.d(TAG, "  candidate[$i] eligible, safeZoom=${"%.2f".format(ratio)}x, distFromCenter=${"%.4f".format(dist)}")
             if (dist < bestDist) {
                 bestDist = dist
                 bestIdx = i
+                bestRatio = ratio
             }
         }
         if (bestIdx != null) {
-            DebugLog.d(TAG, "Best candidate: [$bestIdx] dist=${"%.4f".format(bestDist)}")
-        } else {
-            DebugLog.d(TAG, "No eligible candidates for zoom retry")
+            DebugLog.d(TAG, "Best candidate: [$bestIdx] dist=${"%.4f".format(bestDist)}, zoom=${"%.2f".format(bestRatio)}x")
+            return Pair(bestIdx!!, bestRatio)
         }
-        return bestIdx
+        DebugLog.d(TAG, "No eligible candidates for zoom retry")
+        return null
     }
 
-    fun zoomIn(): Boolean {
+    fun zoomIn(ratio: Float): Boolean {
         val cam = camera
         if (cam == null) {
             DebugLog.w(TAG, "zoomIn: camera is null, cannot zoom")
             return false
         }
         return try {
-            DebugLog.d(TAG, "zoomIn: setting zoom ratio to ${maxOpticalZoom}x (attempt #${zoomRetryAttempts + 1})")
-            cam.cameraControl.setZoomRatio(maxOpticalZoom)
+            DebugLog.d(TAG, "zoomIn: setting zoom ratio to ${"%.2f".format(ratio)}x (attempt #${zoomRetryAttempts + 1})")
+            cam.cameraControl.setZoomRatio(ratio)
             lastRetryTime = System.currentTimeMillis()
             zoomRetryAttempts++
             DebugLog.d(TAG, "zoomIn: SUCCESS, total attempts=$zoomRetryAttempts, successes=$zoomRetrySuccesses")
@@ -195,34 +184,35 @@ class ZoomController(context: Context) {
     companion object {
         private const val TAG = "ZoomController"
 
-        fun isPlateEligible(
+        fun safeZoomRatio(
             boundingBox: RectF,
             imageWidth: Int,
             imageHeight: Int,
             maxOpticalZoom: Float,
             margin: Float
-        ): Boolean {
-            if (maxOpticalZoom <= 1.0f) return false
+        ): Float {
+            if (maxOpticalZoom <= 1.0f) return 0f
             val w = imageWidth.toFloat()
             val h = imageHeight.toFloat()
-            if (w <= 0f || h <= 0f) return false
+            if (w <= 0f || h <= 0f) return 0f
 
             val nx0 = boundingBox.left / w
             val ny0 = boundingBox.top / h
             val nx1 = boundingBox.right / w
             val ny1 = boundingBox.bottom / h
 
-            val limit = 0.5f * (1.0f / maxOpticalZoom) * margin
-
+            var maxCornerDist = 0f
             val corners = arrayOf(
                 nx0 to ny0, nx1 to ny0, nx0 to ny1, nx1 to ny1
             )
             for ((cx, cy) in corners) {
-                if (abs(cx - 0.5f) > limit || abs(cy - 0.5f) > limit) {
-                    return false
-                }
+                val d = maxOf(abs(cx - 0.5f), abs(cy - 0.5f))
+                if (d > maxCornerDist) maxCornerDist = d
             }
-            return true
+
+            if (maxCornerDist <= 0f) return maxOpticalZoom
+            val safeZoom = (0.5f * margin) / maxCornerDist
+            return min(maxOpticalZoom, safeZoom)
         }
     }
 }
