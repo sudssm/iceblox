@@ -1,6 +1,7 @@
 package com.iceblox.app.camera
 
 import android.graphics.Bitmap
+import com.iceblox.app.debug.DebugLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -11,6 +12,7 @@ class PreviewFreezer {
     val isFrozen: Boolean get() = _freezeState.value !is FreezeState.Unfrozen
 
     fun freeze(bitmap: Bitmap?, debugMode: Boolean) {
+        DebugLog.d(TAG, "freeze: debugMode=$debugMode, hasOverlayBitmap=${bitmap != null && !debugMode}")
         _freezeState.value = FreezeState.Frozen(
             overlayBitmap = if (!debugMode) bitmap else null,
             showIndicator = true
@@ -18,6 +20,7 @@ class PreviewFreezer {
     }
 
     fun unfreeze() {
+        DebugLog.d(TAG, "unfreeze")
         _freezeState.value = FreezeState.Unfrozen
     }
 
@@ -27,5 +30,9 @@ class PreviewFreezer {
             val overlayBitmap: Bitmap?,
             val showIndicator: Boolean
         ) : FreezeState()
+    }
+
+    companion object {
+        private const val TAG = "PreviewFreezer"
     }
 }

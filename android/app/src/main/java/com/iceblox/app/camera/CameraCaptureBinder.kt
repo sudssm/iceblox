@@ -27,7 +27,8 @@ object CameraCaptureBinder {
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
         analyzer: ImageAnalysis.Analyzer?,
-        analysisExecutor: Executor
+        analysisExecutor: Executor,
+        onCameraBound: ((Camera) -> Unit)? = null
     ) {
         withCameraProvider(context) { cameraProvider ->
             val preview = Preview.Builder()
@@ -45,6 +46,7 @@ object CameraCaptureBinder {
                 imageAnalysis
             )
             DebugLog.d(TAG, "Preview + analysis bound")
+            camera?.let { onCameraBound?.invoke(it) }
         }
     }
 

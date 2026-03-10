@@ -57,10 +57,13 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
         try {
             if (zoomRetryState == ZoomRetryState.AWAITING_FRAME) {
                 if (framesToSkipAfterZoom > 0) {
+                    DebugLog.d(TAG, "Zoom retry: skipping frame for AF settle (remaining=$framesToSkipAfterZoom)")
                     framesToSkipAfterZoom--
                     return
                 }
+                DebugLog.d(TAG, "Zoom retry: capturing zoomed frame (elapsed=${System.currentTimeMillis() - zoomRetryStartTime}ms)")
                 val bitmap = extractBitmap(imageProxy)
+                DebugLog.d(TAG, "Zoom retry: zoomed frame size=${bitmap.width}x${bitmap.height}")
                 processZoomedFrame(bitmap)
                 return
             }
@@ -137,14 +140,35 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
         failedDetections: List<Triple<RectF, Int, Int>>,
         bitmap: Bitmap
     ) {
-        val zc = zoomController ?: return
-        if (!zc.isZoomRetryAvailable || zc.isOnCooldown() || isThrottled) return
+        val zc = zoomController
+        if (zc == null) {
+            DebugLog.d(TAG, "Zoom retry: skipped — zoomController is null")
+            return
+        }
+        if (!zc.isZoomRetryAvailable) {
+            DebugLog.d(TAG, "Zoom retry: skipped — not available (maxOpticalZoom=${zc.maxOpticalZoom})")
+            return
+        }
+        if (zc.isOnCooldown()) {
+            return
+        }
+        if (isThrottled) {
+            DebugLog.d(TAG, "Zoom retry: skipped — throttled")
+            return
+        }
 
-        val bestIdx = zc.bestCandidateIndex(failedDetections) ?: return
+        DebugLog.d(TAG, "Zoom retry: ${failedDetections.size} failed OCR detections, evaluating eligibility...")
+        val bestIdx = zc.bestCandidateIndex(failedDetections)
+        if (bestIdx == null) {
+            DebugLog.d(TAG, "Zoom retry: skipped — no eligible candidates")
+            return
+        }
 
+        DebugLog.d(TAG, "Zoom retry: TRIGGERING — freezing preview, debug=$debugMode")
         previewFreezer?.freeze(if (!debugMode) bitmap else null, debugMode)
 
         if (!zc.zoomIn()) {
+            DebugLog.w(TAG, "Zoom retry: zoomIn() failed, unfreezing")
             previewFreezer?.unfreeze()
             return
         }
@@ -152,27 +176,35 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
         framesToSkipAfterZoom = 2
         zoomRetryStartTime = System.currentTimeMillis()
         zoomRetryState = ZoomRetryState.AWAITING_FRAME
-        DebugLog.d(TAG, "Zoom retry: zooming to ${zc.maxOpticalZoom}x")
+        DebugLog.d(TAG, "Zoom retry: ACTIVE — zooming to ${zc.maxOpticalZoom}x, skipping 2 frames for AF settle")
     }
 
     private fun processZoomedFrame(bitmap: Bitmap) {
         try {
             val elapsedMs = System.currentTimeMillis() - zoomRetryStartTime
             if (elapsedMs > AppConfig.ZOOM_RETRY_MAX_WAIT_MS) {
-                DebugLog.w(TAG, "Zoom retry timed out after ${elapsedMs}ms")
+                DebugLog.w(TAG, "Zoom retry TIMED OUT after ${elapsedMs}ms (max=${AppConfig.ZOOM_RETRY_MAX_WAIT_MS}ms)")
                 return
             }
 
+            DebugLog.d(TAG, "Zoom retry: processing zoomed frame (${elapsedMs}ms since zoom started)")
             val detections = detector.detect(bitmap)
-            DebugLog.d(TAG, "Zoom retry: ${detections.size} detections in zoomed frame")
+            DebugLog.d(TAG, "Zoom retry: ${detections.size} detections in zoomed frame (${bitmap.width}x${bitmap.height})")
 
             val zoomedPlates = mutableListOf<ProcessedPlate>()
 
-            for (detection in detections) {
+            for ((i, detection) in detections.withIndex()) {
                 val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
-                    ?: continue
+                if (ocrResult == null) {
+                    DebugLog.d(TAG, "Zoom retry: detection[$i] OCR returned null (box=${detection.boundingBox})")
+                    continue
+                }
+                DebugLog.d(TAG, "Zoom retry: detection[$i] OCR raw='${ocrResult.text}' conf=${ocrResult.confidence}")
                 val normalized = PlateNormalizer.normalize(ocrResult.text)
-                    ?: continue
+                if (normalized == null) {
+                    DebugLog.d(TAG, "Zoom retry: detection[$i] normalize failed for '${ocrResult.text}'")
+                    continue
+                }
                 zoomedPlates.add(
                     ProcessedPlate(
                         normalizedText = normalized,
@@ -181,13 +213,17 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                     )
                 )
                 zoomController?.recordSuccess()
-                DebugLog.d(TAG, "Zoom retry SUCCESS: $normalized")
+                DebugLog.d(TAG, "Zoom retry SUCCESS: '$normalized' (raw='${ocrResult.text}', conf=${detection.confidence})")
             }
 
             if (zoomedPlates.isNotEmpty()) {
+                DebugLog.d(TAG, "Zoom retry: reporting ${zoomedPlates.size} plates")
                 onPlatesDetected(zoomedPlates)
+            } else {
+                DebugLog.d(TAG, "Zoom retry: no plates extracted from zoomed frame")
             }
         } finally {
+            DebugLog.d(TAG, "Zoom retry: COMPLETE — restoring zoom to 1.0x and unfreezing preview")
             zoomRetryState = ZoomRetryState.IDLE
             zoomController?.restoreZoom()
             previewFreezer?.unfreeze()

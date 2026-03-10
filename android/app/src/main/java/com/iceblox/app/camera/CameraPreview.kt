@@ -39,12 +39,11 @@ fun CameraPreview(
                     lifecycleOwner = lifecycleOwner,
                     previewView = previewView,
                     analyzer = analyzer,
-                    analysisExecutor = analysisExecutor
+                    analysisExecutor = analysisExecutor,
+                    onCameraBound = { camera ->
+                        zoomController?.setCamera(camera)
+                    }
                 )
-
-                CameraCaptureBinder.camera?.let { camera ->
-                    zoomController?.setCamera(camera)
-                }
             }
         },
         modifier = modifier
