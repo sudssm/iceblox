@@ -114,7 +114,14 @@ class ApiClient(
             return
         }
 
-        queueDao.deleteOlderThan(System.currentTimeMillis() - AppConfig.UPLOAD_TIMEOUT_MS)
+        val cutoff = System.currentTimeMillis() - AppConfig.UPLOAD_TIMEOUT_MS
+        val expired = queueDao.selectOlderThan(cutoff)
+        if (expired.isNotEmpty()) {
+            queueDao.deleteOlderThan(cutoff)
+            for (entry in expired) {
+                onPlateSent(entry.plateHash, false, entry.sessionId)
+            }
+        }
         onQueueDepthChanged(queueDao.count())
 
         val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.PLATES_ENDPOINT}"
@@ -155,21 +162,24 @@ class ApiClient(
                             retryManager.reset()
                             queueDao.deleteByIds(entries.map { it.id })
                             onQueueDepthChanged(queueDao.count())
+                            val matchResults = BooleanArray(entries.size)
                             response.body?.string()?.let { body ->
                                 try {
                                     val responseJson = JSONObject(body)
                                     val results = responseJson.optJSONArray("results") ?: return@let
                                     for (i in 0 until results.length().coerceAtMost(entries.size)) {
-                                        val matched = results.getJSONObject(i).optBoolean("matched", false)
-                                        val entry = entries[i]
-                                        if (matched) {
-                                            onTargetMatched(entry.sessionId)
-                                        }
-                                        onPlateSent(entry.plateHash, matched, entry.sessionId)
+                                        matchResults[i] = results.getJSONObject(i).optBoolean("matched", false)
                                     }
                                 } catch (e: Exception) {
                                     DebugLog.w(TAG, "Failed to parse response: ${e.message}")
                                 }
+                            }
+                            for (i in entries.indices) {
+                                val entry = entries[i]
+                                if (matchResults[i]) {
+                                    onTargetMatched(entry.sessionId)
+                                }
+                                onPlateSent(entry.plateHash, matchResults[i], entry.sessionId)
                             }
                         }
 

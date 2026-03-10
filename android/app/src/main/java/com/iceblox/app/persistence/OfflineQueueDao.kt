@@ -30,6 +30,9 @@ interface OfflineQueueDao {
     @Query("DELETE FROM offline_queue")
     suspend fun deleteAll()
 
+    @Query("SELECT * FROM offline_queue WHERE timestamp < :cutoffMs")
+    suspend fun selectOlderThan(cutoffMs: Long): List<OfflineQueueEntry>
+
     @Query("DELETE FROM offline_queue WHERE timestamp < :cutoffMs")
     suspend fun deleteOlderThan(cutoffMs: Long)
 }

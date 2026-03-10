@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +70,10 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasLocationPermission = permissions.values.any { it }
+        if (hasLocationPermission) {
+            val vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+            vm.locationProvider.startUpdates()
+        }
         requestNotificationPermission()
     }
 
@@ -114,11 +119,22 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 } else if (showReport) {
+                    LaunchedEffect(hasLocationPermission) {
+                        if (!hasLocationPermission) {
+                            requestLocationPermission()
+                        }
+                    }
                     val reportViewModel: MainViewModel = viewModel()
+                    LaunchedEffect(hasLocationPermission) {
+                        if (hasLocationPermission) {
+                            reportViewModel.locationProvider.startUpdates()
+                        }
+                    }
                     val location by reportViewModel.locationProvider.currentLocation.collectAsState()
                     ReportICEScreen(
                         latitude = location?.latitude ?: 0.0,
                         longitude = location?.longitude ?: 0.0,
+                        hasLocation = location != null,
                         onBack = { showReport = false }
                     )
                 } else if (showSettings) {
