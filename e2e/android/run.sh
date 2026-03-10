@@ -19,6 +19,7 @@ source "$SCRIPT_DIR/tests/test_batch_upload.sh"
 source "$SCRIPT_DIR/tests/test_match_debug_label.sh"
 source "$SCRIPT_DIR/tests/test_queued_clears.sh"
 source "$SCRIPT_DIR/tests/test_device_registration.sh"
+source "$SCRIPT_DIR/tests/test_report_submission.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -68,6 +69,9 @@ run_test_batch_upload
 run_test_match_debug_label
 run_test_queued_clears
 run_test_device_registration
+run_test_report_api
+run_test_report_validation
+run_test_report_app_ui
 
 echo ""
 echo "=========================================="

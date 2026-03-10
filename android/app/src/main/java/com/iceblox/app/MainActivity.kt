@@ -35,6 +35,7 @@ import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.service.BackgroundCaptureService
 import com.iceblox.app.ui.CameraScreen
+import com.iceblox.app.ui.ReportICEScreen
 import com.iceblox.app.ui.SplashScreen
 import com.iceblox.app.ui.theme.IceBloxTheme
 
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private var hasCameraPermission by mutableStateOf(false)
     private var hasLocationPermission by mutableStateOf(false)
     private var showCamera by mutableStateOf(false)
+    private var showReport by mutableStateOf(false)
     private var isTestMode = false
 
     private val cameraPermissionLauncher = registerForActivityResult(
@@ -106,6 +108,14 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                } else if (showReport) {
+                    val reportViewModel: MainViewModel = viewModel()
+                    val location by reportViewModel.locationProvider.currentLocation.collectAsState()
+                    ReportICEScreen(
+                        latitude = location?.latitude ?: 0.0,
+                        longitude = location?.longitude ?: 0.0,
+                        onBack = { showReport = false }
+                    )
                 } else {
                     val splashViewModel: MainViewModel = viewModel()
                     val splashQueueDepth by splashViewModel.queueDepth.collectAsState()
@@ -120,6 +130,7 @@ class MainActivity : ComponentActivity() {
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                         },
+                        onReportICE = { showReport = true },
                         queueDepth = splashQueueDepth,
                         onClearQueue = { splashViewModel.clearUploadQueue() }
                     )

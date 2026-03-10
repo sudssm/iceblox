@@ -4,6 +4,7 @@ object AppConfig {
     const val SERVER_BASE_URL = "http://10.0.2.2:8080"
     const val PLATES_ENDPOINT = "/api/v1/plates"
     const val DEVICES_ENDPOINT = "/api/v1/devices"
+    const val REPORTS_ENDPOINT = "/api/v1/reports"
 
     const val NOTIFICATION_CHANNEL_ID = "plate_alerts"
     const val NOTIFICATION_CHANNEL_NAME = "Plate Alerts"

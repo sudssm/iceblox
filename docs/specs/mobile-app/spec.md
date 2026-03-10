@@ -27,7 +27,7 @@ The app MUST use a resolution sufficient for plate detection at distances of 3â€
 
 #### REQ-M-3: Splash Screen and Camera Start
 
-When the app is opened, it MUST display a splash screen with the app name and a "Start Camera" button. Camera capture and plate detection MUST begin when the user taps the button. This provides an explicit user-initiated start rather than immediately activating the camera on launch.
+When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, and a "Report ICE Activity" button (REQ-M-60). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
 #### REQ-M-3a: Recording Session Lifecycle
 
@@ -460,7 +460,9 @@ Plaintext plate text MUST never leave the device via any channel: network, logs,
 
 #### REQ-M-41: No Image Exfiltration
 
-Camera frames and still images MUST never leave the device. In production mode, images MUST NOT be saved to disk at all.
+Camera frames and still images from the plate detection pipeline MUST never leave the device. In production mode, detection pipeline images MUST NOT be saved to disk at all.
+
+**Exception:** Photos explicitly captured by the user via the ICE vehicle report form (REQ-M-61) are user-initiated and MAY be uploaded to the server as part of the report submission. This is a deliberate user action, not an automated exfiltration of detection pipeline imagery.
 
 #### REQ-M-42: Pepper Provisioning
 
@@ -490,6 +492,35 @@ Background behavior is platform-specific:
 - **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
+
+### ICE Vehicle Reporting
+
+#### REQ-M-60: Splash Screen Report Button
+
+The splash screen MUST include a "Report ICE Activity" button styled with a red background and white text, positioned below the "Start Camera" button. Tapping this button MUST open the ICE vehicle report form (REQ-M-61).
+
+On iOS, the report form is presented as a modal sheet. On Android, it navigates to a full-screen composable.
+
+#### REQ-M-61: ICE Vehicle Report Form
+
+The app MUST provide a report form with the following fields:
+
+- **Photo** (required): A camera capture button that launches the device camera to take a photo. The captured photo is displayed as a preview in the form.
+- **Report Location** (required): An interactive map showing the user's current GPS location with a draggable/tappable pin. The user can adjust the pin position. Location defaults to the device's current coordinates.
+- **Description** (required): A text field for describing the ICE activity observed (e.g., "What did you see?").
+- **Plate Number** (optional): A text field for entering the vehicle's license plate number. Input is auto-uppercased.
+
+The form MUST include a "Submit Report" button that is disabled until both a photo is captured and a description is entered.
+
+**Submission behavior:**
+- On submit, the form MUST show a loading indicator and disable the submit button.
+- The app MUST send a multipart POST to `POST /api/v1/reports` (REQ-S-20) with the photo, description, coordinates (from the map pin), and optional plate number.
+- On success, the app MUST display a confirmation message and return the user to the splash screen (iOS: dismiss sheet with alert; Android: show inline success text).
+- On failure, the app MUST display the error message in the form.
+
+**Platform-specific details:**
+- **iOS**: Uses `UIImagePickerController` via a `UIViewControllerRepresentable` wrapper (`CameraPickerView`) for photo capture. Uses SwiftUI `Map` with `MapReader` for location selection. The form is presented as a sheet from `SplashScreenView`. An `E2E_AUTO_SHOW_REPORT` environment variable auto-opens the report sheet for testing.
+- **Android**: Uses `ActivityResultContracts.TakePicture()` with `FileProvider` for photo capture. Uses Google Maps Compose (`GoogleMap` + `Marker`) for location selection. The form is a separate composable (`ReportICEScreen`) navigated to from `MainActivity`.
 
 ---
 

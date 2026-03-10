@@ -42,6 +42,9 @@
 		A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000045 /* Pepper.swift */; };
 		A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */; };
 		A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */; };
+		A1B2C3D4E5F60001000060 /* ReportICEView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000060 /* ReportICEView.swift */; };
+		A1B2C3D4E5F60001000061 /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000061 /* CameraPickerView.swift */; };
+		A1B2C3D4E5F60001000062 /* ReportClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000062 /* ReportClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +94,9 @@
 		A1B2C3D4E5F60002000045 /* Pepper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pepper.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpander.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpanderTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000060 /* ReportICEView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportICEView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000061 /* CameraPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPickerView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000062 /* ReportClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,6 +212,7 @@
 			children = (
 				A1B2C3D4E5F60002000029 /* APIClient.swift */,
 				A1B2C3D4E5F60002000040 /* AlertClient.swift */,
+				A1B2C3D4E5F60002000062 /* ReportClient.swift */,
 				A1B2C3D4E5F60002000030 /* RetryManager.swift */,
 				A1B2C3D4E5F60002000031 /* ConnectivityMonitor.swift */,
 			);
@@ -237,6 +244,8 @@
 			children = (
 				A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */,
 				A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */,
+				A1B2C3D4E5F60002000060 /* ReportICEView.swift */,
+				A1B2C3D4E5F60002000061 /* CameraPickerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -385,6 +394,9 @@
 				A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */,
 				A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */,
 				A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */,
+				A1B2C3D4E5F60001000060 /* ReportICEView.swift in Sources */,
+				A1B2C3D4E5F60001000061 /* CameraPickerView.swift in Sources */,
+				A1B2C3D4E5F60001000062 /* ReportClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

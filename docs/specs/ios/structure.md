@@ -22,7 +22,9 @@ ios/
 │   ├── Views/
 │   │   ├── StatusBarView.swift        # Top status bar (connectivity, last detected, counts, pending)
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
-│   │   └── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
+│   │   ├── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
+│   │   ├── ReportICEView.swift        # ICE vehicle report form (photo, description, plate, map, submit)
+│   │   └── CameraPickerView.swift     # UIViewControllerRepresentable wrapping UIImagePickerController
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
@@ -39,6 +41,7 @@ ios/
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
 │   │   ├── AlertClient.swift          # Subscribe endpoint client, 10-min timer, GPS truncation
+│   │   ├── ReportClient.swift         # Multipart form-data POST to /api/v1/reports (ICE vehicle reports)
 │   │   ├── RetryManager.swift         # Exponential backoff, 429 handling
 │   │   └── ConnectivityMonitor.swift  # NWPathMonitor wrapper, triggers queue flush
 │   ├── Persistence/

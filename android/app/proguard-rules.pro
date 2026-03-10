@@ -36,3 +36,6 @@
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# --- Google Maps ---
+-keep class com.google.android.gms.maps.** { *; }

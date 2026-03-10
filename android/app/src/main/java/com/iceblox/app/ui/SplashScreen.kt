@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SplashScreen(
     onStartCamera: () -> Unit,
+    onReportICE: () -> Unit = {},
     queueDepth: Int = 0,
     onClearQueue: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -53,6 +54,23 @@ fun SplashScreen(
             ) {
                 Text(
                     text = "Start Camera",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                )
+            }
+
+            Button(
+                onClick = onReportICE,
+                modifier = Modifier.padding(top = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "Report ICE Activity",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
