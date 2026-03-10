@@ -496,6 +496,7 @@ server/
 │       ├── health.go            # GET /healthz handler
 │       ├── devices.go           # POST /api/v1/devices handler
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
+│       ├── version.go           # API version + deprecation middleware
 │       └── logger.go            # JSONL file writer (legacy, optional)
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
