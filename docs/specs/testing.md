@@ -381,6 +381,7 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Report API** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Submits a report via `POST /api/v1/reports` with a photo, description, and coordinates. Verifies the response includes `status: ok` and a `report_id`, and that the report is stored in the database with correct fields (description, latitude, longitude, photo path).
 - **Report validation** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Verifies that missing required fields (description, photo, X-Device-ID) and out-of-range coordinates return `400 Bad Request`.
 - **Report app UI** (Android: `tests/test_report_submission.sh`): Taps "Report ICE Activity" on the splash screen, verifies the report form opens with a description field visible, and attempts a submission through the app UI.
+- **Zoom retry initialization** (Android: `tests/test_zoom_retry_init.sh`): Launches the app in test mode and verifies that ZoomController initializes at camera startup, logging its optical zoom detection results. On emulators, verifies `maxOpticalZoom=1.0` and `available=false` (no optical zoom hardware).
 
 ### Prerequisites
 

@@ -33,10 +33,12 @@ android/
         │   │   ├── camera/
         │   │   │   ├── CameraCaptureBinder.kt # Shared CameraX bind/unbind helper for UI + service
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
-        │   │   │   ├── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize
-        │   │   │   └── TestFrameFeeder.kt  # Test mode: loads images, feeds them through analyzeBitmap() on a timer
+        │   │   │   ├── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize → zoom retry on failed OCR
+        │   │   │   ├── PreviewFreezer.kt   # Frozen-frame overlay state for zoom retry UX
+        │   │   │   ├── TestFrameFeeder.kt  # Test mode: loads images, feeds them through analyzeBitmap() on a timer
+        │   │   │   └── ZoomController.kt   # Optical zoom detection, safe zoom ratio calculation, zoom-capture-restore
         │   │   ├── config/
-        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config
+        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config, zoom retry constants
         │   │   ├── detection/
         │   │   │   ├── PlateDetector.kt    # TFLite interpreter, YOLOv8-nano inference, NMS
         │   │   │   └── PlateOCR.kt         # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps
@@ -91,7 +93,8 @@ android/
                 ├── DeviceTokenManagerTest.kt # Token registration request tests
                 ├── NotificationHelperTest.kt # Notification channel and display tests
                 ├── LookalikeExpanderTest.kt # Lookalike character expansion tests (REQ-M-12a)
-                └── DetectionFeedUpdateTest.kt # Concurrent StateFlow update tests for detection feed
+                ├── DetectionFeedUpdateTest.kt # Concurrent StateFlow update tests for detection feed
+                └── ZoomControllerTest.kt  # Safe zoom ratio calculation and best candidate selection tests
 ```
 
 ## Architecture
