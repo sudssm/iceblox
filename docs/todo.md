@@ -76,10 +76,10 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 - [x] **iOS: Camera picker** — `UIViewControllerRepresentable` wrapping `UIImagePickerController` for photo capture
 - [x] **iOS: Report form** — Sheet-presented view with photo, description, plate number fields and submit
 - [x] **iOS: Report client** — Multipart form-data POST to `/api/v1/reports`
-- [x] **iOS: Splash screen report button** — Red "Report ICE Vehicle" button below "Start Camera"
+- [x] **iOS: Splash screen report button** — Red "Report ICE Activity" button below "Start Camera"
 - [x] **Android: Report screen** — Composable with camera capture, description, plate number, submit
 - [x] **Android: Report client** — OkHttp multipart POST to `/api/v1/reports`
-- [x] **Android: Splash screen report button** — Red "Report ICE Vehicle" button below "Start Camera"
+- [x] **Android: Splash screen report button** — Red "Report ICE Activity" button below "Start Camera"
 - [x] **Android: Navigation** — Route from splash to report screen
 
 ---
@@ -95,3 +95,4 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 - [ ] **Enable SSL** — Configure TLS for the server. Railway provides automatic HTTPS via its proxy, but update mobile app `SERVER_BASE_URL` to use `https://` and ensure `DATABASE_URL` uses `sslmode=require` for the Postgres connection.
 - [ ] **Redis subscriber store** — Replace the in-memory `subscribers.Store` with Redis-backed storage so subscriber state survives server restarts and scales across multiple instances.
+- [ ] **S3 photo storage** — Set up an S3 bucket for report photo uploads. Configure `S3_BUCKET` and `AWS_REGION` env vars so the server uploads photos to S3 instead of local disk.

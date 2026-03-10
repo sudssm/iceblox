@@ -100,6 +100,7 @@ dependencies {
     implementation(libs.onnxruntime.android)
     implementation(libs.play.services.tasks)
     implementation(libs.play.services.location)
+    implementation(libs.maps.compose)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.room.runtime)

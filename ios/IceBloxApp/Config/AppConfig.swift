@@ -11,6 +11,7 @@ enum AppConfig {
     static let skipNotificationRequest = boolEnv("E2E_SKIP_NOTIFICATION_REQUEST", defaultValue: false)
     static let forceDebugMode = boolEnv("E2E_FORCE_DEBUG_MODE", defaultValue: false)
     static let requestLocationPermission = boolEnv("E2E_REQUEST_LOCATION_PERMISSION", defaultValue: true)
+    static let autoShowReport = boolEnv("E2E_AUTO_SHOW_REPORT", defaultValue: false)
     static let useSplashTrigger = boolEnv("E2E_USE_SPLASH_TRIGGER", defaultValue: false)
     static let useStopRecordingTrigger = boolEnv("E2E_USE_STOP_RECORDING_TRIGGER", defaultValue: false)
     static let splashTriggerFilename = stringEnv("E2E_SPLASH_TRIGGER_FILENAME") ?? "e2e_start_camera.trigger"

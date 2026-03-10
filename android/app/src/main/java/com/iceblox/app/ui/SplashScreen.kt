@@ -70,7 +70,7 @@ fun SplashScreen(
                 )
             ) {
                 Text(
-                    text = "Report ICE Vehicle",
+                    text = "Report ICE Activity",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)

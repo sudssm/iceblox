@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 struct ReportICEView: View {
@@ -11,8 +12,18 @@ struct ReportICEView: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var didSubmit = false
+    @State private var pinLatitude: Double?
+    @State private var pinLongitude: Double?
+    @State private var cameraPosition: MapCameraPosition = .automatic
 
     private let reportClient = ReportClient()
+
+    private var pinCoordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(
+            latitude: pinLatitude ?? locationManager.latitude ?? 0,
+            longitude: pinLongitude ?? locationManager.longitude ?? 0
+        )
+    }
 
     var body: some View {
         NavigationView {
@@ -42,6 +53,37 @@ struct ReportICEView: View {
                                 .frame(height: 200)
                                 .background(Color.white.opacity(0.1))
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Report Location")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.7))
+                            MapReader { proxy in
+                                Map(position: $cameraPosition) {
+                                    Marker("Report Location", coordinate: pinCoordinate)
+                                        .tint(.red)
+                                }
+                                .onTapGesture { screenPoint in
+                                    if let coordinate = proxy.convert(screenPoint, from: .local) {
+                                        pinLatitude = coordinate.latitude
+                                        pinLongitude = coordinate.longitude
+                                    }
+                                }
+                            }
+                            .frame(height: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            Text("Tap map to adjust")
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                        .onChange(of: locationManager.latitude) { _, newLat in
+                            if pinLatitude == nil, let lat = newLat, let lng = locationManager.longitude {
+                                cameraPosition = .region(MKCoordinateRegion(
+                                    center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+                                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                ))
                             }
                         }
 
@@ -92,7 +134,7 @@ struct ReportICEView: View {
                     .padding()
                 }
             }
-            .navigationTitle("Report ICE Vehicle")
+            .navigationTitle("Report ICE Activity")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -124,8 +166,8 @@ struct ReportICEView: View {
         isSubmitting = true
         errorMessage = nil
 
-        let lat = locationManager.latitude ?? 0
-        let lng = locationManager.longitude ?? 0
+        let lat = pinLatitude ?? locationManager.latitude ?? 0
+        let lng = pinLongitude ?? locationManager.longitude ?? 0
 
         let submission = ReportSubmission(
             photo: image,

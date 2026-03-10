@@ -31,7 +31,7 @@ struct SplashScreenView: View {
                 }
 
                 Button { showReportSheet = true } label: {
-                    Text("Report ICE Vehicle")
+                    Text("Report ICE Activity")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)
@@ -77,6 +77,9 @@ struct SplashScreenView: View {
                 let client = APIClient(offlineQueue: offlineQueue, currentSessionID: "")
                 client.startBatchTimer()
                 drainClient = client
+            }
+            if AppConfig.autoShowReport {
+                showReportSheet = true
             }
             guard AppConfig.useSplashTrigger else { return }
 

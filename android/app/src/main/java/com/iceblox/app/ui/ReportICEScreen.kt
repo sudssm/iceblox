@@ -49,6 +49,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.iceblox.app.network.ReportClient
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -65,6 +71,12 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var didSubmit by remember { mutableStateOf(false) }
+
+    val initialPosition = LatLng(latitude, longitude)
+    val markerState = remember { MarkerState(position = initialPosition) }
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(initialPosition, 15f)
+    }
 
     val photoFile = remember {
         File(context.cacheDir, "report_photo.jpg")
@@ -90,7 +102,7 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Report ICE Vehicle", color = Color.White) },
+                title = { Text("Report ICE Activity", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -141,6 +153,35 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text("Report Location", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState,
+                    onMapClick = { latLng -> markerState.position = latLng }
+                ) {
+                    Marker(
+                        state = markerState,
+                        title = "Report Location",
+                        draggable = true
+                    )
+                }
+            }
+            Text(
+                "Drag pin or tap to adjust",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -197,8 +238,8 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
                         photoBytes = photoBytes,
                         description = description,
                         plateNumber = plateNumber.ifBlank { null },
-                        latitude = latitude,
-                        longitude = longitude
+                        latitude = markerState.position.latitude,
+                        longitude = markerState.position.longitude
                     ) { result ->
                         isSubmitting = false
                         result.onSuccess { didSubmit = true }
