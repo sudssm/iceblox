@@ -67,6 +67,16 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ---
 
+## ICE Vehicle Reporting
+
+- [ ] **Report UI (iOS)** — Add a home screen component allowing the user to report an ICE vehicle. Includes a camera/photo capture step and a text description field.
+- [ ] **Report UI (Android)** — Same report component on Android: photo capture + text description field, accessible from the home screen.
+- [ ] **Server report endpoint** — New endpoint (e.g. `POST /api/v1/reports`) that accepts a photo upload and text description, stores the report in the database.
+- [ ] **Database schema for reports** — Add a `reports` table to store photo blob/path, description text, timestamp, device ID, and upstream submission status.
+- [ ] **Upstream submission to StopICE** — After storing a report, attempt to POST it upstream to the StopICE plate tracker (stopice.net). Handle failures gracefully and track submission status per report.
+
+---
+
 ## Future
 
 - [ ] **US-plate fine-tuned OCR model** — Fine-tune the CCT-XS model specifically for US license plates to improve accuracy beyond the current ~92-94% global model. Training data: OpenALPR US plate benchmark or similar. The [fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) project provides training infrastructure.
