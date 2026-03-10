@@ -148,7 +148,7 @@ final class IceBloxAppTests: XCTestCase {
     // MARK: - AppConfig
 
     func testAppConfigDefaults() {
-        XCTAssertEqual(AppConfig.detectionConfidenceThreshold, 0.7)
+        XCTAssertEqual(AppConfig.detectionConfidenceThreshold, 0.5)
         XCTAssertEqual(AppConfig.ocrConfidenceThreshold, 0.6)
         XCTAssertEqual(AppConfig.deduplicationWindowSeconds, 60)
         XCTAssertEqual(AppConfig.batchSize, 65)

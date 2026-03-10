@@ -274,7 +274,7 @@ Push notifications are optional — the app MUST function normally if permission
 
 #### REQ-M-61: Device Token Registration
 
-After obtaining a push notification token, the app MUST send it to the server (see [server spec REQ-S-9](../server/spec.md#req-s-9-device-registration) for endpoint details):
+After obtaining a push notification token, the app MUST send it to the server (see [server spec REQ-S-9](../server/spec.md#req-s-9-device-token-registration) for endpoint details):
 
 ```
 POST /api/v1/devices
