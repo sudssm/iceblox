@@ -291,6 +291,7 @@ iOS Simulator coordinate mapping is unreliable on multi-monitor setups. The `ios
 
 - **Environment variables** (via `SIMCTL_CHILD_*` prefix): Set flags that the app reads in `AppConfig.swift` to skip dialogs, auto-navigate to screens, or enable test modes. Examples:
   - `SIMCTL_CHILD_E2E_AUTO_SHOW_REPORT=1` — opens the report sheet without tapping
+  - `SIMCTL_CHILD_E2E_AUTO_SHOW_SETTINGS=1` — opens the settings sheet without tapping
   - `SIMCTL_CHILD_E2E_USE_SPLASH_TRIGGER=1` — enables file-based splash-to-camera transition
   - `SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1` — suppresses notification permission dialog
   - `SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0` — skips location permission prompt
@@ -382,6 +383,8 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Report validation** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Verifies that missing required fields (description, photo, X-Device-ID) and out-of-range coordinates return `400 Bad Request`.
 - **Report app UI** (Android: `tests/test_report_submission.sh`): Taps "Report ICE Activity" on the splash screen, verifies the report form opens with a description field visible, and attempts a submission through the app UI.
 - **Zoom retry initialization** (Android: `tests/test_zoom_retry_init.sh`): Launches the app in test mode and verifies that ZoomController initializes at camera startup, logging its optical zoom detection results. On emulators, verifies `maxOpticalZoom=1.0` and `available=false` (no optical zoom hardware).
+- **Settings UI** (Android: `tests/test_settings.sh`, iOS: `tests/test_settings.sh`): Opens the settings screen and verifies the Push Notifications toggle is visible. Android version taps the Settings button on the splash screen. iOS version launches with `E2E_AUTO_SHOW_SETTINGS=1` and captures a screenshot.
+- **Settings toggle persistence** (Android: `tests/test_settings.sh`): Opens settings, toggles the Push Notifications switch, navigates back, reopens settings, and verifies the toggle state persisted.
 
 ### Prerequisites
 

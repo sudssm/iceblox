@@ -63,6 +63,8 @@ android/
         │   │   │   ├── LookalikeExpander.kt # BFS expansion of confusable characters (REQ-M-12a)
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, pepper from BuildConfig
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
+        │   │   ├── settings/
+        │   │   │   └── UserSettings.kt       # SharedPreferences-backed push notification toggle
         │   │   ├── service/
         │   │   │   └── BackgroundCaptureService.kt # Foreground service that keeps analysis running when app backgrounds
         │   │   ├── debug/
@@ -71,6 +73,7 @@ android/
         │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── ReportICEScreen.kt  # ICE vehicle report form (photo capture, description, plate, Google Map, submit)
+        │   │       ├── SettingsScreen.kt  # Settings screen with push notification toggle
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay
         │   │       └── theme/
