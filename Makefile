@@ -111,11 +111,11 @@ ios-unit-test:
 		-quiet
 
 ## android-test: Run Android E2E tests
-android-test:
+android-test: .env
 	bash e2e/android/run.sh
 
 ## ios-test: Run iOS E2E tests
-ios-test:
+ios-test: .env
 	bash e2e/ios/run.sh
 
 # ── Cleanup ─────────────────────────────────────────────────────────────────
