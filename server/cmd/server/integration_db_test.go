@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"iceblox/server/internal/db"
 	"iceblox/server/internal/handler"
@@ -48,12 +49,12 @@ func TestRun_MigrateOnly_DoesNotRequirePepperOrPlates(t *testing.T) {
 		SELECT COUNT(*)
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
-		  AND table_name IN ('plates', 'sightings', 'device_tokens')
+		  AND table_name IN ('plates', 'sightings', 'device_tokens', 'sent_pushes')
 	`).Scan(&count); err != nil {
 		t.Fatalf("query tables: %v", err)
 	}
-	if count != 3 {
-		t.Fatalf("expected 3 migrated tables, got %d", count)
+	if count != 4 {
+		t.Fatalf("expected 4 migrated tables, got %d", count)
 	}
 }
 
@@ -248,6 +249,216 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 			t.Errorf("hardware_id: got %q, want %q", hwID, "phoenix-unit-7")
 		}
 	})
+}
+
+func TestRecordSentPush(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	ctx := context.Background()
+	database.Migrate(ctx)
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sent_pushes")
+	pool.ExecContext(ctx, "DELETE FROM sightings")
+	pool.ExecContext(ctx, "DELETE FROM device_tokens")
+	pool.ExecContext(ctx, "DELETE FROM plates")
+
+	pool.ExecContext(ctx, "INSERT INTO plates (plate, hash) VALUES ('TEST1', 'a000000000000000000000000000000000000000000000000000000000000001') ON CONFLICT DO NOTHING")
+	var plateID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM plates WHERE hash = 'a000000000000000000000000000000000000000000000000000000000000001'").Scan(&plateID)
+
+	database.UpsertDeviceToken(ctx, "hw-record", "tok-record", "ios")
+	var dtID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM device_tokens WHERE hardware_id = 'hw-record'").Scan(&dtID)
+
+	if err := database.RecordSentPush(ctx, dtID, plateID, 36.16, -86.78); err != nil {
+		t.Fatalf("RecordSentPush: %v", err)
+	}
+
+	var count int
+	pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sent_pushes WHERE device_token_id = $1", dtID).Scan(&count)
+	if count != 1 {
+		t.Errorf("expected 1 sent_push, got %d", count)
+	}
+}
+
+func TestRecentPushesForDevice(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	ctx := context.Background()
+	database.Migrate(ctx)
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sent_pushes")
+	pool.ExecContext(ctx, "DELETE FROM device_tokens")
+	pool.ExecContext(ctx, "DELETE FROM plates")
+
+	pool.ExecContext(ctx, "INSERT INTO plates (plate, hash) VALUES ('TEST2', 'b000000000000000000000000000000000000000000000000000000000000002') ON CONFLICT DO NOTHING")
+	var plateID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM plates WHERE hash = 'b000000000000000000000000000000000000000000000000000000000000002'").Scan(&plateID)
+
+	database.UpsertDeviceToken(ctx, "hw-recent", "tok-recent", "ios")
+	var dtID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM device_tokens WHERE hardware_id = 'hw-recent'").Scan(&dtID)
+
+	database.RecordSentPush(ctx, dtID, plateID, 36.16, -86.78)
+	database.RecordSentPush(ctx, dtID, plateID, 37.0, -87.0)
+
+	pushes, err := database.RecentPushesForDevice(ctx, dtID)
+	if err != nil {
+		t.Fatalf("RecentPushesForDevice: %v", err)
+	}
+	if len(pushes) != 2 {
+		t.Errorf("expected 2 pushes, got %d", len(pushes))
+	}
+}
+
+func TestCleanupStalePushes(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	ctx := context.Background()
+	database.Migrate(ctx)
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sent_pushes")
+	pool.ExecContext(ctx, "DELETE FROM device_tokens")
+	pool.ExecContext(ctx, "DELETE FROM plates")
+
+	pool.ExecContext(ctx, "INSERT INTO plates (plate, hash) VALUES ('TEST3', 'c000000000000000000000000000000000000000000000000000000000000003') ON CONFLICT DO NOTHING")
+	var plateID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM plates WHERE hash = 'c000000000000000000000000000000000000000000000000000000000000003'").Scan(&plateID)
+
+	// Create a "stale" device token with old updated_at
+	database.UpsertDeviceToken(ctx, "hw-stale", "tok-stale", "ios")
+	pool.ExecContext(ctx, "UPDATE device_tokens SET updated_at = NOW() - INTERVAL '2 hours' WHERE hardware_id = 'hw-stale'")
+	var staleID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM device_tokens WHERE hardware_id = 'hw-stale'").Scan(&staleID)
+
+	// Create a "fresh" device token
+	database.UpsertDeviceToken(ctx, "hw-fresh", "tok-fresh", "ios")
+	var freshID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM device_tokens WHERE hardware_id = 'hw-fresh'").Scan(&freshID)
+
+	database.RecordSentPush(ctx, staleID, plateID, 36.0, -86.0)
+	database.RecordSentPush(ctx, freshID, plateID, 37.0, -87.0)
+
+	deleted, err := database.CleanupStalePushes(ctx, 30*time.Minute)
+	if err != nil {
+		t.Fatalf("CleanupStalePushes: %v", err)
+	}
+	if deleted != 1 {
+		t.Errorf("expected 1 deleted, got %d", deleted)
+	}
+
+	var remaining int
+	pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sent_pushes").Scan(&remaining)
+	if remaining != 1 {
+		t.Errorf("expected 1 remaining push, got %d", remaining)
+	}
+}
+
+func TestTouchDeviceToken(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	ctx := context.Background()
+	database.Migrate(ctx)
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sent_pushes")
+	pool.ExecContext(ctx, "DELETE FROM device_tokens")
+
+	database.UpsertDeviceToken(ctx, "hw-touch", "tok-touch", "ios")
+	pool.ExecContext(ctx, "UPDATE device_tokens SET updated_at = NOW() - INTERVAL '1 hour' WHERE hardware_id = 'hw-touch'")
+
+	var before time.Time
+	pool.QueryRowContext(ctx, "SELECT updated_at FROM device_tokens WHERE hardware_id = 'hw-touch'").Scan(&before)
+
+	if err := database.TouchDeviceToken(ctx, "hw-touch"); err != nil {
+		t.Fatalf("TouchDeviceToken: %v", err)
+	}
+
+	var after time.Time
+	pool.QueryRowContext(ctx, "SELECT updated_at FROM device_tokens WHERE hardware_id = 'hw-touch'").Scan(&after)
+
+	if !after.After(before) {
+		t.Errorf("expected updated_at to be refreshed, before=%v after=%v", before, after)
+	}
+}
+
+func TestSentPush_CascadeDelete(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	ctx := context.Background()
+	database.Migrate(ctx)
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sent_pushes")
+	pool.ExecContext(ctx, "DELETE FROM device_tokens")
+	pool.ExecContext(ctx, "DELETE FROM plates")
+
+	pool.ExecContext(ctx, "INSERT INTO plates (plate, hash) VALUES ('TEST4', 'd000000000000000000000000000000000000000000000000000000000000004') ON CONFLICT DO NOTHING")
+	var plateID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM plates WHERE hash = 'd000000000000000000000000000000000000000000000000000000000000004'").Scan(&plateID)
+
+	database.UpsertDeviceToken(ctx, "hw-cascade", "tok-cascade", "ios")
+	var dtID int64
+	pool.QueryRowContext(ctx, "SELECT id FROM device_tokens WHERE hardware_id = 'hw-cascade'").Scan(&dtID)
+
+	database.RecordSentPush(ctx, dtID, plateID, 36.0, -86.0)
+
+	var countBefore int
+	pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sent_pushes WHERE device_token_id = $1", dtID).Scan(&countBefore)
+	if countBefore != 1 {
+		t.Fatalf("expected 1 sent_push before delete, got %d", countBefore)
+	}
+
+	database.DeleteDeviceToken(ctx, dtID)
+
+	var countAfter int
+	pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sent_pushes WHERE device_token_id = $1", dtID).Scan(&countAfter)
+	if countAfter != 0 {
+		t.Errorf("expected 0 sent_pushes after cascade delete, got %d", countAfter)
+	}
 }
 
 func e2eHMAC(plate string, pepper []byte) string {

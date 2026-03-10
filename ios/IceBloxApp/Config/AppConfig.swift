@@ -9,7 +9,9 @@ enum AppConfig {
 
     static let autoStartCamera = boolEnv("E2E_AUTOSTART_CAMERA", defaultValue: false)
     static let skipNotificationRequest = boolEnv("E2E_SKIP_NOTIFICATION_REQUEST", defaultValue: false)
+    static let forceDebugMode = boolEnv("E2E_FORCE_DEBUG_MODE", defaultValue: false)
     static let requestLocationPermission = boolEnv("E2E_REQUEST_LOCATION_PERMISSION", defaultValue: true)
+    static let autoShowReport = boolEnv("E2E_AUTO_SHOW_REPORT", defaultValue: false)
     static let useSplashTrigger = boolEnv("E2E_USE_SPLASH_TRIGGER", defaultValue: false)
     static let useStopRecordingTrigger = boolEnv("E2E_USE_STOP_RECORDING_TRIGGER", defaultValue: false)
     static let splashTriggerFilename = stringEnv("E2E_SPLASH_TRIGGER_FILENAME") ?? "e2e_start_camera.trigger"
@@ -18,7 +20,7 @@ enum AppConfig {
     static let simulatorTestImagesDirectoryName = stringEnv("SIMULATOR_TEST_IMAGES_DIRNAME") ?? "test_images"
     static let simulatorFrameIntervalMilliseconds = intEnv("SIMULATOR_FRAME_INTERVAL_MS", defaultValue: 100)
 
-    static let detectionConfidenceThreshold = floatEnv("E2E_DETECTION_CONFIDENCE_THRESHOLD", defaultValue: 0.7)
+    static let detectionConfidenceThreshold = floatEnv("E2E_DETECTION_CONFIDENCE_THRESHOLD", defaultValue: 0.5)
     static let ocrConfidenceThreshold = floatEnv("E2E_OCR_CONFIDENCE_THRESHOLD", defaultValue: 0.6)
     static let deduplicationWindowSeconds: TimeInterval = 60
     static let minPlateLength = 2
@@ -43,6 +45,7 @@ enum AppConfig {
     static let zoomRetryMargin: Double = 0.8
     static let zoomRetryMaxWaitMs: Int = 500
 
+    static let reportsEndpoint = "/api/v1/reports"
     static let devicesEndpoint = "/api/v1/devices"
     static let subscribeEndpoint = "/api/v1/subscribe"
     static let subscribeIntervalSeconds: TimeInterval = 600

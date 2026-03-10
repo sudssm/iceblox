@@ -4,6 +4,7 @@ object AppConfig {
     const val SERVER_BASE_URL = "http://10.0.2.2:8080"
     const val PLATES_ENDPOINT = "/api/v1/plates"
     const val DEVICES_ENDPOINT = "/api/v1/devices"
+    const val REPORTS_ENDPOINT = "/api/v1/reports"
 
     const val NOTIFICATION_CHANNEL_ID = "plate_alerts"
     const val NOTIFICATION_CHANNEL_NAME = "Plate Alerts"
@@ -11,7 +12,7 @@ object AppConfig {
     const val BACKGROUND_CAPTURE_CHANNEL_NAME = "Background Capture"
     const val BACKGROUND_CAPTURE_NOTIFICATION_ID = 2001
 
-    const val DETECTION_CONFIDENCE_THRESHOLD = 0.7f
+    const val DETECTION_CONFIDENCE_THRESHOLD = 0.5f
     const val OCR_CONFIDENCE_THRESHOLD = 0.6f
     const val DEDUPLICATION_WINDOW_MS = 60_000L
     const val MIN_PLATE_LENGTH = 2

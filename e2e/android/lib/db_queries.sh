@@ -79,3 +79,35 @@ count_device_tokens() {
 truncate_device_tokens() {
     e2e_psql -c "TRUNCATE device_tokens;"
 }
+
+count_reports() {
+    e2e_psql -c "SELECT COUNT(*) FROM reports;"
+}
+
+truncate_reports() {
+    e2e_psql -c "TRUNCATE reports;"
+}
+
+get_latest_report() {
+    e2e_psql -c "
+        SELECT id, description, plate_number, latitude, longitude, photo_path, hardware_id, stop_ice_status
+        FROM reports
+        ORDER BY id DESC
+        LIMIT 1;
+    "
+}
+
+get_report_field() {
+    local field="$1"
+    # Validate field name contains only safe characters (letters, underscores)
+    if ! echo "$field" | grep -qE '^[a-z_]+$'; then
+        echo "ERROR: invalid field name: $field" >&2
+        return 1
+    fi
+    e2e_psql -c "
+        SELECT $field
+        FROM reports
+        ORDER BY id DESC
+        LIMIT 1;
+    "
+}

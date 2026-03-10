@@ -8,12 +8,7 @@ Receive hashed license plate identifiers from mobile clients, compare against a 
 
 ## Target Data Source
 
-Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetracker/?data=1), a public database of ICE vehicle license plates (~2,600 unique plates as of March 2026). The data is published as a nightly-compiled ZIP archive containing an XML file with `<vehicle_license>` entries.
-
-**Data pipeline:**
-1. `make setup` — Downloads the latest ZIP archive from stopice.net
-2. `make extract` — Parses the XML, normalizes plates, and writes `data/plates.txt` (one plate per line)
-3. The Go server loads `data/plates.txt` at startup, computes HMAC-SHA256 hashes, and seeds the `plates` table in PostgreSQL
+See [System Overview — Target Data Source](../overview.md#target-data-source) for the source database, data pipeline, and plate extraction process.
 
 ## Technology
 
@@ -22,6 +17,43 @@ Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetra
 - **Database**: PostgreSQL (via GORM ORM with `pgx` driver)
 - **Target list source**: `data/plates.txt` — plaintext plate list extracted from StopICE data, seeded into the `plates` database table on startup
 - **Push notifications**: APNs (iOS) via HTTP/2 + ES256 JWT, FCM (Android) via HTTP v1 API + OAuth2 — Go stdlib only (`net/http`, `crypto/*`)
+
+## API Versioning Policy
+
+All endpoints use URL path versioning (`/api/v<N>/`). The version is also returned in the `API-Version` response header on every API response.
+
+### Backward Compatibility Contract
+
+Once a versioned endpoint is released, its contract is frozen. Only **additive, non-breaking changes** may be made within the same version:
+
+**Non-breaking (no version bump required):**
+- Adding new **optional** fields to request bodies
+- Adding new fields to response bodies
+- Adding entirely new endpoints
+- Relaxing validation (e.g., accepting a wider range)
+- Adding new enum values (clients must tolerate unknown values)
+
+**Breaking (requires incrementing the version):**
+- Removing or renaming a field from a request or response
+- Removing or renaming an endpoint
+- Changing a field's data type
+- Making an optional field required
+- Changing the meaning or format of an existing field
+- Changing error response structure or error codes
+- Changing authentication requirements
+
+**Client contract:** Clients MUST ignore unknown fields in responses. New optional response fields may appear at any time within the same API version.
+
+### Deprecation Lifecycle
+
+When a successor version (v(N+1)) ships for an endpoint:
+1. The v(N) endpoint continues to function but returns `Deprecation: true`, `Sunset: <date>`, and `Link: </api/v(N+1)/docs>; rel="successor-version"` headers
+2. Minimum migration window: 3 months from the `Sunset` date
+3. After the sunset date, the deprecated endpoint returns `410 Gone`
+
+### Health Check
+
+`/healthz` is unversioned — it is infrastructure, not part of the API contract.
 
 ## Requirements
 
@@ -73,7 +105,7 @@ If any plate in the batch fails validation, the entire request is rejected with 
 }
 ```
 
-The `results` array is positionally aligned with the `plates` array in the request — `results[i]` corresponds to `plates[i]`.
+The `results` array is positionally aligned with the `plates` array in the request — `results[i]` corresponds to `plates[i]`. Per the versioning policy, clients MUST ignore unknown fields in the response.
 
 **Error responses:**
 - `400 Bad Request` — malformed JSON, empty plates array, or failed field validation. Body: `{"error": "description"}`.
@@ -190,6 +222,37 @@ CREATE TABLE device_tokens (
 );
 ```
 
+**Table: `sent_pushes`** — per-device push notification history for deduplication
+```sql
+CREATE TABLE sent_pushes (
+    id              SERIAL PRIMARY KEY,
+    device_token_id INTEGER NOT NULL REFERENCES device_tokens(id) ON DELETE CASCADE,
+    plate_id        INTEGER NOT NULL REFERENCES plates(id),
+    latitude        DOUBLE PRECISION NOT NULL,
+    longitude       DOUBLE PRECISION NOT NULL,
+    sent_at         TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_sent_pushes_device_token_id ON sent_pushes(device_token_id);
+CREATE INDEX idx_sent_pushes_sent_at ON sent_pushes(sent_at);
+```
+
+**Table: `reports`** — user-submitted ICE vehicle reports
+```sql
+CREATE TABLE reports (
+    id              SERIAL PRIMARY KEY,
+    description     TEXT NOT NULL,
+    plate_number    TEXT,
+    latitude        DOUBLE PRECISION NOT NULL,
+    longitude       DOUBLE PRECISION NOT NULL,
+    photo_path      TEXT NOT NULL,
+    hardware_id     TEXT NOT NULL,
+    stop_ice_status TEXT NOT NULL DEFAULT 'pending',
+    stop_ice_error  TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 **Data flow:**
 1. On startup, plates from `data/plates.txt` are upserted into the `plates` table
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
@@ -243,6 +306,7 @@ When a plate hash matches a target (REQ-S-2), the server MUST send a push notifi
 **Dispatch rules:**
 - Notifications MUST be sent asynchronously — the HTTP response to the detecting device MUST NOT be blocked by notification delivery.
 - The server MUST query all active device tokens from the `device_tokens` table and send to each.
+- Before sending, the server MUST apply per-device deduplication rules (REQ-S-18) and skip the notification if it would be a duplicate.
 - If a push provider returns a token-expired error (APNs HTTP 410 / FCM `UNREGISTERED`), the server MUST delete that token from the database.
 - Push delivery failures MUST be logged but MUST NOT affect the plates endpoint response.
 
@@ -316,7 +380,7 @@ X-Device-ID: <device identifier>
 - `radius_miles`: Required. MUST be in range [1, 500]. Default suggested by clients: 100.
 
 **Headers:**
-- `X-Device-ID`: Required. Identifies the subscribing device.
+- `X-Device-ID`: Required. Identifies the subscribing device. The server MUST also update the `updated_at` timestamp of the device's `device_tokens` row(s) on each subscribe call, so that active subscribers are not considered stale for push history cleanup (REQ-S-19).
 
 **Response (200 OK):**
 ```json
@@ -386,6 +450,93 @@ The server MUST wrap the HTTP mux with request logging middleware so operator lo
 - The middleware MUST apply to all server endpoints, including `/healthz`.
 - Logging MUST be additive only; it MUST NOT change successful response bodies or status codes from existing handlers.
 
+### REQ-S-18: Push Notification Deduplication
+
+Before sending a push notification to a device, the server MUST check the `sent_pushes` table for that device and skip the notification if any of the following conditions are met:
+
+1. **Same plate**: A push was already sent to this device for the same `plate_id` (regardless of location or time).
+2. **Proximity**: A push was already sent to this device for any plate within 1 mile of the current sighting (haversine distance ≤ 1.0 miles).
+3. **Cooldown**: A push was already sent to this device less than 2 minutes ago (regardless of plate or location).
+
+After a successful push send, the server MUST record the push in `sent_pushes` with the device token ID, plate ID, sighting coordinates, and current timestamp.
+
+### REQ-S-19: Stale Push History Cleanup
+
+The server MUST run a background goroutine that periodically cleans up stale `sent_pushes` records:
+
+- **Sweep interval**: Every 5 minutes
+- **Stale threshold**: 30 minutes — delete `sent_pushes` rows for device tokens whose `device_tokens.updated_at` is older than 30 minutes (indicating the device has not checked in recently)
+- **Subscribe touch**: The subscribe endpoint (`POST /api/v1/subscribe`) MUST update the `updated_at` timestamp of the device's token row(s), so that active subscribers are not considered stale
+
+### REQ-S-20: ICE Vehicle Report Submission
+
+The server MUST expose an endpoint for users to submit ICE vehicle reports with a photo, description, and location.
+
+```
+POST /api/v1/reports
+Content-Type: multipart/form-data
+X-Device-ID: <device identifier>
+
+Fields:
+  description: string (required)
+  latitude: number (required, range [-90, 90])
+  longitude: number (required, range [-180, 180])
+  plate_number: string (optional)
+  photo: file (required, image/jpeg)
+```
+
+**Field validation:**
+- `description`: Required. Non-empty string.
+- `latitude`: Required. MUST be in range [-90, 90].
+- `longitude`: Required. MUST be in range [-180, 180].
+- `plate_number`: Optional. If provided, stored as-is.
+- `photo`: Required. Uploaded file saved to the report upload directory with a UUID-based filename.
+
+**Headers:**
+- `X-Device-ID`: Required. Identifies the submitting device. Maps to `hardware_id` in the `reports` table.
+
+**Behavior:**
+- Save the uploaded photo to disk under the configured `--report-upload-dir` directory (default: `data/reports`). The directory is created at startup if it does not exist.
+- Store a `Report` record in the database with `stop_ice_status` set to `"pending"`.
+- After storing, asynchronously submit the report upstream to StopICE (REQ-S-21).
+- Body size limit: 10 MB.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "report_id": 1
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — missing required fields, invalid coordinates, or missing `X-Device-ID` header.
+- `405 Method Not Allowed` — non-POST request to this endpoint.
+- `500 Internal Server Error` — file save or database write failure.
+
+**Configuration:**
+- `--report-upload-dir` flag (env: `REPORT_UPLOAD_DIR`): Directory for report photo uploads. Default: `data/reports`.
+
+### REQ-S-21: StopICE Upstream Submission
+
+After storing a report (REQ-S-20), the server MUST asynchronously submit it to the StopICE plate tracker.
+
+**Target:** `POST https://www.stopice.net/platetracker/index.cgi` (form-encoded)
+
+**Form fields:**
+- `vehicle_license`: Plate number from the report
+- `address`: Formatted as `"<lat>, <lng>"` (6 decimal places)
+- `comments`: Description from the report
+- `get_location_gps`: Same as `address`
+- `guest`: `"1"`
+- `alert_token`: Current Unix timestamp in milliseconds
+
+**Behavior:**
+- Submission runs in a background goroutine — MUST NOT block the HTTP response to the reporting device.
+- On success (HTTP 2xx from StopICE), update the report's `stop_ice_status` to `"submitted"`.
+- On failure (HTTP error or network error), update `stop_ice_status` to `"failed"` and store the error message in `stop_ice_error`.
+- HTTP client timeout: 30 seconds.
+
 ## Out of Scope (v1)
 
 - Admin dashboard
@@ -453,12 +604,18 @@ server/
 │   │   └── haversine.go         # Haversine distance, bounding box calculation
 │   ├── subscribers/
 │   │   └── store.go             # In-memory subscriber store (map with TTL cleanup)
+│   ├── stopice/
+│   │   ├── client.go            # Async form submission to StopICE plate tracker (REQ-S-21)
+│   │   └── client_test.go       # StopICE client tests
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
 │       ├── subscribe.go         # POST /api/v1/subscribe handler
 │       ├── health.go            # GET /healthz handler
 │       ├── devices.go           # POST /api/v1/devices handler
+│       ├── reports.go           # POST /api/v1/reports handler (REQ-S-20)
+│       ├── reports_test.go      # Reports handler tests
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
+│       ├── version.go           # API version + deprecation middleware
 │       └── logger.go            # JSONL file writer (legacy, optional)
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
@@ -468,7 +625,7 @@ server/
 └── go.sum
 ```
 
-The project's `Makefile` lives at the repository root (not inside `server/`). It provides both server targets (`server-test`, `server-test-db`, `server-lint`, `run-server`, `run-test-server`) and Android targets (`android-test`). Server targets use `cd server && ...` to run commands in the server directory.
+The project's `Makefile` lives at the repository root (not inside `server/`). It provides server targets (`server-test`, `server-test-db`, `server-lint`, `run-server`, `run-test-server`), a combined `unit-test` target (runs Go, Android, and iOS unit tests back to back), and E2E targets (`android-test`, `ios-test`). Server targets use `cd server && ...` to run commands in the server directory.
 
 ### Implementation Order
 
@@ -477,7 +634,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`, `FCM_SERVICE_ACCOUNT_JSON`). Subscriber storage is in-memory (no external config needed). |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`, `--report-upload-dir`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`). Subscriber storage is in-memory (no external config needed). |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -496,10 +653,12 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
 | 20 | Request logging middleware | REQ-S-17 | Wrap mux, record method/path/status/duration/device_id, recover panics as 500 |
+| 21 | Reports handler | REQ-S-20 | Multipart POST `/api/v1/reports`, save photo to disk, store report in DB |
+| 22 | StopICE client | REQ-S-21 | Async form submission to StopICE plate tracker with status callback |
 
 ### Key Technical Notes
 
-- **External dependencies**: `gorm.io/gorm` (ORM) and `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally).
+- **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), and `github.com/google/uuid` (UUID generation for report photo filenames).
 - **Schema migrations**: GORM's `AutoMigrate` derives the schema from Go struct tags (types, indexes, constraints, foreign keys). It creates tables, adds missing columns, and creates missing indexes idempotently on each startup. A `make migrate` entrypoint runs migrations and exits for deploy-time execution (e.g., Railway predeploy).
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
@@ -521,4 +680,4 @@ The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
 - **Railway config** (`railway.toml`): Configures the build to use the Dockerfile, runs `make migrate` as the predeploy command, exposes `/healthz` for health checks, and uses an ON_FAILURE restart policy.
-- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials are also configurable via env vars: `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`. For environments where mounting a file is not possible, `FCM_SERVICE_ACCOUNT_JSON` accepts the raw JSON content and writes it to a temporary file at startup. All env vars override their corresponding CLI flag defaults.
+- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials are also configurable via env vars: `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`. Report photo storage is configured via `REPORT_UPLOAD_DIR` (default: `data/reports`). For environments where mounting a file is not possible, `FCM_SERVICE_ACCOUNT_JSON` accepts the raw JSON content and writes it to a temporary file at startup. All env vars override their corresponding CLI flag defaults.

@@ -41,6 +41,30 @@ type DeviceToken struct {
 	UpdatedAt  time.Time `gorm:"type:timestamptz;not null;autoUpdateTime"`
 }
 
+type SentPush struct {
+	ID            int64       `gorm:"primaryKey;autoIncrement"`
+	DeviceTokenID int64       `gorm:"not null;index:idx_sent_pushes_device_token_id"`
+	DeviceToken   DeviceToken `gorm:"foreignKey:DeviceTokenID;constraint:OnDelete:CASCADE"`
+	PlateID       int64       `gorm:"not null"`
+	Plate         Plate       `gorm:"foreignKey:PlateID;constraint:OnDelete:RESTRICT"`
+	Latitude      float64     `gorm:"type:double precision;not null"`
+	Longitude     float64     `gorm:"type:double precision;not null"`
+	SentAt        time.Time   `gorm:"type:timestamptz;not null;index:idx_sent_pushes_sent_at"`
+}
+
+type Report struct {
+	ID            int64     `gorm:"primaryKey;autoIncrement"`
+	Description   string    `gorm:"type:text;not null"`
+	PlateNumber   string    `gorm:"type:text"`
+	Latitude      float64   `gorm:"type:double precision;not null"`
+	Longitude     float64   `gorm:"type:double precision;not null"`
+	PhotoPath     string    `gorm:"type:text;not null"`
+	HardwareID    string    `gorm:"type:text;not null"`
+	StopICEStatus string    `gorm:"type:text;not null;default:'pending'"`
+	StopICEError  string    `gorm:"type:text"`
+	CreatedAt     time.Time `gorm:"type:timestamptz;not null;autoCreateTime"`
+}
+
 // PlateRecord is the input type for UpsertPlates (no ID needed).
 type PlateRecord struct {
 	Plate string
@@ -84,7 +108,7 @@ func Connect(dsn string) (*DB, error) {
 }
 
 func (d *DB) Migrate(_ context.Context) error {
-	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{})
+	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{}, &Report{})
 }
 
 func (d *DB) UpsertPlates(ctx context.Context, plates []PlateRecord) (map[string]int64, error) {
@@ -180,6 +204,63 @@ func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng
 		return nil, fmt.Errorf("query recent sightings: %w", err)
 	}
 	return results, nil
+}
+
+func (d *DB) RecentPushesForDevice(ctx context.Context, deviceTokenID int64) ([]SentPush, error) {
+	var pushes []SentPush
+	if err := d.gorm.WithContext(ctx).Where("device_token_id = ?", deviceTokenID).Find(&pushes).Error; err != nil {
+		return nil, fmt.Errorf("query sent_pushes: %w", err)
+	}
+	return pushes, nil
+}
+
+func (d *DB) RecordSentPush(ctx context.Context, deviceTokenID, plateID int64, lat, lng float64) error {
+	sp := SentPush{
+		DeviceTokenID: deviceTokenID,
+		PlateID:       plateID,
+		Latitude:      lat,
+		Longitude:     lng,
+		SentAt:        time.Now(),
+	}
+	if err := d.gorm.WithContext(ctx).Create(&sp).Error; err != nil {
+		return fmt.Errorf("insert sent_push: %w", err)
+	}
+	return nil
+}
+
+func (d *DB) CleanupStalePushes(ctx context.Context, staleThreshold time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-staleThreshold)
+	result := d.gorm.WithContext(ctx).
+		Where("device_token_id IN (SELECT id FROM device_tokens WHERE updated_at < ?)", cutoff).
+		Delete(&SentPush{})
+	if result.Error != nil {
+		return 0, fmt.Errorf("cleanup stale pushes: %w", result.Error)
+	}
+	return result.RowsAffected, nil
+}
+
+func (d *DB) TouchDeviceToken(ctx context.Context, hardwareID string) error {
+	if err := d.gorm.WithContext(ctx).
+		Model(&DeviceToken{}).
+		Where("hardware_id = ?", hardwareID).
+		Update("updated_at", time.Now()).Error; err != nil {
+		return fmt.Errorf("touch device token: %w", err)
+	}
+	return nil
+}
+
+func (d *DB) CreateReport(ctx context.Context, report *Report) error {
+	return d.gorm.WithContext(ctx).Create(report).Error
+}
+
+func (d *DB) UpdateReportStopICE(ctx context.Context, id int64, status, errMsg string) error {
+	return d.gorm.WithContext(ctx).
+		Model(&Report{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"stop_ice_status": status,
+			"stop_ice_error":  errMsg,
+		}).Error
 }
 
 // Pool returns the underlying *sql.DB for direct queries (e.g., in tests).

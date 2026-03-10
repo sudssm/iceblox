@@ -27,7 +27,7 @@ The app MUST use a resolution sufficient for plate detection at distances of 3�
 
 #### REQ-M-3: Splash Screen and Camera Start
 
-When the app is opened, it MUST display a splash screen with the app name and a "Start Camera" button. Camera capture and plate detection MUST begin when the user taps the button. This provides an explicit user-initiated start rather than immediately activating the camera on launch.
+When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, and a "Report ICE Activity" button (REQ-M-60). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
 #### REQ-M-3a: Recording Session Lifecycle
 
@@ -108,7 +108,7 @@ The detection model SHOULD:
 
 #### REQ-M-7: Detection Confidence Threshold
 
-The app MUST apply a configurable confidence threshold (default: 0.7) before passing detected regions to OCR. Detections below this threshold MUST be discarded.
+The app MUST apply a configurable confidence threshold (default: 0.5) before passing detected regions to OCR. Detections below this threshold MUST be discarded.
 
 #### REQ-M-8: Deduplication Window
 
@@ -192,6 +192,8 @@ After hashing, the app MUST immediately discard the plaintext plate text from me
 - Stored in any cache other than the deduplication window (REQ-M-8)
 - Transmitted over the network
 
+**Exception:** In debug builds only, the `DebugLog` ring buffer (REQ-M-19, DBG-2) MAY retain normalized plate text in memory for display in the debug overlay detection feed. This buffer is capped at 50 entries and exists only in the app process — it is never persisted to disk or transmitted. Release builds MUST NOT include this buffer.
+
 ### Server Communication
 
 #### REQ-M-14: Batch Upload
@@ -272,7 +274,7 @@ Push notifications are optional — the app MUST function normally if permission
 
 #### REQ-M-61: Device Token Registration
 
-After obtaining a push notification token, the app MUST send it to the server:
+After obtaining a push notification token, the app MUST send it to the server (see [server spec REQ-S-9](../server/spec.md#req-s-9-device-token-registration) for endpoint details):
 
 ```
 POST /api/v1/devices
@@ -363,6 +365,75 @@ In debug mode, captured still images MUST be:
 - Deleted when debug mode is toggled off
 - Never transmitted to the server
 
+### Debug Overlay Enhancements (DBG-1–DBG-4)
+
+These requirements extend REQ-M-19 to make the debug overlay useful for E2E testing and pipeline observability. Platform-specific implementation details are in [`ios/debug.md`](../ios/debug.md) and [`android/debug.md`](../android/debug.md).
+
+#### DBG-1: Raw Detection Bounding Boxes
+
+The debug overlay MUST draw bounding boxes for ALL raw detections from the PlateDetector, not just plates that pass OCR and normalization. This ensures the overlay is useful even when the model detects plate-like regions but OCR cannot read them (e.g., too small, blurry, wrong class).
+
+- Raw detection boxes: yellow, with confidence percentage label
+- Successfully OCR'd plate boxes: green, with plate text and truncated hash (existing behavior)
+
+#### DBG-2: Detection Feed
+
+The debug overlay MUST display a scrollable feed on the right side of the screen showing recently detected plates and their upload state.
+
+Each feed entry shows:
+- Plate text (normalized)
+- Truncated hash (first 8 characters)
+- Upload state: `QUEUED`, `SENT`, or `MATCHED`
+
+State colors:
+- `QUEUED`: white text
+- `SENT`: green text
+- `MATCHED`: gold text
+
+The feed retains the most recent 20 entries and auto-scrolls to show newest entries at top.
+
+#### DBG-3: Upload State Tracking
+
+The app MUST track each detected plate through the upload lifecycle:
+1. When a plate is detected and queued for upload: state = `QUEUED`
+2. When the server responds with `matched: false`: state = `SENT`
+3. When the server responds with `matched: true`: state = `MATCHED`
+
+#### DBG-4: Debug Log Panel
+
+The debug overlay MUST display a translucent log panel at the bottom of the screen showing recent device logs when debug mode is active.
+
+- 50-entry ring buffer, color-coded by level (DEBUG: gray, WARNING: yellow, ERROR: red)
+- Each entry formatted as: `HH:mm:ss D/Tag: message`
+- Auto-scrolls to show newest entries
+- All key pipeline events logged: model load, detection counts, upload results, connectivity changes
+
+#### Debug Overlay UI Layout
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    (system status bar)                            │
+│  FPS: 28  │  Queue: 3                                            │
+│  ● Online │  Det: 5                        ┌────────────────┐    │
+│                                            │ AB12345 [SENT] │    │
+│        ┌─────────────┐                     │ XY98765 [SENT] │    │
+│        │  ABC 1234   │  ← plate text       │ TEST123 [QUED] │    │
+│        │ ┌─────────┐ │                     │                │    │
+│        │ │ (plate) │ │  ← green box        └────────────────┘    │
+│        │ └─────────┘ │                                           │
+│        │  a3f8b2c1   │  ← hash                                  │
+│        └─────────────┘                                           │
+│     ┌───────────┐  ← yellow box (raw detection, no OCR)         │
+│     │  0.82     │                                                │
+│     └───────────┘                                                │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  12:34:56 D/Pipeline: Detected 3 plates                 │    │
+│  │  12:34:57 D/Upload: Batch sent (3 plates)               │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│  [DEBUG MODE]                                                    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Non-Functional Requirements
@@ -385,11 +456,13 @@ If the device reaches thermal throttling state, the app MUST reduce frame proces
 
 #### REQ-M-40: No Plaintext Exfiltration
 
-Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication.
+Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted in debug builds only.
 
 #### REQ-M-41: No Image Exfiltration
 
-Camera frames and still images MUST never leave the device. In production mode, images MUST NOT be saved to disk at all.
+Camera frames and still images from the plate detection pipeline MUST never leave the device. In production mode, detection pipeline images MUST NOT be saved to disk at all.
+
+**Exception:** Photos explicitly captured by the user via the ICE vehicle report form (REQ-M-61) are user-initiated and MAY be uploaded to the server as part of the report submission. This is a deliberate user action, not an automated exfiltration of detection pipeline imagery.
 
 #### REQ-M-42: Pepper Provisioning
 
@@ -407,9 +480,9 @@ The app MUST NOT include third-party analytics SDKs (e.g., Firebase Analytics, A
 #### REQ-M-50: Crash Recovery
 
 On restart after a crash, the app MUST:
-- Resume camera capture and detection automatically
-- Retain the offline queue (hashed plates awaiting upload)
+- Retain the offline queue (hashed plates awaiting upload) — SQLite/Room persistence ensures queued hashes survive process death
 - Not lose any queued hashes
+- Display the splash screen (REQ-M-3) — the user must explicitly tap "Start Camera" to resume capture
 
 #### REQ-M-51: Background Behavior
 
@@ -419,6 +492,35 @@ Background behavior is platform-specific:
 - **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
+
+### ICE Vehicle Reporting
+
+#### REQ-M-60: Splash Screen Report Button
+
+The splash screen MUST include a "Report ICE Activity" button styled with a red background and white text, positioned below the "Start Camera" button. Tapping this button MUST open the ICE vehicle report form (REQ-M-61).
+
+On iOS, the report form is presented as a modal sheet. On Android, it navigates to a full-screen composable.
+
+#### REQ-M-61: ICE Vehicle Report Form
+
+The app MUST provide a report form with the following fields:
+
+- **Photo** (required): A camera capture button that launches the device camera to take a photo. The captured photo is displayed as a preview in the form.
+- **Report Location** (required): An interactive map showing the user's current GPS location with a draggable/tappable pin. The user can adjust the pin position. Location defaults to the device's current coordinates.
+- **Description** (required): A text field for describing the ICE activity observed (e.g., "What did you see?").
+- **Plate Number** (optional): A text field for entering the vehicle's license plate number. Input is auto-uppercased.
+
+The form MUST include a "Submit Report" button that is disabled until both a photo is captured and a description is entered.
+
+**Submission behavior:**
+- On submit, the form MUST show a loading indicator and disable the submit button.
+- The app MUST send a multipart POST to `POST /api/v1/reports` (REQ-S-20) with the photo, description, coordinates (from the map pin), and optional plate number.
+- On success, the app MUST display a confirmation message and return the user to the splash screen (iOS: dismiss sheet with alert; Android: show inline success text).
+- On failure, the app MUST display the error message in the form.
+
+**Platform-specific details:**
+- **iOS**: Uses `UIImagePickerController` via a `UIViewControllerRepresentable` wrapper (`CameraPickerView`) for photo capture. Uses SwiftUI `Map` with `MapReader` for location selection. The form is presented as a sheet from `SplashScreenView`. An `E2E_AUTO_SHOW_REPORT` environment variable auto-opens the report sheet for testing.
+- **Android**: Uses `ActivityResultContracts.TakePicture()` with `FileProvider` for photo capture. Uses Google Maps Compose (`GoogleMap` + `Marker`) for location selection. The form is a separate composable (`ReportICEScreen`) navigated to from `MainActivity`.
 
 ---
 
@@ -573,56 +675,18 @@ Single-screen SwiftUI app with an `AVCaptureSession` pipeline running on a backg
 
 ### Project Structure
 
-```
-ios/IceBloxApp/
-├── IceBloxApp.swift                    # App entry point, landscape lock, splash→camera flow
-├── ContentView.swift                   # Root view, wires all managers, session lifecycle, stop control, session summary card
-├── SplashScreenView.swift              # Splash screen with app name and Start Camera button
-├── Views/
-│   ├── StatusBarView.swift             # Top status bar (online, last detected, counts, pending)
-│   └── DebugOverlayView.swift          # Bounding boxes, plate text, hash, FPS, detection feed
-├── Camera/
-│   ├── CameraManager.swift             # AVCaptureSession setup, frame delegate
-│   ├── CameraPreviewView.swift         # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
-│   ├── FrameProcessor.swift            # Orchestrates detect → OCR → normalize → hash → queue
-│   └── SimulatorCamera.swift           # Timer-driven frame generator for simulator testing (simulator-only)
-├── Detection/
-│   ├── PlateDetector.swift             # Core ML inference, bounding box extraction
-│   └── PlateOCR.swift                  # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped regions
-├── Processing/
-│   ├── PlateNormalizer.swift           # Uppercase, strip, validate length
-│   ├── PlateHasher.swift              # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
-│   ├── DeduplicationCache.swift        # Time-windowed set of recently seen normalized plates
-│   └── LookalikeExpander.swift        # BFS expansion of confusable characters (REQ-M-12a)
-├── Networking/
-│   ├── APIClient.swift                 # URLSession POST to server, batch construction
-│   ├── AlertClient.swift               # Subscribe endpoint client, 10-min timer, GPS truncation
-│   ├── RetryManager.swift              # Exponential backoff, 429 handling
-│   └── ConnectivityMonitor.swift       # NWPathMonitor wrapper, triggers queue flush
-├── Persistence/
-│   ├── OfflineQueue.swift              # SQLite-backed FIFO queue (hash, timestamp, lat, lng)
-│   └── OfflineQueueEntry.swift         # Data model
-├── Location/
-│   └── LocationManager.swift           # CLLocationManager, permission handling, GPS warning
-├── Config/
-│   ├── AppConfig.swift                 # Confidence thresholds, batch size, dedup window, server URL
-│   └── Pepper.swift                    # Generated at build time from root .env (gitignored)
-├── Models/
-│   ├── plate_detector.mlpackage        # YOLOv8-nano Core ML model (bundled)
-│   └── plate_ocr.onnx                 # CCT-XS ONNX OCR model (bundled)
-└── Info.plist                          # Camera, location usage descriptions
-```
+See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 
 ### Implementation Order
 
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
-| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 16 |
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 17 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
 | 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Splash screen with Start Camera button → full-screen camera preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped plate regions, normalization, validation |
-| 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper obfuscation, immediate plaintext discard |
+| 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper from generated Pepper.swift, immediate plaintext discard |
 | 7 | Deduplication | REQ-M-8 | Time-windowed cache keyed by normalized text |
 | 8 | Frame processor | REQ-M-30 | Wire pipeline: frame → detect → OCR → normalize → dedup → hash → queue |
 | 9 | Offline queue | REQ-M-15, REQ-M-15a | SQLite persistence, max 1000 entries, oldest eviction, local session attribution |
@@ -658,7 +722,7 @@ Camera frame to Core ML inference:
 6. Call `handler.perform([request])`
 7. Results are `[VNRecognizedObjectObservation]`, each with:
    - `boundingBox`: normalized `CGRect` (origin at **bottom-left**, Vision coordinate system — must convert to UIKit top-left origin for cropping)
-   - `confidence`: `Float` — filter at ≥ 0.7 per REQ-M-7
+   - `confidence`: `Float` — filter at configured threshold per REQ-M-7
 8. Convert `boundingBox` from Vision coordinates to pixel coordinates on the original frame, then crop the `CVPixelBuffer` at each bounding box for OCR
 
 **NMS**: The Core ML export uses `nms=True` (see `license_plate_detection.md`), so non-max suppression runs inside the model. No manual NMS implementation needed on iOS.
@@ -675,69 +739,18 @@ Single-activity Jetpack Compose app. CameraX provides the preview and frame anal
 
 ### Project Structure
 
-```
-android/app/src/main/java/com/iceblox/app/
-├── IceBloxApplication.kt               # Application-scoped capture repository
-├── MainActivity.kt                      # Activity, permission requests, splash→camera flow, notification channel
-├── MainViewModel.kt                     # Pipeline state, counts, connectivity, coordinates, session lifecycle
-├── capture/
-│   └── CaptureRepository.kt             # Shared pipeline state used by UI + background service
-├── ui/
-│   ├── CameraScreen.kt                  # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
-│   ├── SplashScreen.kt                  # Splash screen with app name and Start Camera button
-│   ├── DebugOverlay.kt                  # Bounding boxes, plate text, hash, FPS, detection feed
-│   └── theme/                           # Material 3 theme, colors, typography
-├── camera/
-│   ├── CameraPreview.kt                 # Compose CameraX preview wrapper
-│   ├── FrameAnalyzer.kt                 # ImageAnalysis.Analyzer → detect → OCR → hash → queue
-│   └── TestFrameFeeder.kt              # Test mode: loads images, feeds them through analyzeBitmap() on a timer
-├── detection/
-│   ├── PlateDetector.kt                 # TFLite interpreter, YOLOv8-nano inference, NMS
-│   └── PlateOCR.kt                      # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps
-├── processing/
-│   ├── PlateNormalizer.kt               # Uppercase, strip, validate
-│   ├── PlateHasher.kt                   # javax.crypto.Mac HMAC-SHA256, pepper from BuildConfig
-│   ├── DeduplicationCache.kt            # Time-windowed set
-│   └── LookalikeExpander.kt            # BFS expansion of confusable characters (REQ-M-12a)
-├── network/
-│   ├── ApiClient.kt                     # OkHttp, POST /api/v1/plates + /api/v1/devices
-│   ├── AlertClient.kt                   # Subscribe endpoint client, coroutine timer, GPS truncation
-│   ├── RetryManager.kt                  # Exponential backoff, 429 handling
-│   └── ConnectivityMonitor.kt           # ConnectivityManager.NetworkCallback
-├── notification/
-│   └── PushNotificationService.kt       # FirebaseMessagingService: onNewToken, onMessageReceived
-├── persistence/
-│   ├── OfflineQueueDatabase.kt          # Room database definition
-│   ├── OfflineQueueDao.kt               # Insert, query oldest, delete, count
-│   └── OfflineQueueEntry.kt             # Entity: hash, timestamp, latitude, longitude
-├── location/
-│   └── LocationProvider.kt              # FusedLocationProviderClient, permission handling
-├── config/
-│   └── AppConfig.kt                     # Confidence thresholds, batch size, server URL, notification config
-├── service/
-│   └── BackgroundCaptureService.kt      # Foreground service for background camera capture
-└── assets/
-    ├── plate_detector.tflite            # YOLOv8-nano TFLite model (bundled)
-    └── plate_ocr.onnx                  # CCT-XS ONNX OCR model (bundled)
-
-android/app/src/main/
-├── AndroidManifest.xml                  # Permissions: CAMERA, ACCESS_FINE_LOCATION, INTERNET, POST_NOTIFICATIONS
-
-android/app/src/debug/
-└── assets/
-    └── test_images/                     # Test plate images for test mode (debug builds only)
-```
+See [`android/structure.md`](../android/structure.md) for the full Android project layout.
 
 ### Implementation Order
 
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
-| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation in manifest, permissions, min API 31 |
+| 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation in manifest, permissions, min API 28 |
 | 2 | Camera capture | REQ-M-1, REQ-M-2 | CameraX preview + ImageAnalysis, 1080p resolution |
 | 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Compose: splash screen with Start Camera button → full-screen preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps, normalization, validation |
-| 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper obfuscation, plaintext discard |
+| 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper from BuildConfig, plaintext discard |
 | 7 | Deduplication | REQ-M-8 | Time-windowed cache |
 | 8 | Frame analyzer | REQ-M-30 | Wire pipeline in ImageAnalysis.Analyzer callback |
 | 9 | Offline queue | REQ-M-15, REQ-M-15a | Room database, max 1000 entries, oldest eviction, local session attribution |
@@ -774,7 +787,7 @@ Camera frame to TFLite inference:
 7. Post-process the raw output:
    a. Transpose output to `[8400, 5]` for easier iteration (single-class: 4 bbox + 1 class confidence)
    b. For each candidate, extract `[cx, cy, w, h, confidence]` where `cx/cy/w/h` are in 640x640 model coordinate space
-   c. Filter candidates by confidence ≥ 0.7
+   c. Filter candidates by confidence ≥ threshold (see REQ-M-7)
    d. Convert `[cx, cy, w, h]` to `[x1, y1, x2, y2]`: `x1 = cx - w/2`, `y1 = cy - h/2`, `x2 = cx + w/2`, `y2 = cy + h/2`
    e. Scale coordinates from 640x640 back to original bitmap dimensions
    f. Apply greedy non-max suppression (IoU threshold ~0.45): sort by confidence descending, accept top box, suppress all boxes with IoU > threshold, repeat

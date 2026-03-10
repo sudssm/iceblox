@@ -68,7 +68,7 @@ run_test_batch_upload() {
     fi
 
     # Verify stop recording shows pending sync info
-    if tap_button_by_text "Stop Recording" && wait_for_ui_text "Session Summary" 10; then
+    if tap_button_by_text "Stop Scanning" && wait_for_ui_text "Session Summary" 10; then
         local ui_texts
         ui_texts="$(ui_dump_texts)"
 

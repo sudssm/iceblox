@@ -38,7 +38,7 @@ type SightingRecorder interface {
 }
 
 type PushNotifier interface {
-	NotifyAsync(sightingID int64, lat, lng float64)
+	NotifyAsync(sightingID int64, plateID int64, lat, lng float64)
 }
 
 func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier PushNotifier) http.HandlerFunc {
@@ -94,7 +94,7 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 				}
 
 				if notifier != nil {
-					notifier.NotifyAsync(sightingID, req.Latitude, req.Longitude)
+					notifier.NotifyAsync(sightingID, plateID, req.Latitude, req.Longitude)
 				}
 			}
 		}

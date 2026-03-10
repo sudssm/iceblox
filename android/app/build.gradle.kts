@@ -34,6 +34,9 @@ android {
         val pepper = envProperties.getProperty("PEPPER")
             ?: error("PEPPER not found in ../.env")
         buildConfigField("String", "PEPPER", "\"$pepper\"")
+
+        val mapsApiKey = envProperties.getProperty("MAPS_API_KEY") ?: ""
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     signingConfigs {
@@ -100,6 +103,7 @@ dependencies {
     implementation(libs.onnxruntime.android)
     implementation(libs.play.services.tasks)
     implementation(libs.play.services.location)
+    implementation(libs.maps.compose)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.room.runtime)

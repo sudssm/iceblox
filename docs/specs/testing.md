@@ -55,6 +55,18 @@ scripts/simulator/deploy.sh ios
 - Installs the most recently built app (run `build.sh` first)
 - Launches the app's main activity/scene
 
+**iOS programmatic launch:** To launch the iOS app with E2E environment variables (suppressing dialogs, enabling triggers), use `xcrun simctl launch` with `SIMCTL_CHILD_*` prefixed env vars:
+
+```bash
+SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1 \
+SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0 \
+SIMCTL_CHILD_E2E_USE_SPLASH_TRIGGER=1 \
+SIMCTL_CHILD_E2E_FORCE_DEBUG_MODE=1 \
+xcrun simctl launch <UDID> com.iceblox.app
+```
+
+The app reads these via `ProcessInfo.processInfo.environment` in `AppConfig.swift`. See `e2e/ios/lib/app.sh` for the full set of E2E environment variables.
+
 ### screenshot.sh
 
 Capture a screenshot to `/tmp/`.
@@ -65,6 +77,46 @@ scripts/simulator/screenshot.sh ios
 ```
 
 Outputs the file path of the saved screenshot. Screenshots are timestamped (`screenshot_<platform>_<timestamp>.png`) and accumulate in `/tmp/`.
+
+### screenshot_session.sh
+
+Automated screenshot session: build, deploy, launch, and capture screenshots at key stages.
+
+```bash
+scripts/simulator/screenshot_session.sh ios                          # basic session
+scripts/simulator/screenshot_session.sh ios --skip-build             # reuse existing build
+scripts/simulator/screenshot_session.sh ios --debug                  # enable debug overlay
+scripts/simulator/screenshot_session.sh ios --debug --test-images ./e2e/android/fixtures/target_plate/
+scripts/simulator/screenshot_session.sh android --debug
+scripts/simulator/screenshot_session.sh ios --output-dir ./screenshots/
+```
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `--skip-build` | Reuse existing build artifacts |
+| `--debug` | Enable debug overlay (iOS: `E2E_FORCE_DEBUG_MODE` env var; Android: triple-tap) |
+| `--test-images DIR` | Push test images for pipeline testing instead of live camera |
+| `--output-dir DIR` | Save screenshots to `DIR` (default: `/tmp`) |
+
+**Screenshots captured:**
+
+1. `01_pre_launch` — simulator home screen before launch
+2. `02_splash` — app splash screen
+3. `03_camera_active` — camera/test-image feed active
+4. `04_debug_overlay` — debug overlay visible (only with `--debug`)
+
+Files are named `session_<platform>_<step>_<timestamp>.png`.
+
+**iOS launch details:** The script launches the app with environment variables via `SIMCTL_CHILD_*` prefix:
+
+- `E2E_SKIP_NOTIFICATION_REQUEST=1` — suppresses the notification permission dialog
+- `E2E_REQUEST_LOCATION_PERMISSION=0` — skips location permission prompt
+- `E2E_USE_SPLASH_TRIGGER=1` — enables file-based splash-to-camera transition
+- `E2E_FORCE_DEBUG_MODE=1` — forces debug overlay on without triple-tap (when `--debug`)
+
+After launch, the script writes `e2e_start_camera.trigger` into the app's `Library/Application Support/` directory. The app polls for this file and transitions from the splash screen to the camera view when it appears.
 
 ### inspect.sh
 
@@ -229,6 +281,52 @@ scripts/simulator/navigate.sh ios home
 scripts/simulator/screenshot.sh ios
 ```
 
+## iOS Simulator Best Practices
+
+### Prefer env-var and file-based triggers over coordinate taps
+
+iOS Simulator coordinate mapping is unreliable on multi-monitor setups. The `ios_map_coords` function reads screen geometry from a plist and picks the first entry, which may not correspond to the monitor the Simulator is actually on. This causes taps to land on the wrong screen or wrong coordinates.
+
+**Instead of tapping UI elements, use environment variables or file-based triggers to drive the app programmatically:**
+
+- **Environment variables** (via `SIMCTL_CHILD_*` prefix): Set flags that the app reads in `AppConfig.swift` to skip dialogs, auto-navigate to screens, or enable test modes. Examples:
+  - `SIMCTL_CHILD_E2E_AUTO_SHOW_REPORT=1` — opens the report sheet without tapping
+  - `SIMCTL_CHILD_E2E_USE_SPLASH_TRIGGER=1` — enables file-based splash-to-camera transition
+  - `SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1` — suppresses notification permission dialog
+  - `SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0` — skips location permission prompt
+
+- **File-based triggers**: Write a trigger file into the app's `Library/Application Support/` directory. The app polls for it and transitions state when it appears. Use for transitions that happen after launch (e.g., splash → camera).
+
+When adding new UI flows that need E2E testing or screenshots, add a corresponding `E2E_*` env var in `AppConfig.swift` and check it in the relevant view's `.onAppear` or init. This is more reliable than coordinate-based interaction and works regardless of monitor setup.
+
+### Write scripts, don't execute steps individually
+
+For E2E tests and screenshot sessions, always write a self-contained shell script that does all the work (build, deploy, launch, screenshot, etc.) and produces output files. Then read the results. This is more reproducible and avoids losing progress if a single step fails interactively.
+
+Example: `scripts/simulator/screenshot_report_flow.sh` builds the app, installs it, launches twice (once for splash, once with `E2E_AUTO_SHOW_REPORT=1` for the report form), and saves both screenshots to an output directory.
+
+### Port conflicts
+
+When running E2E tests, port 8080 may be occupied by another workspace's server. Use `E2E_SERVER_PORT` to pick an alternate port (e.g., `E2E_SERVER_PORT=8099 e2e/ios/run.sh`). The E2E infrastructure passes this to both the Go server and the app.
+
+### Clean app state
+
+Uninstall the app before reinstalling to clear cached permission dialogs (notification, location). Even with `E2E_SKIP_NOTIFICATION_REQUEST=1`, a previously-granted notification permission dialog may re-trigger if the app was installed before. Use:
+
+```bash
+xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+xcrun simctl install "$UDID" "$APP_PATH"
+```
+
+### Grant permissions upfront
+
+To avoid interactive permission dialogs blocking automation:
+
+```bash
+xcrun simctl privacy "$UDID" grant location "$BUNDLE_ID"
+xcrun simctl privacy "$UDID" grant camera "$BUNDLE_ID"
+```
+
 ## Limitations
 
 ### iOS Interaction
@@ -237,7 +335,7 @@ scripts/simulator/screenshot.sh ios
   - The Simulator to be the frontmost application (scripts activate it automatically)
   - macOS Accessibility permissions granted to `/usr/bin/osascript` (System Settings > Privacy & Security > Accessibility)
   - The Simulator window to not be obscured by other windows
-- **Coordinate mapping** assumes the Simulator renders the device screen filling the window content area with standard macOS title bar chrome. Unusual window sizing may cause coordinate drift.
+- **Coordinate mapping** is unreliable on multi-monitor setups — `ios_map_coords` picks the first screen entry from a plist, which may not match the Simulator's actual monitor. Prefer env-var/file-based triggers over coordinate taps.
 - **inspect** (UI hierarchy dump) is not available for iOS without an XCUITest target. Use screenshots for visual inspection.
 
 ### Android Interaction
@@ -280,6 +378,9 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Device registration** (`tests/test_device_registration.sh`): Calls `POST /api/v1/devices` with a valid token and verifies status=ok and the token is stored in the database. Also verifies upsert behavior (re-registering the same device does not duplicate) and that an empty token returns 400.
 - **Match debug label** (`tests/test_match_debug_label.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies the server logged a match and the debug feed shows a `[MTCH]` label for the matched plate.
 - **Queued entries clear** (`tests/test_queued_clears.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies all detection feed entries have transitioned from QUEUED to either SENT or MATCHED (no entries remain stuck in QUEUED state).
+- **Report API** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Submits a report via `POST /api/v1/reports` with a photo, description, and coordinates. Verifies the response includes `status: ok` and a `report_id`, and that the report is stored in the database with correct fields (description, latitude, longitude, photo path).
+- **Report validation** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Verifies that missing required fields (description, photo, X-Device-ID) and out-of-range coordinates return `400 Bad Request`.
+- **Report app UI** (Android: `tests/test_report_submission.sh`): Taps "Report ICE Activity" on the splash screen, verifies the report form opens with a description field visible, and attempts a submission through the app UI.
 
 ### Prerequisites
 

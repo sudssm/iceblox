@@ -47,6 +47,7 @@ android/
         │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates + /api/v1/devices, batch, 429 handling
         │   │   │   ├── ConnectivityMonitor.kt # ConnectivityManager.NetworkCallback
         │   │   │   ├── DeviceTokenManager.kt # FCM token registration with retry
+        │   │   │   ├── ReportClient.kt     # OkHttp multipart POST to /api/v1/reports (ICE vehicle reports)
         │   │   │   └── RetryManager.kt     # Exponential backoff, rate limit tracking
         │   │   ├── notification/
         │   │   │   ├── NotificationHelper.kt # Notification channel creation, alert display
@@ -67,6 +68,7 @@ android/
         │   │   └── ui/
         │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
+        │   │       ├── ReportICEScreen.kt  # ICE vehicle report form (photo capture, description, plate, Google Map, submit)
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay
         │   │       └── theme/
@@ -202,6 +204,7 @@ Core dependencies (managed via version catalog in `gradle/libs.versions.toml`):
 - `com.google.android.gms:play-services-location` (21.3.0) — Fused location provider
 - `com.google.firebase:firebase-bom` (33.7.0) — Firebase Bill of Materials
 - `com.google.firebase:firebase-messaging` — Firebase Cloud Messaging for push notifications
+- `com.google.maps.android:maps-compose` (6.2.1) — Google Maps Compose integration for report location picker
 
 Build plugins:
 - KSP (2.1.0-1.0.29) — Kotlin Symbol Processing for Room annotation processing

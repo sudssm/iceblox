@@ -100,7 +100,7 @@ And the bounding box is passed to the OCR stage
 
 ```
 Given the camera is capturing frames
-When a region is detected with confidence below the threshold (0.7)
+When a region is detected with confidence below the threshold (0.5)
 Then the region is not passed to OCR
 And no hash is generated
 ```
