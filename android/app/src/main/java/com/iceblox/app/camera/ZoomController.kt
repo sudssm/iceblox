@@ -5,6 +5,7 @@ import android.graphics.RectF
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import androidx.camera.core.Camera
+import com.google.common.util.concurrent.ListenableFuture
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import kotlin.math.abs
@@ -145,13 +146,15 @@ class ZoomController(context: Context) {
         }
     }
 
-    fun restoreZoom() {
-        val cam = camera ?: return
-        try {
-            cam.cameraControl.setZoomRatio(1.0f)
+    fun restoreZoom(): ListenableFuture<Void>? {
+        val cam = camera ?: return null
+        return try {
+            val future = cam.cameraControl.setZoomRatio(1.0f)
             DebugLog.d(TAG, "restoreZoom: reset to 1.0x")
+            future
         } catch (e: Exception) {
             DebugLog.e(TAG, "restoreZoom FAILED: ${e.message}", e)
+            null
         }
     }
 
