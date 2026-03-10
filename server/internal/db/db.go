@@ -209,7 +209,10 @@ func (d *DB) RecordSentPush(ctx context.Context, deviceTokenID, plateID int64, l
 		Longitude:     lng,
 		SentAt:        time.Now(),
 	}
-	return d.gorm.WithContext(ctx).Create(&sp).Error
+	if err := d.gorm.WithContext(ctx).Create(&sp).Error; err != nil {
+		return fmt.Errorf("insert sent_push: %w", err)
+	}
+	return nil
 }
 
 func (d *DB) CleanupStalePushes(ctx context.Context, staleThreshold time.Duration) (int64, error) {
@@ -217,14 +220,20 @@ func (d *DB) CleanupStalePushes(ctx context.Context, staleThreshold time.Duratio
 	result := d.gorm.WithContext(ctx).
 		Where("device_token_id IN (SELECT id FROM device_tokens WHERE updated_at < ?)", cutoff).
 		Delete(&SentPush{})
-	return result.RowsAffected, result.Error
+	if result.Error != nil {
+		return 0, fmt.Errorf("cleanup stale pushes: %w", result.Error)
+	}
+	return result.RowsAffected, nil
 }
 
 func (d *DB) TouchDeviceToken(ctx context.Context, hardwareID string) error {
-	return d.gorm.WithContext(ctx).
+	if err := d.gorm.WithContext(ctx).
 		Model(&DeviceToken{}).
 		Where("hardware_id = ?", hardwareID).
-		Update("updated_at", time.Now()).Error
+		Update("updated_at", time.Now()).Error; err != nil {
+		return fmt.Errorf("touch device token: %w", err)
+	}
+	return nil
 }
 
 // Pool returns the underlying *sql.DB for direct queries (e.g., in tests).
