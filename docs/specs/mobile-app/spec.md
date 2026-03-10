@@ -214,6 +214,7 @@ The server response includes a `results` array with a per-plate `matched` boolea
 - Display the updated match count in the status bar
 - Map each variant hash back to its original plate's primary hash prefix (using an in-memory variant→primary mapping) and update the corresponding debug feed entry to MATCHED. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
 - For non-matched responses, defer updating the debug feed entry from QUEUED to SENT until all variants for the same primary plate have been acknowledged. This prevents premature SENT display while variants are still in-flight.
+- Fire `onPlateSent` callbacks for ALL entries in a successfully deleted batch, even if response body parsing fails (defaulting to `matched=false`). This prevents entries from getting stuck in the QUEUED state in the debug feed when the server returns a 200 but the response body is malformed or empty.
 - NOT alert the user or provide any visual/audio feedback on matches
 
 #### REQ-M-14b: Final Flush on Session Stop
@@ -230,7 +231,7 @@ When the device has no network connectivity, the app MUST queue hashed plates in
 - Store a maximum of 1,000 entries (oldest entries are dropped when full)
 - Store only: hash, timestamp (UTC), location (if available), and local session identifier metadata
 - NOT store plaintext plate text or images
-- Entries older than 10 minutes MUST be pruned at the start of each batch upload cycle (stale entries are unlikely to be useful and could cause unbounded queue growth after extended offline periods)
+- Entries older than 10 minutes MUST be pruned at the start of each batch upload cycle (stale entries are unlikely to be useful and could cause unbounded queue growth after extended offline periods). Pruned entries MUST trigger `onPlateSent` callbacks with `matched=false` so the debug feed transitions them from QUEUED to SENT rather than leaving them stuck.
 
 #### REQ-M-15a: Session Attribution for Queued Plates
 
@@ -506,7 +507,7 @@ On iOS, the report form is presented as a modal sheet. On Android, it navigates 
 The app MUST provide a report form with the following fields:
 
 - **Photo** (required): A camera capture button that launches the device camera to take a photo. The captured photo is displayed as a preview in the form.
-- **Report Location** (required): An interactive map showing the user's current GPS location with a draggable/tappable pin. The user can adjust the pin position. Location defaults to the device's current coordinates.
+- **Report Location** (required): An interactive map showing the user's current GPS location with a draggable/tappable pin. The user can adjust the pin position. Location defaults to the device's current coordinates. When the device location becomes available after the form opens, the map MUST auto-animate to the user's position. A "recenter to my location" button MUST be displayed on the map (when location is available) to let the user snap back to their GPS coordinates after manually adjusting the pin.
 - **Description** (required): A text field for describing the ICE activity observed (e.g., "What did you see?").
 - **Plate Number** (optional): A text field for entering the vehicle's license plate number. Input is auto-uppercased.
 
@@ -519,8 +520,8 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 - On failure, the app MUST display the error message in the form.
 
 **Platform-specific details:**
-- **iOS**: Uses `UIImagePickerController` via a `UIViewControllerRepresentable` wrapper (`CameraPickerView`) for photo capture. Uses SwiftUI `Map` with `MapReader` for location selection. The form is presented as a sheet from `SplashScreenView`. An `E2E_AUTO_SHOW_REPORT` environment variable auto-opens the report sheet for testing.
-- **Android**: Uses `ActivityResultContracts.TakePicture()` with `FileProvider` for photo capture. Uses Google Maps Compose (`GoogleMap` + `Marker`) for location selection. The form is a separate composable (`ReportICEScreen`) navigated to from `MainActivity`.
+- **iOS**: Uses `UIImagePickerController` via a `UIViewControllerRepresentable` wrapper (`CameraPickerView`) for photo capture. Uses SwiftUI `Map` with `MapReader` for location selection, with a "recenter" button overlay. The form is presented as a sheet from `SplashScreenView`. Location permission is requested on form appear via `LocationManager`. An `E2E_AUTO_SHOW_REPORT` environment variable auto-opens the report sheet for testing.
+- **Android**: Uses `ActivityResultContracts.TakePicture()` with `FileProvider` for photo capture. Uses Google Maps Compose (`GoogleMap` + `Marker`) for location selection, with a `FloatingActionButton` overlay for recentering. The form is a separate composable (`ReportICEScreen`) navigated to from `MainActivity`. Location permission is requested when the report form opens if not already granted, and location updates are started via `LaunchedEffect`.
 
 ---
 
