@@ -563,3 +563,28 @@ And the artifact reports "plates_seen", "ice_vehicles", and "duration_seconds"
 And "plates_seen" is at least 1
 And "ice_vehicles" is at least 1
 ```
+
+### TS-E2E-13: Device registration stores token and supports upsert
+
+```
+Given an ephemeral postgres and Go server are running
+When POST /api/v1/devices is called with a valid token, platform "ios", and X-Device-ID header
+Then the response status is "ok"
+And the device_tokens table contains the token
+When the same device re-registers with a different token
+Then the device_tokens table still contains exactly one row for that device
+And the token is updated to the new value
+When POST /api/v1/devices is called with an empty token
+Then the response is 400 Bad Request
+```
+
+### TS-E2E-14: iOS batch upload sends plates via batch POST
+
+```
+Given an ephemeral postgres and Go server are running with test plates
+And the iOS app is installed on the simulator
+When a target plate image is injected into the running camera session
+And the batch flush interval elapses
+Then the server log contains batch POST(s) with count= entries
+And at least one sighting exists in the database
+```
