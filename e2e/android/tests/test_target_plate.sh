@@ -58,8 +58,8 @@ run_test_target_plate() {
         echo "  INFO: Latest sighting: $sighting"
     fi
 
-    if tap_button_by_text "Stop Recording" && wait_for_ui_text "Session Summary" 10; then
-        echo "  PASS: Stop Recording shows the session summary overlay"
+    if tap_button_by_text "Stop Scanning" && wait_for_ui_text "Session Summary" 10; then
+        echo "  PASS: Stop Scanning shows the session summary overlay"
         E2E_PASS=$((E2E_PASS + 1))
 
         local ui_texts
@@ -96,7 +96,7 @@ run_test_target_plate() {
             E2E_FAIL=$((E2E_FAIL + 1))
         fi
     else
-        echo "  FAIL: Stop Recording should surface the session summary overlay"
+        echo "  FAIL: Stop Scanning should surface the session summary overlay"
         E2E_FAIL=$((E2E_FAIL + 1))
     fi
 

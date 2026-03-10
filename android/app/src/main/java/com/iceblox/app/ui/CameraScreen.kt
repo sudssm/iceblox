@@ -198,7 +198,7 @@ fun CameraScreen(
                         .padding(bottom = 12.dp)
                         .testTag("stop_recording_button")
                 ) {
-                    Text("Stop Recording")
+                    Text("Stop Scanning")
                 }
 
                 if (BuildConfig.DEBUG && debugMode && queueDepth > 0) {
