@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 private struct SessionSummaryCard: View {
     let platesSeen: Int
@@ -142,8 +143,17 @@ struct ContentView: View {
 
                     Spacer()
 
+                    Text("Leaving the app will pause scanning")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.black.opacity(0.5))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 8)
+
                     Button(action: stopRecordingSession) {
-                        Text("Stop Recording")
+                        Text("Stop Scanning")
                             .font(.system(.subheadline, design: .monospaced).weight(.semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14)
@@ -291,6 +301,15 @@ struct ContentView: View {
         apiClient?.stopBatchTimer()
         alertClient?.subscribe()
         alertClient?.stopTimer()
+
+        if !showingSummary {
+            let content = UNMutableNotificationContent()
+            content.title = "Scanning paused"
+            content.body = "Open IceBlox to resume"
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+            let request = UNNotificationRequest(identifier: "background-pause", content: content, trigger: trigger)
+            UNUserNotificationCenter.current().add(request)
+        }
     }
 
     private func stopRecordingSession() {
