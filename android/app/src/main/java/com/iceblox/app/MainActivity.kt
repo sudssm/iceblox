@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,11 +114,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 } else if (showReport) {
-                    if (!hasLocationPermission) {
-                        requestLocationPermission()
+                    LaunchedEffect(hasLocationPermission) {
+                        if (!hasLocationPermission) {
+                            requestLocationPermission()
+                        }
                     }
                     val reportViewModel: MainViewModel = viewModel()
-                    androidx.compose.runtime.LaunchedEffect(hasLocationPermission) {
+                    LaunchedEffect(hasLocationPermission) {
                         if (hasLocationPermission) {
                             reportViewModel.locationProvider.startUpdates()
                         }
