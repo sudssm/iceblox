@@ -222,6 +222,21 @@ CREATE TABLE device_tokens (
 );
 ```
 
+**Table: `sent_pushes`** — per-device push notification history for deduplication
+```sql
+CREATE TABLE sent_pushes (
+    id              SERIAL PRIMARY KEY,
+    device_token_id INTEGER NOT NULL REFERENCES device_tokens(id) ON DELETE CASCADE,
+    plate_id        INTEGER NOT NULL REFERENCES plates(id),
+    latitude        DOUBLE PRECISION NOT NULL,
+    longitude       DOUBLE PRECISION NOT NULL,
+    sent_at         TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_sent_pushes_device_token_id ON sent_pushes(device_token_id);
+CREATE INDEX idx_sent_pushes_sent_at ON sent_pushes(sent_at);
+```
+
 **Data flow:**
 1. On startup, plates from `data/plates.txt` are upserted into the `plates` table
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
@@ -275,6 +290,7 @@ When a plate hash matches a target (REQ-S-2), the server MUST send a push notifi
 **Dispatch rules:**
 - Notifications MUST be sent asynchronously — the HTTP response to the detecting device MUST NOT be blocked by notification delivery.
 - The server MUST query all active device tokens from the `device_tokens` table and send to each.
+- Before sending, the server MUST apply per-device deduplication rules (REQ-S-18) and skip the notification if it would be a duplicate.
 - If a push provider returns a token-expired error (APNs HTTP 410 / FCM `UNREGISTERED`), the server MUST delete that token from the database.
 - Push delivery failures MUST be logged but MUST NOT affect the plates endpoint response.
 
@@ -348,7 +364,7 @@ X-Device-ID: <device identifier>
 - `radius_miles`: Required. MUST be in range [1, 500]. Default suggested by clients: 100.
 
 **Headers:**
-- `X-Device-ID`: Required. Identifies the subscribing device.
+- `X-Device-ID`: Required. Identifies the subscribing device. The server MUST also update the `updated_at` timestamp of the device's `device_tokens` row(s) on each subscribe call, so that active subscribers are not considered stale for push history cleanup (REQ-S-19).
 
 **Response (200 OK):**
 ```json
@@ -417,6 +433,24 @@ The server MUST wrap the HTTP mux with request logging middleware so operator lo
 **Scope:**
 - The middleware MUST apply to all server endpoints, including `/healthz`.
 - Logging MUST be additive only; it MUST NOT change successful response bodies or status codes from existing handlers.
+
+### REQ-S-18: Push Notification Deduplication
+
+Before sending a push notification to a device, the server MUST check the `sent_pushes` table for that device and skip the notification if any of the following conditions are met:
+
+1. **Same plate**: A push was already sent to this device for the same `plate_id` (regardless of location or time).
+2. **Proximity**: A push was already sent to this device for any plate within 1 mile of the current sighting (haversine distance ≤ 1.0 miles).
+3. **Cooldown**: A push was already sent to this device less than 2 minutes ago (regardless of plate or location).
+
+After a successful push send, the server MUST record the push in `sent_pushes` with the device token ID, plate ID, sighting coordinates, and current timestamp.
+
+### REQ-S-19: Stale Push History Cleanup
+
+The server MUST run a background goroutine that periodically cleans up stale `sent_pushes` records:
+
+- **Sweep interval**: Every 5 minutes
+- **Stale threshold**: 30 minutes — delete `sent_pushes` rows for device tokens whose `device_tokens.updated_at` is older than 30 minutes (indicating the device has not checked in recently)
+- **Subscribe touch**: The subscribe endpoint (`POST /api/v1/subscribe`) MUST update the `updated_at` timestamp of the device's token row(s), so that active subscribers are not considered stale
 
 ## Out of Scope (v1)
 

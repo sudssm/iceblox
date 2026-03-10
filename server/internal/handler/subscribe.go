@@ -39,6 +39,11 @@ type SightingQuerier interface {
 	RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]SightingResult, error)
 }
 
+// DeviceToucher updates the device token timestamp on subscribe.
+type DeviceToucher interface {
+	TouchDeviceToken(ctx context.Context, hardwareID string) error
+}
+
 // SightingResult holds a sighting returned by SightingQuerier.
 type SightingResult struct {
 	Plate     string
@@ -47,7 +52,7 @@ type SightingResult struct {
 	SeenAt    time.Time
 }
 
-func SubscribeHandler(subs SubscriberStore, querier SightingQuerier) http.HandlerFunc {
+func SubscribeHandler(subs SubscriberStore, querier SightingQuerier, toucher DeviceToucher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -77,6 +82,12 @@ func SubscribeHandler(subs SubscriberStore, querier SightingQuerier) http.Handle
 		radius := *req.RadiusMiles
 
 		subs.Set(deviceID, lat, lng, radius)
+
+		if toucher != nil {
+			if err := toucher.TouchDeviceToken(r.Context(), deviceID); err != nil {
+				log.Printf("failed to touch device token for %s: %v", deviceID, err) //nolint:gosec // deviceID is from X-Device-ID header, internal log only
+			}
+		}
 
 		bb := geo.BoundingBoxFromCenter(lat, lng, radius)
 		since := time.Now().Add(-1 * time.Hour)

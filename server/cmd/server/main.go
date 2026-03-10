@@ -146,7 +146,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 
 	var notifier handler.PushNotifier
 	if apnsClient != nil || fcmClient != nil {
-		notifier = push.NewNotifier(apnsClient, fcmClient, database, subStore)
+		n := push.NewNotifier(apnsClient, fcmClient, database, subStore)
+		defer n.Close()
+		notifier = n
 		log.Println("push notifier initialized")
 	}
 
@@ -220,7 +222,7 @@ func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store,
 	version := handler.APIVersionMiddleware("v1")
 	mux.Handle("/api/v1/plates", version(handler.PlatesHandler(database, store, notifier)))
 	mux.Handle("/api/v1/devices", version(handler.DevicesHandler(database)))
-	mux.Handle("/api/v1/subscribe", version(handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database})))
+	mux.Handle("/api/v1/subscribe", version(handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}, database)))
 }
 
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {
