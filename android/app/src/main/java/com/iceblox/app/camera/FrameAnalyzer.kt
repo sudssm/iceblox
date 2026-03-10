@@ -40,7 +40,6 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private var fpsFrameCount = 0
     private var rawDetectionsTimestamp = 0L
     private var debugDetectionsTimestamp = 0L
-    private val DETECTIONS_HOLD_MS = 1000L
 
     private val _fps = MutableStateFlow(0.0)
     val fps: StateFlow<Double> = _fps
@@ -345,5 +344,6 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
     companion object {
         private const val TAG = "FrameAnalyzer"
+        private const val DETECTIONS_HOLD_MS = 1000L
     }
 }

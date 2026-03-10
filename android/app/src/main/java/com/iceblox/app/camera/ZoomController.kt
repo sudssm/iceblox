@@ -82,12 +82,13 @@ class ZoomController(context: Context) {
                 bestRatio = ratio
             }
         }
-        if (bestIdx != null) {
-            DebugLog.d(TAG, "Best candidate: [$bestIdx] dist=${"%.4f".format(bestDist)}, zoom=${"%.2f".format(bestRatio)}x")
-            return Pair(bestIdx!!, bestRatio)
+        return bestIdx?.let { idx ->
+            DebugLog.d(TAG, "Best candidate: [$idx] dist=${"%.4f".format(bestDist)}, zoom=${"%.2f".format(bestRatio)}x")
+            Pair(idx, bestRatio)
+        } ?: run {
+            DebugLog.d(TAG, "No eligible candidates for zoom retry")
+            null
         }
-        DebugLog.d(TAG, "No eligible candidates for zoom retry")
-        return null
     }
 
     fun zoomIn(ratio: Float): Boolean {

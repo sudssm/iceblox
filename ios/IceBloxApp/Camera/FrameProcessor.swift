@@ -62,6 +62,7 @@ final class FrameProcessor: ObservableObject {
     private var awaitingZoomedFrame = false
     private var zoomRetryStartTime: Date?
     private var framesToSkipAfterZoom = 0
+    private let ciContext = CIContext()
 
     init(offlineQueue: OfflineQueue, locationManager: LocationManager, apiClient: APIClient, sessionID: String) {
         self.offlineQueue = offlineQueue
@@ -255,8 +256,7 @@ final class FrameProcessor: ObservableObject {
     private func imageFromSampleBuffer(_ sampleBuffer: CMSampleBuffer) -> UIImage? {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
         return UIImage(cgImage: cgImage)
     }
 

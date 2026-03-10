@@ -5,6 +5,7 @@ final class PreviewFreezer {
     private weak var parentView: UIView?
     private var frozenImageView: UIImageView?
     private var enhancingLabel: UIView?
+    private let ciContext = CIContext()
     private(set) var isFrozen = false
 
     init(parentView: UIView) {
@@ -52,8 +53,7 @@ final class PreviewFreezer {
     private func imageFromSampleBuffer(_ sampleBuffer: CMSampleBuffer) -> UIImage? {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
         return UIImage(cgImage: cgImage)
     }
 
