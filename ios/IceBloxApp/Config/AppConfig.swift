@@ -19,7 +19,7 @@ enum AppConfig {
     static let simulatorTestImagesDirectoryName = stringEnv("SIMULATOR_TEST_IMAGES_DIRNAME") ?? "test_images"
     static let simulatorFrameIntervalMilliseconds = intEnv("SIMULATOR_FRAME_INTERVAL_MS", defaultValue: 100)
 
-    static let detectionConfidenceThreshold = floatEnv("E2E_DETECTION_CONFIDENCE_THRESHOLD", defaultValue: 0.7)
+    static let detectionConfidenceThreshold = floatEnv("E2E_DETECTION_CONFIDENCE_THRESHOLD", defaultValue: 0.5)
     static let ocrConfidenceThreshold = floatEnv("E2E_OCR_CONFIDENCE_THRESHOLD", defaultValue: 0.6)
     static let deduplicationWindowSeconds: TimeInterval = 60
     static let minPlateLength = 2

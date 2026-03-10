@@ -6,63 +6,13 @@ Enhance the debug overlay (REQ-M-19) to make E2E testing observable. Currently, 
 
 ## Requirements
 
-### DBG-1: Raw Detection Bounding Boxes
+See [Mobile App Spec — Debug Overlay Enhancements](../mobile-app/spec.md#debug-overlay-enhancements-dbg-1–dbg-4) for the shared DBG-1 through DBG-4 requirements and UI layout. This file covers iOS-specific implementation details only.
 
-The debug overlay MUST draw bounding boxes for ALL raw detections from the PlateDetector, not just plates that pass OCR and normalization. This ensures the overlay is useful even when the model detects plate-like regions but OCR cannot read them (e.g., too small, blurry, wrong class).
-
-- Raw detection boxes: yellow, with confidence percentage label
-- Successfully OCR'd plate boxes: green, with plate text and truncated hash (existing behavior)
-
-### DBG-2: Detection Feed
-
-The debug overlay MUST display a scrollable feed on the right side of the screen showing recently detected plates and their upload state.
-
-Each feed entry shows:
-- Plate text (normalized)
-- Truncated hash (first 8 characters)
-- Upload state: `QUEUED`, `SENT`, or `MATCHED`
-
-State colors:
-- `QUEUED`: white text
-- `SENT`: green text
-- `MATCHED`: bright green/bold text
-
-The feed retains the most recent 20 entries and auto-scrolls to show newest entries at top.
-
-### DBG-3: Upload State Tracking
-
-The app MUST track each detected plate through the upload lifecycle:
-1. When a plate is detected and queued for upload: state = `QUEUED`
-2. When the server responds with `matched: false`: state = `SENT`
-3. When the server responds with `matched: true`: state = `MATCHED`
+## iOS-Specific: DBG-3 Callback
 
 State transitions are driven by a callback from `APIClient` to `FrameProcessor`.
 
-## UI Layout
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  FPS: 28  │  Queue: 3  │  ● Online                              │
-│                                                                  │
-│        ┌─────────────┐                       ┌────────────────┐  │
-│        │  ABC 1234   │  ← plate text         │ AB12345 [SENT] │  │
-│        │ ┌─────────┐ │                       │ XY98765 [SENT] │  │
-│        │ │ (plate) │ │  ← green box          │ TEST123 [QUED] │  │
-│        │ └─────────┘ │                       │                │  │
-│        │  a3f8b2c1   │  ← hash               │                │  │
-│        └─────────────┘                       └────────────────┘  │
-│                                                                  │
-│     ┌───────────┐  ← yellow box (raw detection, no OCR)         │
-│     │  0.82     │                                                │
-│     └───────────┘                                                │
-│                                                                  │
-│  [DEBUG MODE]                                                    │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### DBG-4: Debug Log Panel
-
-The debug overlay MUST display a translucent log panel at the bottom of the screen showing recent device logs when debug mode is active.
+## iOS-Specific: DBG-4 Debug Log Panel
 
 - Panel: `frame(maxHeight: 140)`, `background(.black.opacity(0.75))`, rounded top corners
 - Entries: 9pt monospace, `lineLimit(2)`, color-coded by level

@@ -52,7 +52,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 ## Push Notifications
 
 - [ ] **Descriptive push notification text** — Include plate info, location, and confidence in the notification body. Tapping the notification should open a map view showing alert location, confidence score, and user's current location.
-- [ ] **Dedupe push notifications** — Suppress duplicate notifications when the same location or vehicle is detected multiple times in a short window.
+- [x] **Dedupe push notifications** — Suppress duplicate notifications when the same location or vehicle is detected multiple times in a short window.
 - [ ] **Confidence score** — Calculate a confidence score based on the number of reports at a location and the number of character substitutions in the plate match.
 - [ ] **Enable iOS push notifications** — Integrate APNs, register device tokens, and wire up server-side delivery for iOS clients.
 - [ ] **Set up Android push notifications in prod** — Configure FCM credentials and delivery for the production environment.
@@ -64,6 +64,16 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 - [ ] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
 - [ ] **Splash page** — Build a marketing/landing splash page for the project.
+
+---
+
+## ICE Vehicle Reporting
+
+- [ ] **Report UI (iOS)** — Add a home screen component allowing the user to report an ICE vehicle. Includes a camera/photo capture step and a text description field.
+- [ ] **Report UI (Android)** — Same report component on Android: photo capture + text description field, accessible from the home screen.
+- [ ] **Server report endpoint** — New endpoint (e.g. `POST /api/v1/reports`) that accepts a photo upload and text description, stores the report in the database.
+- [ ] **Database schema for reports** — Add a `reports` table to store photo blob/path, description text, timestamp, device ID, and upstream submission status.
+- [ ] **Upstream submission to StopICE** — After storing a report, attempt to POST it upstream to the StopICE plate tracker (stopice.net). Handle failures gracefully and track submission status per report.
 
 ---
 

@@ -15,6 +15,9 @@ import (
 type TokenStore interface {
 	AllDeviceTokens(ctx context.Context) ([]db.DeviceToken, error)
 	DeleteDeviceToken(ctx context.Context, id int64) error
+	RecentPushesForDevice(ctx context.Context, deviceTokenID int64) ([]db.SentPush, error)
+	RecordSentPush(ctx context.Context, deviceTokenID, plateID int64, lat, lng float64) error
+	CleanupStalePushes(ctx context.Context, staleThreshold time.Duration) (int64, error)
 }
 
 type SubscriberStore interface {
@@ -28,25 +31,69 @@ type Notifier struct {
 	fcm   *FCMClient
 	store TokenStore
 	subs  SubscriberStore
+	done  chan struct{}
 }
 
 // NewNotifier creates a Notifier. Both apns and fcm may be nil if not configured.
 func NewNotifier(apns *APNsClient, fcm *FCMClient, store TokenStore, subs SubscriberStore) *Notifier {
-	return &Notifier{
+	n := &Notifier{
 		apns:  apns,
 		fcm:   fcm,
 		store: store,
 		subs:  subs,
+		done:  make(chan struct{}),
+	}
+	go n.cleanupLoop()
+	return n
+}
+
+// Close stops the cleanup goroutine.
+func (n *Notifier) Close() {
+	close(n.done)
+}
+
+func (n *Notifier) cleanupLoop() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-n.done:
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			deleted, err := n.store.CleanupStalePushes(ctx, 30*time.Minute)
+			cancel()
+			if err != nil {
+				log.Printf("push: stale push cleanup error: %v", err)
+			} else if deleted > 0 {
+				log.Printf("push: cleaned up %d stale push records", deleted)
+			}
+		}
 	}
 }
 
 // NotifyAsync launches a goroutine to send push notifications to all registered
 // devices. Push failures are logged but do not block the caller.
-func (n *Notifier) NotifyAsync(sightingID int64, lat, lng float64) {
-	go n.dispatch(sightingID, lat, lng)
+func (n *Notifier) NotifyAsync(sightingID int64, plateID int64, lat, lng float64) {
+	go n.dispatch(sightingID, plateID, lat, lng)
 }
 
-func (n *Notifier) dispatch(sightingID int64, lat, lng float64) {
+func isDuplicate(pushes []db.SentPush, plateID int64, lat, lng float64) bool {
+	for _, p := range pushes {
+		if p.PlateID == plateID {
+			return true
+		}
+		if geo.DistanceMiles(lat, lng, p.Latitude, p.Longitude) <= 1.0 {
+			return true
+		}
+		if time.Since(p.SentAt) < 2*time.Minute {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *Notifier) dispatch(sightingID int64, plateID int64, lat, lng float64) {
 	if n.subs == nil {
 		return
 	}
@@ -78,6 +125,16 @@ func (n *Notifier) dispatch(sightingID int64, lat, lng float64) {
 			continue
 		}
 		if geo.DistanceMiles(lat, lng, sub.Lat, sub.Lng) > sub.RadiusMiles {
+			continue
+		}
+
+		pushes, err := n.store.RecentPushesForDevice(ctx, dt.ID)
+		if err != nil {
+			log.Printf("push: failed to query recent pushes for device id=%d: %v", dt.ID, err)
+			continue
+		}
+		if isDuplicate(pushes, plateID, lat, lng) {
+			log.Printf("push: skipping duplicate notification for device id=%d", dt.ID)
 			continue
 		}
 
@@ -127,6 +184,9 @@ func (n *Notifier) dispatch(sightingID int64, lat, lng float64) {
 			log.Printf("push: failed to send to device id=%d platform=%s: %v", dt.ID, dt.Platform, sendErr)
 		} else {
 			sent++
+			if recErr := n.store.RecordSentPush(ctx, dt.ID, plateID, lat, lng); recErr != nil {
+				log.Printf("push: failed to record sent push for device id=%d: %v", dt.ID, recErr)
+			}
 		}
 	}
 	if sent > 0 {

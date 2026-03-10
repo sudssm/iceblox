@@ -153,7 +153,7 @@ struct DebugOverlayView: View {
         switch state {
         case .queued: return .white
         case .sent: return .green
-        case .matched: return Color(red: 0.2, green: 1.0, blue: 0.2)
+        case .matched: return Color(red: 1.0, green: 0.84, blue: 0.0)
         }
     }
 }

@@ -132,7 +132,7 @@ This phase primarily improves:
 ## Decision: When to Move Between Phases
 
 ```
-Phase 1 (Roboflow 350 images)
+Phase 1 (HuggingFace 8,823 images)
     │
     ├─ mAP@0.5 ≥ 0.85 AND recall ≥ 0.75?
     │   ├─ YES → Ship Phase 1 model, plan Phase 2 for next release

@@ -39,6 +39,16 @@ func (m *mockSightingQuerier) RecentSightings(_ context.Context, _, _, _, _ floa
 	return m.sightings, m.err
 }
 
+type mockDeviceToucher struct {
+	touched []string
+	err     error
+}
+
+func (m *mockDeviceToucher) TouchDeviceToken(_ context.Context, hardwareID string) error {
+	m.touched = append(m.touched, hardwareID)
+	return m.err
+}
+
 func TestSubscribeHandler_ValidRequest(t *testing.T) {
 	subs := &mockSubscriberStore{}
 	querier := &mockSightingQuerier{
@@ -51,7 +61,8 @@ func TestSubscribeHandler_ValidRequest(t *testing.T) {
 			},
 		},
 	}
-	h := SubscribeHandler(subs, querier)
+	toucher := &mockDeviceToucher{}
+	h := SubscribeHandler(subs, querier, toucher)
 
 	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
@@ -89,7 +100,7 @@ func TestSubscribeHandler_ValidRequest(t *testing.T) {
 func TestSubscribeHandler_EmptyRecentSightings(t *testing.T) {
 	subs := &mockSubscriberStore{}
 	querier := &mockSightingQuerier{}
-	h := SubscribeHandler(subs, querier)
+	h := SubscribeHandler(subs, querier, nil)
 
 	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
@@ -122,7 +133,7 @@ func TestSubscribeHandler_FiltersOutOfRadius(t *testing.T) {
 			{Plate: "FAR", Latitude: 34.05, Longitude: -118.24, SeenAt: time.Now()},
 		},
 	}
-	h := SubscribeHandler(subs, querier)
+	h := SubscribeHandler(subs, querier, nil)
 
 	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
@@ -144,7 +155,7 @@ func TestSubscribeHandler_FiltersOutOfRadius(t *testing.T) {
 }
 
 func TestSubscribeHandler_MethodNotAllowed(t *testing.T) {
-	h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{})
+	h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/subscribe", nil)
 	w := httptest.NewRecorder()
@@ -156,7 +167,7 @@ func TestSubscribeHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestSubscribeHandler_MissingDeviceID(t *testing.T) {
-	h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{})
+	h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{}, nil)
 
 	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
@@ -169,7 +180,7 @@ func TestSubscribeHandler_MissingDeviceID(t *testing.T) {
 }
 
 func TestSubscribeHandler_InvalidJSON(t *testing.T) {
-	h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{})
+	h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{}, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader("not json"))
 	req.Header.Set("X-Device-ID", "device-123")
@@ -203,7 +214,7 @@ func TestSubscribeHandler_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{})
+			h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{}, nil)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(tt.body))
 			req.Header.Set("X-Device-ID", "device-123")
@@ -232,7 +243,7 @@ func TestSubscribeHandler_BoundaryValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{})
+			h := SubscribeHandler(&mockSubscriberStore{}, &mockSightingQuerier{}, nil)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(tt.body))
 			req.Header.Set("X-Device-ID", "device-123")
@@ -249,7 +260,7 @@ func TestSubscribeHandler_BoundaryValues(t *testing.T) {
 func TestSubscribeHandler_QueryError(t *testing.T) {
 	subs := &mockSubscriberStore{}
 	querier := &mockSightingQuerier{err: fmt.Errorf("database error")}
-	h := SubscribeHandler(subs, querier)
+	h := SubscribeHandler(subs, querier, nil)
 
 	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
@@ -271,7 +282,7 @@ func TestSubscribeHandler_SeenAtFormat(t *testing.T) {
 			{Plate: "ABC1234", Latitude: 36.16, Longitude: -86.78, SeenAt: ts},
 		},
 	}
-	h := SubscribeHandler(subs, querier)
+	h := SubscribeHandler(subs, querier, nil)
 
 	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
@@ -286,5 +297,29 @@ func TestSubscribeHandler_SeenAtFormat(t *testing.T) {
 	}
 	if resp.RecentSightings[0].SeenAt != "2026-03-08T14:30:00Z" {
 		t.Errorf("expected RFC3339 timestamp, got %s", resp.RecentSightings[0].SeenAt)
+	}
+}
+
+func TestSubscribeHandler_TouchesDeviceToken(t *testing.T) {
+	subs := &mockSubscriberStore{}
+	querier := &mockSightingQuerier{}
+	toucher := &mockDeviceToucher{}
+	h := SubscribeHandler(subs, querier, toucher)
+
+	body := `{"latitude":36.16,"longitude":-86.78,"radius_miles":10}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/subscribe", strings.NewReader(body))
+	req.Header.Set("X-Device-ID", "device-xyz")
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if len(toucher.touched) != 1 {
+		t.Fatalf("expected 1 touch call, got %d", len(toucher.touched))
+	}
+	if toucher.touched[0] != "device-xyz" {
+		t.Errorf("expected device-xyz, got %s", toucher.touched[0])
 	}
 }
