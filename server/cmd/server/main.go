@@ -151,9 +151,7 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, notifier))
-	mux.HandleFunc("/api/v1/devices", handler.DevicesHandler(database))
-	mux.HandleFunc("/api/v1/subscribe", handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}))
+	registerV1Routes(mux, database, store, notifier, subStore)
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := &http.Server{
@@ -216,6 +214,13 @@ func (q *dbSightingQuerier) RecentSightings(ctx context.Context, minLat, maxLat,
 		}
 	}
 	return results, nil
+}
+
+func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store, notifier handler.PushNotifier, subStore *subscribers.Store) {
+	version := handler.APIVersionMiddleware("v1")
+	mux.Handle("/api/v1/plates", version(handler.PlatesHandler(database, store, notifier)))
+	mux.Handle("/api/v1/devices", version(handler.DevicesHandler(database)))
+	mux.Handle("/api/v1/subscribe", version(handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database})))
 }
 
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {
