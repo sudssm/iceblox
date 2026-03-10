@@ -16,7 +16,7 @@
 #   Screenshots are saved as session_<platform>_<step>_<timestamp>.png
 #   The script prints each screenshot path as it's captured.
 
-set -e
+set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_config.sh"
 check_platform "$1"
@@ -151,7 +151,7 @@ elif [ "$PLATFORM" = "ios" ]; then
         local_env="$local_env SIMCTL_CHILD_SIMULATOR_FRAME_INTERVAL_MS=100"
     fi
 
-    eval "$local_env xcrun simctl launch $IOS_DEVICE_UDID $IOS_BUNDLE_ID" >/dev/null
+    env $local_env xcrun simctl launch "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null
 fi
 
 sleep 3
@@ -207,7 +207,7 @@ if [ "$DEBUG_MODE" = true ]; then
 
     if [ "$PLATFORM" = "android" ]; then
         # Triple-tap center of screen to toggle debug mode
-        for i in 1 2 3; do
+        for _ in 1 2 3; do
             "$ADB" shell input tap 540 1200
             sleep 0.15
         done
