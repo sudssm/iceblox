@@ -23,6 +23,43 @@ Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetra
 - **Target list source**: `data/plates.txt` — plaintext plate list extracted from StopICE data, seeded into the `plates` database table on startup
 - **Push notifications**: APNs (iOS) via HTTP/2 + ES256 JWT, FCM (Android) via HTTP v1 API + OAuth2 — Go stdlib only (`net/http`, `crypto/*`)
 
+## API Versioning Policy
+
+All endpoints use URL path versioning (`/api/v<N>/`). The version is also returned in the `API-Version` response header on every API response.
+
+### Backward Compatibility Contract
+
+Once a versioned endpoint is released, its contract is frozen. Only **additive, non-breaking changes** may be made within the same version:
+
+**Non-breaking (no version bump required):**
+- Adding new **optional** fields to request bodies
+- Adding new fields to response bodies
+- Adding entirely new endpoints
+- Relaxing validation (e.g., accepting a wider range)
+- Adding new enum values (clients must tolerate unknown values)
+
+**Breaking (requires incrementing the version):**
+- Removing or renaming a field from a request or response
+- Removing or renaming an endpoint
+- Changing a field's data type
+- Making an optional field required
+- Changing the meaning or format of an existing field
+- Changing error response structure or error codes
+- Changing authentication requirements
+
+**Client contract:** Clients MUST ignore unknown fields in responses. New optional response fields may appear at any time within the same API version.
+
+### Deprecation Lifecycle
+
+When a successor version (v(N+1)) ships for an endpoint:
+1. The v(N) endpoint continues to function but returns `Deprecation: true`, `Sunset: <date>`, and `Link: </api/v(N+1)/docs>; rel="successor-version"` headers
+2. Minimum migration window: 3 months from the `Sunset` date
+3. After the sunset date, the deprecated endpoint returns `410 Gone`
+
+### Health Check
+
+`/healthz` is unversioned — it is infrastructure, not part of the API contract.
+
 ## Requirements
 
 ### REQ-S-1: Receive Hashed Plates (Batch)
@@ -73,7 +110,7 @@ If any plate in the batch fails validation, the entire request is rejected with 
 }
 ```
 
-The `results` array is positionally aligned with the `plates` array in the request — `results[i]` corresponds to `plates[i]`.
+The `results` array is positionally aligned with the `plates` array in the request — `results[i]` corresponds to `plates[i]`. Per the versioning policy, clients MUST ignore unknown fields in the response.
 
 **Error responses:**
 - `400 Bad Request` — malformed JSON, empty plates array, or failed field validation. Body: `{"error": "description"}`.
@@ -459,6 +496,7 @@ server/
 │       ├── health.go            # GET /healthz handler
 │       ├── devices.go           # POST /api/v1/devices handler
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
+│       ├── version.go           # API version + deprecation middleware
 │       └── logger.go            # JSONL file writer (legacy, optional)
 ├── data/                        # Downloaded plate data (gitignored)
 │   └── plates.txt               # Extracted plates, one per line
