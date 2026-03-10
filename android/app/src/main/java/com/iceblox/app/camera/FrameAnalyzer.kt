@@ -292,8 +292,12 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             DebugLog.d(TAG, "Zoom retry: COMPLETE — restoring zoom to 1.0x and unfreezing preview")
             zoomedPlatesAccumulator.clear()
             zoomRetryState = ZoomRetryState.IDLE
-            zoomController?.restoreZoom()
-            previewFreezer?.unfreeze()
+            val future = zoomController?.restoreZoom()
+            if (future != null) {
+                future.addListener({ previewFreezer?.unfreeze() }, { it.run() })
+            } else {
+                previewFreezer?.unfreeze()
+            }
         }
     }
 
