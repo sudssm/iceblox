@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/tests/test_queued_clears.sh"
 source "$SCRIPT_DIR/tests/test_device_registration.sh"
 source "$SCRIPT_DIR/tests/test_report_submission.sh"
 source "$SCRIPT_DIR/tests/test_zoom_retry_init.sh"
+source "$SCRIPT_DIR/tests/test_settings.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -74,6 +75,8 @@ run_test_report_api
 run_test_report_validation
 run_test_report_app_ui
 run_test_zoom_retry_init
+run_test_settings_ui
+run_test_settings_toggle
 
 echo ""
 echo "=========================================="

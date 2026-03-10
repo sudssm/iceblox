@@ -35,8 +35,10 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.service.BackgroundCaptureService
+import com.iceblox.app.settings.UserSettings
 import com.iceblox.app.ui.CameraScreen
 import com.iceblox.app.ui.ReportICEScreen
+import com.iceblox.app.ui.SettingsScreen
 import com.iceblox.app.ui.SplashScreen
 import com.iceblox.app.ui.theme.IceBloxTheme
 
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private var hasLocationPermission by mutableStateOf(false)
     private var showCamera by mutableStateOf(false)
     private var showReport by mutableStateOf(false)
+    private var showSettings by mutableStateOf(false)
     private var isTestMode = false
 
     private val cameraPermissionLauncher = registerForActivityResult(
@@ -95,8 +98,10 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
 
         createNotificationChannel()
-        requestNotificationPermission()
-        registerFcmToken()
+        if (UserSettings.isPushNotificationsEnabled(this)) {
+            requestNotificationPermission()
+            registerFcmToken()
+        }
 
         setContent {
             IceBloxTheme {
@@ -132,6 +137,8 @@ class MainActivity : ComponentActivity() {
                         hasLocation = location != null,
                         onBack = { showReport = false }
                     )
+                } else if (showSettings) {
+                    SettingsScreen(onBack = { showSettings = false })
                 } else {
                     val splashViewModel: MainViewModel = viewModel()
                     val splashQueueDepth by splashViewModel.queueDepth.collectAsState()
@@ -147,6 +154,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onReportICE = { showReport = true },
+                        onSettings = { showSettings = true },
                         queueDepth = splashQueueDepth,
                         onClearQueue = { splashViewModel.clearUploadQueue() }
                     )

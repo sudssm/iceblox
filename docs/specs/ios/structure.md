@@ -24,7 +24,8 @@ ios/
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
 │   │   ├── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
 │   │   ├── ReportICEView.swift        # ICE vehicle report form (photo, description, plate, map, submit)
-│   │   └── CameraPickerView.swift     # UIViewControllerRepresentable wrapping UIImagePickerController
+│   │   ├── CameraPickerView.swift     # UIViewControllerRepresentable wrapping UIImagePickerController
+│   │   └── SettingsView.swift         # Settings screen with push notification toggle
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
@@ -54,6 +55,8 @@ ios/
 │   ├── Config/
 │   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL, zoom retry constants
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
+│   ├── Settings/
+│   │   └── UserSettings.swift         # ObservableObject singleton: push notification toggle persisted via UserDefaults
 │   ├── Debug/
 │   │   └── DebugLog.swift             # Singleton logger: ring buffer + @Published entries for UI
 │   └── Models/

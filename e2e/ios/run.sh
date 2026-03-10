@@ -19,6 +19,7 @@ source "$SCRIPT_DIR/tests/test_device_registration.sh"
 source "$SCRIPT_DIR/tests/test_match_debug_label.sh"
 source "$SCRIPT_DIR/tests/test_queued_clears.sh"
 source "$SCRIPT_DIR/tests/test_report_ice.sh"
+source "$SCRIPT_DIR/tests/test_settings.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -66,6 +67,7 @@ run_test_device_registration
 run_test_match_debug_label
 run_test_queued_clears
 run_test_report_ice
+run_test_settings_ui
 
 echo ""
 echo "=========================================="

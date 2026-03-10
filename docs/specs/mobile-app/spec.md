@@ -27,7 +27,7 @@ The app MUST use a resolution sufficient for plate detection at distances of 3�
 
 #### REQ-M-3: Splash Screen and Camera Start
 
-When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, and a "Report ICE Activity" button (REQ-M-60). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
+When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, a "Report ICE Activity" button (REQ-M-60), and a Settings gear icon (REQ-M-70). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). Tapping the Settings icon MUST open the Settings screen (REQ-M-70). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
 #### REQ-M-3a: Recording Session Lifecycle
 
@@ -265,13 +265,13 @@ If the server responds with `429 Too Many Requests`, the app MUST:
 
 #### REQ-M-60: Push Notification Permission
 
-The app MUST request push notification permission from the user.
+The app MUST request push notification permission from the user only if push notifications are enabled in the app's settings (REQ-M-70).
 
 **Platform implementations:**
-- **iOS**: Request authorization via `UNUserNotificationCenter.requestAuthorization(options: [.alert, .sound, .badge])`. On grant, call `application.registerForRemoteNotifications()`.
-- **Android**: On API 33+ (Android 13), request `POST_NOTIFICATIONS` runtime permission. Create a notification channel (`plate_alerts`, importance high) on app startup for Android 8.0+.
+- **iOS**: Request authorization via `UNUserNotificationCenter.requestAuthorization(options: [.alert, .sound, .badge])`. On grant, call `application.registerForRemoteNotifications()`. Gate the request behind `UserSettings.shared.pushNotificationsEnabled`.
+- **Android**: On API 33+ (Android 13), request `POST_NOTIFICATIONS` runtime permission. Create a notification channel (`plate_alerts`, importance high) on app startup for Android 8.0+. Gate the permission request and FCM token registration behind `UserSettings.isPushNotificationsEnabled()`.
 
-Push notifications are optional — the app MUST function normally if permission is denied.
+Push notifications are optional — the app MUST function normally if permission is denied or if the user disables notifications via the settings toggle.
 
 #### REQ-M-61: Device Token Registration
 
@@ -301,6 +301,21 @@ The app MUST handle incoming push notifications:
 #### REQ-M-63: Notification Privacy
 
 Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Target plate detected") and a sighting reference ID.
+
+### Settings
+
+#### REQ-M-70: Settings Screen
+
+The app MUST provide a Settings screen accessible from a gear icon on the splash screen. The gear icon MUST be positioned in the top-right corner of the splash screen with a semi-transparent white tint (70% opacity).
+
+**Settings screen contents:**
+- **Push Notifications toggle**: A toggle switch to enable or disable push notifications. Defaults to enabled. The toggle state MUST persist across app restarts using local storage (iOS: `UserDefaults`, Android: `SharedPreferences`).
+
+**Platform implementations:**
+- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist the toggle state via `UserDefaults`. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
+- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist the toggle state. The screen is navigated to from `MainActivity`.
+
+When push notifications are disabled via the toggle, the app MUST skip requesting notification permission and skip FCM/APNs token registration on subsequent launches (see REQ-M-60).
 
 ### Proximity Alerts
 
@@ -703,6 +718,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
 | 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer on active, subscribe+stop on background (refresh TTL for post-close notifications) |
+| 22 | Settings | REQ-M-70 | SettingsView.swift: gear icon on splash, modal sheet, push notification toggle via UserSettings singleton |
 
 ### Key Technical Notes
 
@@ -767,6 +783,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
 | 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer with the foreground/background capture lifecycle and subscribe on stop to refresh TTL |
+| 22 | Settings | REQ-M-70 | SettingsScreen.kt: gear icon on splash, full-screen composable, push notification toggle via UserSettings object |
 
 ### Key Technical Notes
 

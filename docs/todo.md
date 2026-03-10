@@ -61,7 +61,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ## Client UI
 
-- [ ] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
+- [x] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
 - [ ] **Splash page** — Build a marketing/landing splash page for the project.
 
