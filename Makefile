@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint android-test kill-server clean
+.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -93,11 +93,30 @@ db:
 db-stop:
 	docker stop iceblox-postgres
 
-# ── Android ─────────────────────────────────────────────────────────────────
+# ── Tests ────────────────────────────────────────────────────────────────────
 
-## android-test: Run Android unit tests (generates .env first)
-android-test: .env
+## unit-test: Run Go, Android, and iOS unit tests back to back
+unit-test: server-test android-unit-test ios-unit-test
+
+## android-unit-test: Run Android unit tests (generates .env first)
+android-unit-test: .env
 	cd android && ./gradlew test
+
+## ios-unit-test: Run iOS unit tests
+ios-unit-test:
+	cd ios && xcodebuild test \
+		-project IceBloxApp.xcodeproj \
+		-scheme IceBloxApp \
+		-destination 'platform=iOS Simulator,name=iPhone 16' \
+		-quiet
+
+## android-test: Run Android E2E tests
+android-test:
+	bash e2e/android/run.sh
+
+## ios-test: Run iOS E2E tests
+ios-test:
+	bash e2e/ios/run.sh
 
 # ── Cleanup ─────────────────────────────────────────────────────────────────
 
