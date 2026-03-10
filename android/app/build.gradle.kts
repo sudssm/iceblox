@@ -35,7 +35,7 @@ android {
             ?: error("PEPPER not found in ../.env")
         buildConfigField("String", "PEPPER", "\"$pepper\"")
 
-        val mapsApiKey = envProperties.getProperty("MAPS_API_KEY") ?: ""
+        val mapsApiKey = envProperties.getProperty("ANDROID_MAPS_API_KEY") ?: ""
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 

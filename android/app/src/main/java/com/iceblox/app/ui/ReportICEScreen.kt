@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -22,10 +23,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -35,9 +39,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -56,14 +63,16 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.iceblox.app.network.ReportClient
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ReportICEScreen(latitude: Double, longitude: Double, hasLocation: Boolean = false, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val reportClient = remember { ReportClient(context) }
+    val coroutineScope = rememberCoroutineScope()
 
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var description by remember { mutableStateOf("") }
@@ -71,11 +80,21 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var didSubmit by remember { mutableStateOf(false) }
+    var hasMovedToLocation by remember { mutableStateOf(false) }
 
     val initialPosition = LatLng(latitude, longitude)
     val markerState = remember { MarkerState(position = initialPosition) }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialPosition, 15f)
+    }
+
+    LaunchedEffect(hasLocation, latitude, longitude) {
+        if (hasLocation && !hasMovedToLocation) {
+            val pos = LatLng(latitude, longitude)
+            markerState.position = pos
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pos, 15f))
+            hasMovedToLocation = true
+        }
     }
 
     val photoFile = remember {
@@ -175,6 +194,30 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
                         title = "Report Location",
                         draggable = true
                     )
+                }
+                if (hasLocation) {
+                    FloatingActionButton(
+                        onClick = {
+                            val pos = LatLng(latitude, longitude)
+                            markerState.position = pos
+                            coroutineScope.launch {
+                                cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pos, 15f))
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(8.dp)
+                            .size(36.dp),
+                        containerColor = Color.White,
+                        elevation = FloatingActionButtonDefaults.elevation(2.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "My location",
+                            tint = Color.DarkGray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
             Text(

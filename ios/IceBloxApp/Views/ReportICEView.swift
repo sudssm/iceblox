@@ -60,16 +60,40 @@ struct ReportICEView: View {
                             Text("Report Location")
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.7))
-                            MapReader { proxy in
-                                Map(position: $cameraPosition) {
-                                    Marker("Report Location", coordinate: pinCoordinate)
-                                        .tint(.red)
-                                }
-                                .onTapGesture { screenPoint in
-                                    if let coordinate = proxy.convert(screenPoint, from: .local) {
-                                        pinLatitude = coordinate.latitude
-                                        pinLongitude = coordinate.longitude
+                            ZStack(alignment: .bottomLeading) {
+                                MapReader { proxy in
+                                    Map(position: $cameraPosition) {
+                                        Marker("Report Location", coordinate: pinCoordinate)
+                                            .tint(.red)
                                     }
+                                    .onTapGesture { screenPoint in
+                                        if let coordinate = proxy.convert(screenPoint, from: .local) {
+                                            pinLatitude = coordinate.latitude
+                                            pinLongitude = coordinate.longitude
+                                        }
+                                    }
+                                }
+                                if locationManager.latitude != nil {
+                                    Button {
+                                        pinLatitude = nil
+                                        pinLongitude = nil
+                                        if let lat = locationManager.latitude,
+                                           let lng = locationManager.longitude {
+                                            cameraPosition = .region(MKCoordinateRegion(
+                                                center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+                                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                            ))
+                                        }
+                                    } label: {
+                                        Image(systemName: "location.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(.gray)
+                                            .frame(width: 32, height: 32)
+                                            .background(.white)
+                                            .clipShape(Circle())
+                                            .shadow(radius: 2)
+                                    }
+                                    .padding(8)
                                 }
                             }
                             .frame(height: 200)
