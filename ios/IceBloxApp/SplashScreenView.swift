@@ -24,6 +24,7 @@ struct SplashScreenView: View {
                             .foregroundStyle(.white.opacity(0.7))
                             .padding(16)
                     }
+                    .accessibilityLabel("Settings")
                 }
                 Spacer()
             }
