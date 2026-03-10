@@ -49,6 +49,8 @@ start_go_server() {
     fi
 
     cd "$PROJECT_ROOT/server"
+    echo "Downloading Go dependencies..."
+    go mod download
     go run ./cmd/server/... \
         --port "$E2E_SERVER_PORT" \
         --plates-file "$E2E_PLATES_FILE" \
