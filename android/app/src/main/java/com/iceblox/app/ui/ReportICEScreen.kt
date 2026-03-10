@@ -133,9 +133,10 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
                     .clickable { cameraLauncher.launch(photoUri) },
                 contentAlignment = Alignment.Center
             ) {
-                if (capturedBitmap != null) {
+                val bitmap = capturedBitmap
+                if (bitmap != null) {
                     Image(
-                        bitmap = capturedBitmap!!.asImageBitmap(),
+                        bitmap = bitmap.asImageBitmap(),
                         contentDescription = "Captured photo",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
@@ -217,9 +218,9 @@ fun ReportICEScreen(latitude: Double, longitude: Double, onBack: () -> Unit, mod
                 )
             )
 
-            if (errorMessage != null) {
+            errorMessage?.let { error ->
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(errorMessage!!, color = Color.Red, fontSize = 12.sp)
+                Text(error, color = Color.Red, fontSize = 12.sp)
             }
 
             Spacer(modifier = Modifier.height(24.dp))

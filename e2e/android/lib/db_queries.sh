@@ -99,6 +99,11 @@ get_latest_report() {
 
 get_report_field() {
     local field="$1"
+    # Validate field name contains only safe characters (letters, underscores)
+    if ! echo "$field" | grep -qE '^[a-z_]+$'; then
+        echo "ERROR: invalid field name: $field" >&2
+        return 1
+    fi
     e2e_psql -c "
         SELECT $field
         FROM reports

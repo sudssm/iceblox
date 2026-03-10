@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -56,7 +57,7 @@ class ReportClient(context: Context) {
                 .post(bodyBuilder.build())
                 .build()
 
-            try {
+            val result = try {
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string()
@@ -68,15 +69,18 @@ class ReportClient(context: Context) {
                             }
                         } ?: -1
                         DebugLog.d(TAG, "Report submitted, id=$reportId")
-                        onResult(Result.success(reportId))
+                        Result.success(reportId)
                     } else {
                         DebugLog.w(TAG, "Report submission failed: ${response.code}")
-                        onResult(Result.failure(IOException("Server returned ${response.code}")))
+                        Result.failure(IOException("Server returned ${response.code}"))
                     }
                 }
             } catch (e: IOException) {
                 DebugLog.w(TAG, "Report submission failed: ${e.message}")
-                onResult(Result.failure(e))
+                Result.failure(e)
+            }
+            withContext(Dispatchers.Main) {
+                onResult(result)
             }
         }
     }
