@@ -17,6 +17,18 @@ struct RawDetectionBox {
     let imageHeight: Int
 }
 
+struct FailedDetection {
+    let boundingBox: CGRect
+    let imageWidth: Int
+    let imageHeight: Int
+}
+
+struct DetectionResult {
+    let results: [FrameResult]
+    let rawBoxes: [RawDetectionBox]
+    let failedDetections: [FailedDetection]
+}
+
 enum DetectionState {
     case queued, sent, matched
 }
@@ -90,15 +102,15 @@ final class FrameProcessor: ObservableObject {
 
         updateFPS()
 
-        let (results, rawBoxes, failedDetections) = detectAndProcess(pixelBuffer: pixelBuffer)
+        let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 
-        if !failedDetections.isEmpty {
-            attemptZoomRetry(failedDetections: failedDetections, sampleBuffer: sampleBuffer)
+        if !detection.failedDetections.isEmpty {
+            attemptZoomRetry(failedDetections: detection.failedDetections, sampleBuffer: sampleBuffer)
         }
 
         DispatchQueue.main.async { [weak self] in
-            self?.currentDetections = results
-            self?.rawDetections = rawBoxes
+            self?.currentDetections = detection.results
+            self?.rawDetections = detection.rawBoxes
         }
     }
 
@@ -109,19 +121,15 @@ final class FrameProcessor: ObservableObject {
 
         updateFPS()
 
-        let (results, rawBoxes, _) = detectAndProcess(pixelBuffer: pixelBuffer)
+        let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 
         DispatchQueue.main.async { [weak self] in
-            self?.currentDetections = results
-            self?.rawDetections = rawBoxes
+            self?.currentDetections = detection.results
+            self?.rawDetections = detection.rawBoxes
         }
     }
 
-    private func detectAndProcess(pixelBuffer: CVPixelBuffer) -> (
-        results: [FrameResult],
-        rawBoxes: [RawDetectionBox],
-        failedDetections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)]
-    ) {
+    private func detectAndProcess(pixelBuffer: CVPixelBuffer) -> DetectionResult {
         let detections = detector.detect(pixelBuffer: pixelBuffer)
         DebugLog.shared.d("FrameProcessor", "\(detections.count) raw detections")
 
@@ -137,7 +145,7 @@ final class FrameProcessor: ObservableObject {
         }
 
         var results: [FrameResult] = []
-        var failedDetections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)] = []
+        var failedDetections: [FailedDetection] = []
 
         for detection in detections {
             guard isAcceptingDetections else { break }
@@ -156,15 +164,19 @@ final class FrameProcessor: ObservableObject {
                 ) else { continue }
                 results.append(result)
             } else {
-                failedDetections.append((detection.boundingBox, imageWidth, imageHeight))
+                failedDetections.append(FailedDetection(
+                    boundingBox: detection.boundingBox,
+                    imageWidth: imageWidth,
+                    imageHeight: imageHeight
+                ))
             }
         }
 
-        return (results, rawBoxes, failedDetections)
+        return DetectionResult(results: results, rawBoxes: rawBoxes, failedDetections: failedDetections)
     }
 
     private func attemptZoomRetry(
-        failedDetections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)],
+        failedDetections: [FailedDetection],
         sampleBuffer: CMSampleBuffer
     ) {
         guard let zoomController,
@@ -172,10 +184,7 @@ final class FrameProcessor: ObservableObject {
               !zoomController.isOnCooldown(),
               !isThrottled else { return }
 
-        let candidates = failedDetections.map {
-            (boundingBox: $0.boundingBox, imageWidth: $0.imageWidth, imageHeight: $0.imageHeight)
-        }
-        guard zoomController.bestCandidateIndex(detections: candidates) != nil else { return }
+        guard zoomController.bestCandidateIndex(detections: failedDetections) != nil else { return }
 
         let frozenImage = debugMode ? nil : imageFromSampleBuffer(sampleBuffer)
 

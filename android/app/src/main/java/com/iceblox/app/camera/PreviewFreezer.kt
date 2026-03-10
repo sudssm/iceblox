@@ -26,10 +26,7 @@ class PreviewFreezer {
 
     sealed class FreezeState {
         object Unfrozen : FreezeState()
-        data class Frozen(
-            val overlayBitmap: Bitmap?,
-            val showIndicator: Boolean
-        ) : FreezeState()
+        data class Frozen(val overlayBitmap: Bitmap?, val showIndicator: Boolean) : FreezeState()
     }
 
     companion object {

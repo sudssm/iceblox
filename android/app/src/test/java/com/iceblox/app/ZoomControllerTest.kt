@@ -3,13 +3,13 @@ package com.iceblox.app
 import android.graphics.RectF
 import com.iceblox.app.camera.ZoomController
 import com.iceblox.app.config.AppConfig
+import kotlin.math.sqrt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import kotlin.math.sqrt
 
 @RunWith(RobolectricTestRunner::class)
 class ZoomControllerTest {
@@ -20,8 +20,10 @@ class ZoomControllerTest {
     fun centerPlateGetsMaxZoomAt3x() {
         val ratio = ZoomController.safeZoomRatio(
             boundingBox = RectF(400f, 400f, 600f, 600f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 3.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 3.0f,
+            margin = 1.0f
         )
         assertEquals(3.0f, ratio, 0.01f)
     }
@@ -30,8 +32,10 @@ class ZoomControllerTest {
     fun topLeftCornerGetsLowZoom() {
         val ratio = ZoomController.safeZoomRatio(
             boundingBox = RectF(0f, 0f, 200f, 200f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 3.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 3.0f,
+            margin = 1.0f
         )
         assertEquals(1.0f, ratio, 0.01f)
     }
@@ -40,8 +44,10 @@ class ZoomControllerTest {
     fun offCenterPlateGetsReducedZoom() {
         val ratio = ZoomController.safeZoomRatio(
             boundingBox = RectF(600f, 400f, 800f, 600f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 3.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 3.0f,
+            margin = 1.0f
         )
         assertTrue(ratio > 1.0f)
         assertTrue(ratio < 3.0f)
@@ -51,8 +57,10 @@ class ZoomControllerTest {
     fun zoomRatioIsCappedAtMax() {
         val ratio = ZoomController.safeZoomRatio(
             boundingBox = RectF(490f, 490f, 510f, 510f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 2.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 2.0f,
+            margin = 1.0f
         )
         assertEquals(2.0f, ratio, 0.01f)
     }
@@ -61,8 +69,10 @@ class ZoomControllerTest {
     fun returnsZeroWhenZoomIs1x() {
         val ratio = ZoomController.safeZoomRatio(
             boundingBox = RectF(400f, 400f, 600f, 600f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 1.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 1.0f,
+            margin = 1.0f
         )
         assertEquals(0f, ratio, 0.01f)
     }
@@ -71,8 +81,10 @@ class ZoomControllerTest {
     fun returnsZeroWithZeroImageDimensions() {
         val ratio = ZoomController.safeZoomRatio(
             boundingBox = RectF(0f, 0f, 10f, 10f),
-            imageWidth = 0, imageHeight = 0,
-            maxOpticalZoom = 3.0f, margin = 1.0f
+            imageWidth = 0,
+            imageHeight = 0,
+            maxOpticalZoom = 3.0f,
+            margin = 1.0f
         )
         assertEquals(0f, ratio, 0.01f)
     }
@@ -81,13 +93,17 @@ class ZoomControllerTest {
     fun marginReducesSafeZoom() {
         val withFullMargin = ZoomController.safeZoomRatio(
             boundingBox = RectF(350f, 350f, 650f, 650f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 5.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 5.0f,
+            margin = 1.0f
         )
         val withReducedMargin = ZoomController.safeZoomRatio(
             boundingBox = RectF(350f, 350f, 650f, 650f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 5.0f, margin = 0.8f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 5.0f,
+            margin = 0.8f
         )
         assertTrue(withFullMargin > withReducedMargin)
     }
@@ -96,13 +112,17 @@ class ZoomControllerTest {
     fun higherZoomShrinksSafeArea() {
         val at3x = ZoomController.safeZoomRatio(
             boundingBox = RectF(350f, 350f, 650f, 650f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 3.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 3.0f,
+            margin = 1.0f
         )
         val at5x = ZoomController.safeZoomRatio(
             boundingBox = RectF(350f, 350f, 650f, 650f),
-            imageWidth = 1000, imageHeight = 1000,
-            maxOpticalZoom = 5.0f, margin = 1.0f
+            imageWidth = 1000,
+            imageHeight = 1000,
+            maxOpticalZoom = 5.0f,
+            margin = 1.0f
         )
         assertTrue(at5x > at3x)
     }
@@ -114,7 +134,7 @@ class ZoomControllerTest {
         val detections = listOf(
             Triple(RectF(450f, 450f, 550f, 550f), 1000, 1000),
             Triple(RectF(350f, 450f, 450f, 550f), 1000, 1000),
-            Triple(RectF(420f, 420f, 520f, 520f), 1000, 1000),
+            Triple(RectF(420f, 420f, 520f, 520f), 1000, 1000)
         )
         val result = bestCandidate(detections, maxOpticalZoom = 3.0f)
         assertEquals(0, result?.first)
@@ -124,7 +144,7 @@ class ZoomControllerTest {
     fun bestCandidateReturnsNullWhenNoneEligible() {
         val detections = listOf(
             Triple(RectF(0f, 0f, 100f, 100f), 1000, 1000),
-            Triple(RectF(800f, 800f, 900f, 900f), 1000, 1000),
+            Triple(RectF(800f, 800f, 900f, 900f), 1000, 1000)
         )
         val result = bestCandidate(detections, maxOpticalZoom = 3.0f)
         assertNull(result)
@@ -135,7 +155,7 @@ class ZoomControllerTest {
         val detections = listOf(
             Triple(RectF(0f, 0f, 100f, 100f), 1000, 1000),
             Triple(RectF(440f, 440f, 560f, 560f), 1000, 1000),
-            Triple(RectF(900f, 900f, 1000f, 1000f), 1000, 1000),
+            Triple(RectF(900f, 900f, 1000f, 1000f), 1000, 1000)
         )
         val result = bestCandidate(detections, maxOpticalZoom = 3.0f)
         assertEquals(1, result?.first)
@@ -144,7 +164,7 @@ class ZoomControllerTest {
     @Test
     fun bestCandidateReturnsZoomRatio() {
         val detections = listOf(
-            Triple(RectF(450f, 450f, 550f, 550f), 1000, 1000),
+            Triple(RectF(450f, 450f, 550f, 550f), 1000, 1000)
         )
         val result = bestCandidate(detections, maxOpticalZoom = 3.0f)
         assertTrue(result!!.second > 1.0f)

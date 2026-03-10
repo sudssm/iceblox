@@ -44,14 +44,14 @@ final class ZoomController {
     ) -> Bool {
         guard maxOpticalZoom > 1.0 else { return false }
 
-        let w = CGFloat(imageWidth)
-        let h = CGFloat(imageHeight)
-        guard w > 0, h > 0 else { return false }
+        let imgW = CGFloat(imageWidth)
+        let imgH = CGFloat(imageHeight)
+        guard imgW > 0, imgH > 0 else { return false }
 
-        let nx0 = boundingBox.minX / w
-        let ny0 = boundingBox.minY / h
-        let nx1 = boundingBox.maxX / w
-        let ny1 = boundingBox.maxY / h
+        let nx0 = boundingBox.minX / imgW
+        let ny0 = boundingBox.minY / imgH
+        let nx1 = boundingBox.maxX / imgW
+        let ny1 = boundingBox.maxY / imgH
 
         let limit = 0.5 * (1.0 / maxOpticalZoom) * CGFloat(margin)
 
@@ -66,18 +66,22 @@ final class ZoomController {
         return true
     }
 
-    func bestCandidateIndex(detections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)]) -> Int? {
+    func bestCandidateIndex(detections: [FailedDetection]) -> Int? {
         var bestIdx: Int?
         var bestDist = Double.greatestFiniteMagnitude
 
         for (i, det) in detections.enumerated() {
-            guard isPlateEligibleForZoom(boundingBox: det.boundingBox, imageWidth: det.imageWidth, imageHeight: det.imageHeight) else {
+            guard isPlateEligibleForZoom(
+                boundingBox: det.boundingBox,
+                imageWidth: det.imageWidth,
+                imageHeight: det.imageHeight
+            ) else {
                 continue
             }
-            let w = CGFloat(det.imageWidth)
-            let h = CGFloat(det.imageHeight)
-            let cx = (det.boundingBox.midX / w) - 0.5
-            let cy = (det.boundingBox.midY / h) - 0.5
+            let imgW = CGFloat(det.imageWidth)
+            let imgH = CGFloat(det.imageHeight)
+            let cx = (det.boundingBox.midX / imgW) - 0.5
+            let cy = (det.boundingBox.midY / imgH) - 0.5
             let dist = sqrt(cx * cx + cy * cy)
             if dist < bestDist {
                 bestDist = dist

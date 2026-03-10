@@ -28,6 +28,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private var frameCount = 0
 
     @Volatile var frameSkipCount = AppConfig.FRAME_SKIP_COUNT
+
     @Volatile var isThrottled = false
 
     var zoomController: ZoomController? = null
@@ -51,6 +52,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     val rawDetections: StateFlow<List<RawDetectionBox>> = _rawDetections
 
     private enum class ZoomRetryState { IDLE, AWAITING_FRAME }
+
     @Volatile private var zoomRetryState = ZoomRetryState.IDLE
     private var framesToSkipAfterZoom = 0
     private var zoomRetryStartTime = 0L
@@ -69,19 +71,30 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
                 val elapsedMs = System.currentTimeMillis() - zoomRetryStartTime
                 if (elapsedMs > AppConfig.ZOOM_RETRY_MAX_WAIT_MS) {
-                    DebugLog.w(TAG, "Zoom retry TIMED OUT after ${elapsedMs}ms (max=${AppConfig.ZOOM_RETRY_MAX_WAIT_MS}ms)")
+                    DebugLog.w(
+                        TAG,
+                        "Zoom retry TIMED OUT after ${elapsedMs}ms (max=${AppConfig.ZOOM_RETRY_MAX_WAIT_MS}ms)"
+                    )
                     finishZoomRetry()
                     return
                 }
 
-                DebugLog.d(TAG, "Zoom retry: capturing shot ${currentShotIdx + 1}/${zoomShotRatios.size} at ${"%.2f".format(zoomShotRatios[currentShotIdx])}x (elapsed=${elapsedMs}ms)")
+                DebugLog.d(
+                    TAG,
+                    "Zoom retry: capturing shot ${currentShotIdx + 1}/${zoomShotRatios.size} at ${"%.2f".format(
+                        zoomShotRatios[currentShotIdx]
+                    )}x (elapsed=${elapsedMs}ms)"
+                )
                 val bitmap = extractBitmap(imageProxy)
                 zoomedPlatesAccumulator.addAll(extractPlatesFromFrame(bitmap))
 
                 currentShotIdx++
                 if (currentShotIdx < zoomShotRatios.size) {
                     val nextRatio = zoomShotRatios[currentShotIdx]
-                    DebugLog.d(TAG, "Zoom retry: advancing to shot ${currentShotIdx + 1} at ${"%.2f".format(nextRatio)}x")
+                    DebugLog.d(
+                        TAG,
+                        "Zoom retry: advancing to shot ${currentShotIdx + 1} at ${"%.2f".format(nextRatio)}x"
+                    )
                     zoomController?.zoomIn(nextRatio)
                     framesToSkipAfterZoom = 1
                     return
@@ -136,7 +149,10 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                         )
                     )
                     if (ocrResult.confidence < AppConfig.ZOOM_RETRY_LOW_CONFIDENCE_THRESHOLD) {
-                        DebugLog.d(TAG, "Low-confidence OCR: '${ocrResult.text}' conf=${ocrResult.confidence}, adding to zoom retry candidates")
+                        DebugLog.d(
+                            TAG,
+                            "Low-confidence OCR: '${ocrResult.text}' conf=${ocrResult.confidence}, adding to zoom retry candidates"
+                        )
                         failedDetections.add(Triple(detection.boundingBox, bitmap.width, bitmap.height))
                     }
                 } else {
@@ -173,10 +189,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
         }
     }
 
-    private fun attemptZoomRetry(
-        failedDetections: List<Triple<RectF, Int, Int>>,
-        bitmap: Bitmap
-    ) {
+    private fun attemptZoomRetry(failedDetections: List<Triple<RectF, Int, Int>>, bitmap: Bitmap) {
         val zc = zoomController
         if (zc == null) {
             DebugLog.d(TAG, "Zoom retry: skipped — zoomController is null")
@@ -208,7 +221,12 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             floatArrayOf(safeZoom)
         }
 
-        DebugLog.d(TAG, "Zoom retry: TRIGGERING ${ratios.size} shot(s) [${ratios.joinToString { "${"%.2f".format(it)}x" }}] — freezing preview, debug=$debugMode")
+        DebugLog.d(
+            TAG,
+            "Zoom retry: TRIGGERING ${ratios.size} shot(s) [${ratios.joinToString {
+                "${"%.2f".format(it)}x"
+            }}] — freezing preview, debug=$debugMode"
+        )
         previewFreezer?.freeze(if (!debugMode) bitmap else null, debugMode)
 
         if (!zc.zoomIn(ratios[0])) {
@@ -223,7 +241,10 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
         framesToSkipAfterZoom = 2
         zoomRetryStartTime = System.currentTimeMillis()
         zoomRetryState = ZoomRetryState.AWAITING_FRAME
-        DebugLog.d(TAG, "Zoom retry: ACTIVE — first shot at ${"%.2f".format(ratios[0])}x, skipping 2 frames for AF settle")
+        DebugLog.d(
+            TAG,
+            "Zoom retry: ACTIVE — first shot at ${"%.2f".format(ratios[0])}x, skipping 2 frames for AF settle"
+        )
     }
 
     private fun extractPlatesFromFrame(bitmap: Bitmap): List<ProcessedPlate> {
@@ -259,7 +280,10 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private fun finishZoomRetry() {
         try {
             if (zoomedPlatesAccumulator.isNotEmpty()) {
-                DebugLog.d(TAG, "Zoom retry: reporting ${zoomedPlatesAccumulator.size} plates from $currentShotIdx shot(s)")
+                DebugLog.d(
+                    TAG,
+                    "Zoom retry: reporting ${zoomedPlatesAccumulator.size} plates from $currentShotIdx shot(s)"
+                )
                 onPlatesDetected(zoomedPlatesAccumulator.toList())
             } else {
                 DebugLog.d(TAG, "Zoom retry: no plates extracted from any zoomed frame")
@@ -280,7 +304,13 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             rotationMatrix.reset()
             rotationMatrix.postRotate(rotationDegrees.toFloat())
             val rotated = Bitmap.createBitmap(
-                rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, rotationMatrix, true
+                rawBitmap,
+                0,
+                0,
+                rawBitmap.width,
+                rawBitmap.height,
+                rotationMatrix,
+                true
             )
             rawBitmap.recycle()
             rotated

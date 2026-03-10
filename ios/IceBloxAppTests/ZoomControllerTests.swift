@@ -143,10 +143,10 @@ final class ZoomControllerTests: XCTestCase {
     func testBestCandidateSelectsClosestToCenter() {
         let controller = makeFakeController(maxOpticalZoom: 3.0)
 
-        let detections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)] = [
-            (CGRect(x: 450, y: 450, width: 100, height: 100), 1000, 1000), // center
-            (CGRect(x: 350, y: 450, width: 100, height: 100), 1000, 1000), // slightly left
-            (CGRect(x: 420, y: 420, width: 100, height: 100), 1000, 1000), // near center but offset
+        let detections: [FailedDetection] = [
+            FailedDetection(boundingBox: CGRect(x: 450, y: 450, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000),
+            FailedDetection(boundingBox: CGRect(x: 350, y: 450, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000),
+            FailedDetection(boundingBox: CGRect(x: 420, y: 420, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000)
         ]
 
         let idx = controller.bestCandidateIndex(detections: detections)
@@ -156,9 +156,9 @@ final class ZoomControllerTests: XCTestCase {
     func testBestCandidateReturnsNilWhenNoneEligible() {
         let controller = makeFakeController(maxOpticalZoom: 3.0)
 
-        let detections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)] = [
-            (CGRect(x: 0, y: 0, width: 100, height: 100), 1000, 1000),
-            (CGRect(x: 800, y: 800, width: 100, height: 100), 1000, 1000),
+        let detections: [FailedDetection] = [
+            FailedDetection(boundingBox: CGRect(x: 0, y: 0, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000),
+            FailedDetection(boundingBox: CGRect(x: 800, y: 800, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000)
         ]
 
         let idx = controller.bestCandidateIndex(detections: detections)
@@ -168,10 +168,10 @@ final class ZoomControllerTests: XCTestCase {
     func testBestCandidateSkipsIneligiblePlates() {
         let controller = makeFakeController(maxOpticalZoom: 3.0)
 
-        let detections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)] = [
-            (CGRect(x: 0, y: 0, width: 100, height: 100), 1000, 1000),     // corner — ineligible
-            (CGRect(x: 440, y: 440, width: 120, height: 120), 1000, 1000),  // center — eligible
-            (CGRect(x: 900, y: 900, width: 100, height: 100), 1000, 1000),  // corner — ineligible
+        let detections: [FailedDetection] = [
+            FailedDetection(boundingBox: CGRect(x: 0, y: 0, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000),
+            FailedDetection(boundingBox: CGRect(x: 440, y: 440, width: 120, height: 120), imageWidth: 1000, imageHeight: 1000),
+            FailedDetection(boundingBox: CGRect(x: 900, y: 900, width: 100, height: 100), imageWidth: 1000, imageHeight: 1000)
         ]
 
         let idx = controller.bestCandidateIndex(detections: detections)
@@ -193,7 +193,7 @@ private struct FakeZoomController {
     let maxOpticalZoom: CGFloat
     let margin: Double
 
-    func bestCandidateIndex(detections: [(boundingBox: CGRect, imageWidth: Int, imageHeight: Int)]) -> Int? {
+    func bestCandidateIndex(detections: [FailedDetection]) -> Int? {
         var bestIdx: Int?
         var bestDist = Double.greatestFiniteMagnitude
 
@@ -206,10 +206,10 @@ private struct FakeZoomController {
                 margin: margin
             ) else { continue }
 
-            let w = CGFloat(det.imageWidth)
-            let h = CGFloat(det.imageHeight)
-            let cx = (det.boundingBox.midX / w) - 0.5
-            let cy = (det.boundingBox.midY / h) - 0.5
+            let imgW = CGFloat(det.imageWidth)
+            let imgH = CGFloat(det.imageHeight)
+            let cx = (det.boundingBox.midX / imgW) - 0.5
+            let cy = (det.boundingBox.midY / imgH) - 0.5
             let dist = sqrt(cx * cx + cy * cy)
             if dist < bestDist {
                 bestDist = dist
