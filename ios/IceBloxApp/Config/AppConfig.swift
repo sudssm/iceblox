@@ -8,6 +8,7 @@ enum AppConfig {
     static let platesEndpoint = "/api/v1/plates"
 
     static let autoStartCamera = boolEnv("E2E_AUTOSTART_CAMERA", defaultValue: false)
+    static let skipNotificationRequest = boolEnv("E2E_SKIP_NOTIFICATION_REQUEST", defaultValue: false)
     static let requestLocationPermission = boolEnv("E2E_REQUEST_LOCATION_PERMISSION", defaultValue: true)
     static let useSplashTrigger = boolEnv("E2E_USE_SPLASH_TRIGGER", defaultValue: false)
     static let useStopRecordingTrigger = boolEnv("E2E_USE_STOP_RECORDING_TRIGGER", defaultValue: false)
