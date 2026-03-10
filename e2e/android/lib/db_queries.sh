@@ -71,3 +71,11 @@ assert_sighting_exists_for_plate() {
         E2E_FAIL=$((E2E_FAIL + 1))
     fi
 }
+
+count_device_tokens() {
+    e2e_psql -c "SELECT COUNT(*) FROM device_tokens;"
+}
+
+truncate_device_tokens() {
+    e2e_psql -c "TRUNCATE device_tokens;"
+}
