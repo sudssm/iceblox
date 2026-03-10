@@ -16,6 +16,7 @@ import (
 	"iceblox/server/internal/db"
 	"iceblox/server/internal/handler"
 	"iceblox/server/internal/push"
+	"iceblox/server/internal/stopice"
 	"iceblox/server/internal/subscribers"
 	"iceblox/server/internal/targets"
 )
@@ -40,6 +41,7 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	apnsProduction := fs.Bool("apns-production", false, "use APNs production endpoint")
 	fcmServiceAccount := fs.String("fcm-service-account", "", "path to FCM service account JSON file")
 	dbDSN := fs.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
+	reportUploadDir := fs.String("report-upload-dir", "data/reports", "directory for report photo uploads")
 	migrateOnly := fs.Bool("migrate-only", false, "run database migrations and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -79,6 +81,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	}
 	if v := getenv("FCM_SERVICE_ACCOUNT"); v != "" {
 		*fcmServiceAccount = v
+	}
+	if v := getenv("REPORT_UPLOAD_DIR"); v != "" {
+		*reportUploadDir = v
 	}
 	if v := getenv("FCM_SERVICE_ACCOUNT_JSON"); v != "" && *fcmServiceAccount == "" {
 		f, err := os.CreateTemp("", "fcm-sa-*.json")
@@ -152,8 +157,21 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		log.Println("push notifier initialized")
 	}
 
+	if err := os.MkdirAll(*reportUploadDir, 0o750); err != nil {
+		return fmt.Errorf("failed to create report upload dir: %w", err)
+	}
+
+	stopiceSubmitter := stopice.NewSubmitter(
+		"https://www.stopice.net/platetracker/index.cgi",
+		func(reportID int64, status, errMsg string) {
+			if err := database.UpdateReportStopICE(ctx, reportID, status, errMsg); err != nil {
+				log.Printf("failed to update StopICE status for report %d: %v", reportID, err)
+			}
+		},
+	)
+
 	mux := http.NewServeMux()
-	registerV1Routes(mux, database, store, notifier, subStore)
+	registerV1Routes(mux, database, store, notifier, subStore, *reportUploadDir, stopiceSubmitter)
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := &http.Server{
@@ -218,11 +236,34 @@ func (q *dbSightingQuerier) RecentSightings(ctx context.Context, minLat, maxLat,
 	return results, nil
 }
 
-func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store, notifier handler.PushNotifier, subStore *subscribers.Store) {
+func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store, notifier handler.PushNotifier, subStore *subscribers.Store, reportUploadDir string, stopiceSubmitter *stopice.Submitter) {
 	version := handler.APIVersionMiddleware("v1")
 	mux.Handle("/api/v1/plates", version(handler.PlatesHandler(database, store, notifier)))
 	mux.Handle("/api/v1/devices", version(handler.DevicesHandler(database)))
 	mux.Handle("/api/v1/subscribe", version(handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}, database)))
+	mux.Handle("/api/v1/reports", version(handler.ReportsHandler(&dbReportStore{db: database}, reportUploadDir, stopiceSubmitter)))
+}
+
+// dbReportStore adapts db.DB to the handler.ReportStore interface.
+type dbReportStore struct {
+	db *db.DB
+}
+
+func (s *dbReportStore) CreateReport(ctx context.Context, report *handler.Report) error {
+	dbReport := &db.Report{
+		Description:   report.Description,
+		PlateNumber:   report.PlateNumber,
+		Latitude:      report.Latitude,
+		Longitude:     report.Longitude,
+		PhotoPath:     report.PhotoPath,
+		HardwareID:    report.HardwareID,
+		StopICEStatus: report.StopICEStatus,
+	}
+	if err := s.db.CreateReport(ctx, dbReport); err != nil {
+		return err
+	}
+	report.ID = dbReport.ID
+	return nil
 }
 
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {

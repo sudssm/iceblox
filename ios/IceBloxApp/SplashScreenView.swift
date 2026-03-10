@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SplashScreenView: View {
     let onStartCamera: () -> Void
+    @State private var showReportSheet = false
     @State private var e2eTriggerTask: Task<Void, Never>?
     @State private var offlineQueue = OfflineQueue()
     @State private var queueCount = 0
@@ -26,6 +27,17 @@ struct SplashScreenView: View {
                         .padding(.horizontal, 40)
                         .padding(.vertical, 14)
                         .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                Button { showReportSheet = true } label: {
+                    Text("Report ICE Vehicle")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 14)
+                        .background(.red)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
@@ -89,6 +101,9 @@ struct SplashScreenView: View {
             drainClient = nil
             e2eTriggerTask?.cancel()
             e2eTriggerTask = nil
+        }
+        .sheet(isPresented: $showReportSheet) {
+            ReportICEView()
         }
     }
 }

@@ -38,6 +38,7 @@ enum AppConfig {
     static let frameSkipCount = 2
     static let throttledFrameSkipCount = 6
 
+    static let reportsEndpoint = "/api/v1/reports"
     static let devicesEndpoint = "/api/v1/devices"
     static let subscribeEndpoint = "/api/v1/subscribe"
     static let subscribeIntervalSeconds: TimeInterval = 600

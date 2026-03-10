@@ -52,6 +52,19 @@ type SentPush struct {
 	SentAt        time.Time   `gorm:"type:timestamptz;not null;index:idx_sent_pushes_sent_at"`
 }
 
+type Report struct {
+	ID            int64     `gorm:"primaryKey;autoIncrement"`
+	Description   string    `gorm:"type:text;not null"`
+	PlateNumber   string    `gorm:"type:text"`
+	Latitude      float64   `gorm:"type:double precision;not null"`
+	Longitude     float64   `gorm:"type:double precision;not null"`
+	PhotoPath     string    `gorm:"type:text;not null"`
+	HardwareID    string    `gorm:"type:text;not null"`
+	StopICEStatus string    `gorm:"type:text;not null;default:'pending'"`
+	StopICEError  string    `gorm:"type:text"`
+	CreatedAt     time.Time `gorm:"type:timestamptz;not null;autoCreateTime"`
+}
+
 // PlateRecord is the input type for UpsertPlates (no ID needed).
 type PlateRecord struct {
 	Plate string
@@ -95,7 +108,7 @@ func Connect(dsn string) (*DB, error) {
 }
 
 func (d *DB) Migrate(_ context.Context) error {
-	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{})
+	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{}, &Report{})
 }
 
 func (d *DB) UpsertPlates(ctx context.Context, plates []PlateRecord) (map[string]int64, error) {
@@ -234,6 +247,20 @@ func (d *DB) TouchDeviceToken(ctx context.Context, hardwareID string) error {
 		return fmt.Errorf("touch device token: %w", err)
 	}
 	return nil
+}
+
+func (d *DB) CreateReport(ctx context.Context, report *Report) error {
+	return d.gorm.WithContext(ctx).Create(report).Error
+}
+
+func (d *DB) UpdateReportStopICE(ctx context.Context, id int64, status, errMsg string) error {
+	return d.gorm.WithContext(ctx).
+		Model(&Report{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"stop_ice_status": status,
+			"stop_ice_error":  errMsg,
+		}).Error
 }
 
 // Pool returns the underlying *sql.DB for direct queries (e.g., in tests).
