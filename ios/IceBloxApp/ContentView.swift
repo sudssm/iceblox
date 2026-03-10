@@ -63,7 +63,7 @@ struct ContentView: View {
     @State private var frameProcessor: FrameProcessor?
     @State private var apiClient: APIClient?
     @State private var alertClient: AlertClient?
-    @State private var debugMode = false
+    @State private var debugMode = AppConfig.forceDebugMode
     @ObservedObject private var debugLog = DebugLog.shared
     @State private var lastStatusUpdate = Date()
     @State private var sessionID = UUID().uuidString
@@ -112,22 +112,6 @@ struct ContentView: View {
                         .foregroundStyle(.white)
                     }
             }
-
-            #if DEBUG
-            if debugMode, !showingSummary, let fp = frameProcessor {
-                DebugOverlayView(
-                    detections: fp.currentDetections,
-                    rawDetections: fp.rawDetections,
-                    feedEntries: fp.detectionFeed,
-                    fps: fp.fps,
-                    queueDepth: offlineQueue.count,
-                    isConnected: connectivityMonitor.isConnected,
-                    logEntries: debugLog.entries
-                )
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-            }
-            #endif
 
             if !showingSummary, cameraManager.permissionGranted {
                 VStack {
@@ -199,6 +183,21 @@ struct ContentView: View {
         .onTapGesture(count: 3) {
             if !showingSummary {
                 debugMode.toggle()
+            }
+        }
+        .overlay {
+            if debugMode, !showingSummary {
+                DebugOverlayView(
+                    detections: frameProcessor?.currentDetections ?? [],
+                    rawDetections: frameProcessor?.rawDetections ?? [],
+                    feedEntries: frameProcessor?.detectionFeed ?? [],
+                    fps: frameProcessor?.fps ?? 0,
+                    queueDepth: offlineQueue.count,
+                    isConnected: connectivityMonitor.isConnected,
+                    logEntries: debugLog.entries
+                )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
             }
         }
         #endif
