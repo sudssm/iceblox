@@ -55,6 +55,18 @@ scripts/simulator/deploy.sh ios
 - Installs the most recently built app (run `build.sh` first)
 - Launches the app's main activity/scene
 
+**iOS programmatic launch:** To launch the iOS app with E2E environment variables (suppressing dialogs, enabling triggers), use `xcrun simctl launch` with `SIMCTL_CHILD_*` prefixed env vars:
+
+```bash
+SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1 \
+SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0 \
+SIMCTL_CHILD_E2E_USE_SPLASH_TRIGGER=1 \
+SIMCTL_CHILD_E2E_FORCE_DEBUG_MODE=1 \
+xcrun simctl launch <UDID> com.iceblox.app
+```
+
+The app reads these via `ProcessInfo.processInfo.environment` in `AppConfig.swift`. See `e2e/ios/lib/app.sh` for the full set of E2E environment variables.
+
 ### screenshot.sh
 
 Capture a screenshot to `/tmp/`.
@@ -65,6 +77,46 @@ scripts/simulator/screenshot.sh ios
 ```
 
 Outputs the file path of the saved screenshot. Screenshots are timestamped (`screenshot_<platform>_<timestamp>.png`) and accumulate in `/tmp/`.
+
+### screenshot_session.sh
+
+Automated screenshot session: build, deploy, launch, and capture screenshots at key stages.
+
+```bash
+scripts/simulator/screenshot_session.sh ios                          # basic session
+scripts/simulator/screenshot_session.sh ios --skip-build             # reuse existing build
+scripts/simulator/screenshot_session.sh ios --debug                  # enable debug overlay
+scripts/simulator/screenshot_session.sh ios --debug --test-images ./e2e/android/fixtures/target_plate/
+scripts/simulator/screenshot_session.sh android --debug
+scripts/simulator/screenshot_session.sh ios --output-dir ./screenshots/
+```
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `--skip-build` | Reuse existing build artifacts |
+| `--debug` | Enable debug overlay (iOS: `E2E_FORCE_DEBUG_MODE` env var; Android: triple-tap) |
+| `--test-images DIR` | Push test images for pipeline testing instead of live camera |
+| `--output-dir DIR` | Save screenshots to `DIR` (default: `/tmp`) |
+
+**Screenshots captured:**
+
+1. `01_pre_launch` — simulator home screen before launch
+2. `02_splash` — app splash screen
+3. `03_camera_active` — camera/test-image feed active
+4. `04_debug_overlay` — debug overlay visible (only with `--debug`)
+
+Files are named `session_<platform>_<step>_<timestamp>.png`.
+
+**iOS launch details:** The script launches the app with environment variables via `SIMCTL_CHILD_*` prefix:
+
+- `E2E_SKIP_NOTIFICATION_REQUEST=1` — suppresses the notification permission dialog
+- `E2E_REQUEST_LOCATION_PERMISSION=0` — skips location permission prompt
+- `E2E_USE_SPLASH_TRIGGER=1` — enables file-based splash-to-camera transition
+- `E2E_FORCE_DEBUG_MODE=1` — forces debug overlay on without triple-tap (when `--debug`)
+
+After launch, the script writes `e2e_start_camera.trigger` into the app's `Library/Application Support/` directory. The app polls for this file and transitions from the splash screen to the camera view when it appears.
 
 ### inspect.sh
 
