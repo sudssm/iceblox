@@ -8,12 +8,7 @@ Receive hashed license plate identifiers from mobile clients, compare against a 
 
 ## Target Data Source
 
-Target plates come from [StopICE Plate Tracker](https://www.stopice.net/platetracker/?data=1), a public database of ICE vehicle license plates (~2,600 unique plates as of March 2026). The data is published as a nightly-compiled ZIP archive containing an XML file with `<vehicle_license>` entries.
-
-**Data pipeline:**
-1. `make setup` — Downloads the latest ZIP archive from stopice.net
-2. `make extract` — Parses the XML, normalizes plates, and writes `data/plates.txt` (one plate per line)
-3. The Go server loads `data/plates.txt` at startup, computes HMAC-SHA256 hashes, and seeds the `plates` table in PostgreSQL
+See [System Overview — Target Data Source](../overview.md#target-data-source) for the source database, data pipeline, and plate extraction process.
 
 ## Technology
 
