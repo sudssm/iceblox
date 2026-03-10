@@ -85,7 +85,7 @@ func SubscribeHandler(subs SubscriberStore, querier SightingQuerier, toucher Dev
 
 		if toucher != nil {
 			if err := toucher.TouchDeviceToken(r.Context(), deviceID); err != nil {
-				log.Printf("failed to touch device token for %s: %v", deviceID, err)
+				log.Printf("failed to touch device token for %s: %v", deviceID, err) //nolint:gosec // deviceID is from X-Device-ID header, internal log only
 			}
 		}
 
