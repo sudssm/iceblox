@@ -62,13 +62,19 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.iceblox.app.network.ReportClient
-import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.File
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportICEScreen(latitude: Double, longitude: Double, hasLocation: Boolean = false, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ReportICEScreen(
+    latitude: Double,
+    longitude: Double,
+    hasLocation: Boolean = false,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val reportClient = remember { ReportClient(context) }
     val coroutineScope = rememberCoroutineScope()
