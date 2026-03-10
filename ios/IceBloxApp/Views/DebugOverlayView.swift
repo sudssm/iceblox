@@ -9,12 +9,99 @@ struct DebugOverlayView: View {
     let isConnected: Bool
     let logEntries: [LogEntry]
 
+    private var screenSize: CGSize { UIScreen.main.bounds.size }
+
+    private var topSafeArea: CGFloat {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else { return 0 }
+        return window.safeAreaInsets.top
+    }
+
+    private var bottomSafeArea: CGFloat {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else { return 0 }
+        return window.safeAreaInsets.bottom
+    }
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Debug header
+        ZStack {
+            // Debug header (top-left, below status indicators)
+            debugHeader
+                .position(
+                    x: 100,
+                    y: topSafeArea + 40 + 25
+                )
+
+            // Detection feed (top-right)
+            if !feedEntries.isEmpty {
+                detectionFeed
+                    .position(
+                        x: screenSize.width - 108,
+                        y: topSafeArea + 40 + 75
+                    )
+            }
+
+            // [DEBUG MODE] label (bottom-left)
+            Text("[DEBUG MODE]")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.yellow)
+                .padding(8)
+                .position(x: 60, y: screenSize.height - bottomSafeArea - 16)
+
+            // Log panel (bottom-center, above the label)
+            DebugLogPanel(entries: logEntries)
+                .frame(maxWidth: screenSize.width - 16)
+                .position(x: screenSize.width / 2, y: screenSize.height - bottomSafeArea - 80)
+
+            // Bounding boxes - yellow (raw detections)
+            ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
+                let rect = raw.boundingBox
+                let scaleX = screenSize.width / CGFloat(raw.imageWidth)
+                let scaleY = screenSize.height / CGFloat(raw.imageHeight)
+
+                VStack(spacing: 2) {
+                    Rectangle()
+                        .stroke(.yellow, lineWidth: 2)
+                        .frame(width: rect.width * scaleX, height: rect.height * scaleY)
+                    Text(String(format: "%.0f%%", raw.confidence * 100))
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.yellow)
+                }
+                .position(x: rect.midX * scaleX, y: rect.midY * scaleY)
+            }
+
+            // Bounding boxes - green (OCR'd plates)
+            ForEach(Array(detections.enumerated()), id: \.offset) { _, detection in
+                let rect = detection.boundingBox
+                let scaleX = screenSize.width / max(rect.maxX, screenSize.width)
+                let scaleY = screenSize.height / max(rect.maxY, screenSize.height)
+
+                VStack(spacing: 2) {
+                    Text(detection.plateText)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .background(.green.opacity(0.7))
+                    Rectangle()
+                        .stroke(.green, lineWidth: 2)
+                        .frame(width: rect.width * scaleX, height: rect.height * scaleY)
+                    Text(String(detection.hash.prefix(8)))
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .position(x: rect.midX * scaleX, y: rect.midY * scaleY)
+            }
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+    }
+
+    private var debugHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 16) {
                 Text("FPS: \(Int(fps))")
                 Text("Queue: \(queueDepth)")
+            }
+            HStack(spacing: 16) {
                 HStack(spacing: 4) {
                     Circle()
                         .fill(isConnected ? .green : .red)
@@ -24,114 +111,34 @@ struct DebugOverlayView: View {
                 Text("Det: \(rawDetections.count)")
                     .foregroundStyle(.yellow)
             }
-            .font(.system(.caption, design: .monospaced))
-            .foregroundStyle(.white)
-            .padding(8)
-            .background(.black.opacity(0.7))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .padding(8)
-
-            // Bounding boxes
-            GeometryReader { geo in
-                // Yellow boxes: raw detections (pre-OCR)
-                ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
-                    let rect = raw.boundingBox
-                    let scaleX = geo.size.width / CGFloat(raw.imageWidth)
-                    let scaleY = geo.size.height / CGFloat(raw.imageHeight)
-
-                    VStack(spacing: 2) {
-                        Rectangle()
-                            .stroke(.yellow, lineWidth: 2)
-                            .frame(
-                                width: rect.width * scaleX,
-                                height: rect.height * scaleY
-                            )
-
-                        Text(String(format: "%.0f%%", raw.confidence * 100))
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.yellow)
-                    }
-                    .position(
-                        x: rect.midX * scaleX,
-                        y: rect.midY * scaleY
-                    )
-                }
-
-                // Green boxes: OCR'd plates
-                ForEach(Array(detections.enumerated()), id: \.offset) { _, detection in
-                    let rect = detection.boundingBox
-                    let scaleX = geo.size.width / max(rect.maxX, geo.size.width)
-                    let scaleY = geo.size.height / max(rect.maxY, geo.size.height)
-
-                    VStack(spacing: 2) {
-                        Text(detection.plateText)
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 4)
-                            .background(.green.opacity(0.7))
-
-                        Rectangle()
-                            .stroke(.green, lineWidth: 2)
-                            .frame(
-                                width: rect.width * scaleX,
-                                height: rect.height * scaleY
-                            )
-
-                        Text(String(detection.hash.prefix(8)))
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    .position(
-                        x: rect.midX * scaleX,
-                        y: rect.midY * scaleY
-                    )
-                }
-            }
-
-            // Detection feed (right side)
-            if !feedEntries.isEmpty {
-                VStack {
-                    HStack {
-                        Spacer()
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 4) {
-                                ForEach(feedEntries) { entry in
-                                    HStack(spacing: 6) {
-                                        Text(entry.plateText)
-                                        Text(entry.hashPrefix)
-                                            .foregroundStyle(.white.opacity(0.6))
-                                        Text(stateLabel(entry.state))
-                                            .foregroundStyle(stateColor(entry.state))
-                                    }
-                                    .font(.system(.caption2, design: .monospaced))
-                                }
-                            }
-                            .padding(8)
-                        }
-                        .frame(width: 200)
-                        .frame(maxHeight: 300)
-                        .background(.black.opacity(0.7))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .padding(.top, 40)
-                        .padding(.trailing, 8)
-                    }
-                    Spacer()
-                }
-            }
-
-            VStack {
-                Spacer()
-                DebugLogPanel(entries: logEntries)
-                    .padding(.horizontal, 8)
-                HStack {
-                    Text("[DEBUG MODE]")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.yellow)
-                        .padding(8)
-                    Spacer()
-                }
-            }
         }
+        .font(.system(.caption, design: .monospaced))
+        .foregroundStyle(.white)
+        .padding(8)
+        .background(.black.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var detectionFeed: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(feedEntries) { entry in
+                    HStack(spacing: 6) {
+                        Text(entry.plateText)
+                        Text(entry.hashPrefix)
+                            .foregroundStyle(.white.opacity(0.6))
+                        Text(stateLabel(entry.state))
+                            .foregroundStyle(stateColor(entry.state))
+                    }
+                    .font(.system(.caption2, design: .monospaced))
+                }
+            }
+            .padding(8)
+        }
+        .frame(width: 200)
+        .frame(maxHeight: 300)
+        .background(.black.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private func stateLabel(_ state: DetectionState) -> String {
