@@ -52,6 +52,7 @@ import com.iceblox.app.BuildConfig
 import com.iceblox.app.MainViewModel
 import com.iceblox.app.SessionSummary
 import com.iceblox.app.camera.CameraPreview
+import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.debug.DebugLog
 
 @Composable
@@ -79,6 +80,8 @@ fun CameraScreen(
     val testStatus by viewModel.testStatus.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
+
+    val freezeState by viewModel.previewFreezer.freezeState.collectAsState()
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -116,6 +119,7 @@ fun CameraScreen(
                 lastTapTime = now
                 if (tapCount >= 3) {
                     debugMode = !debugMode
+                    viewModel.frameAnalyzer.debugMode = debugMode
                     tapCount = 0
                 }
             }
@@ -140,8 +144,49 @@ fun CameraScreen(
         } else {
             CameraPreview(
                 modifier = Modifier.fillMaxSize(),
-                analyzer = viewModel.frameAnalyzer
+                analyzer = viewModel.frameAnalyzer,
+                zoomController = viewModel.zoomController
             )
+
+            val frozen = freezeState
+            if (frozen is PreviewFreezer.FreezeState.Frozen) {
+                if (!debugMode) {
+                    frozen.overlayBitmap?.let { bmp ->
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Enhancing...",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                if (debugMode) {
+                    Text(
+                        text = "ZOOM RETRY",
+                        color = Color.Yellow,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = 48.dp)
+                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
         }
 
         if (isTestMode) {

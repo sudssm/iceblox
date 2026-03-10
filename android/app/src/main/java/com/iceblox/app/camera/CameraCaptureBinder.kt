@@ -2,6 +2,7 @@ package com.iceblox.app.camera
 
 import android.content.Context
 import android.util.Size
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -17,12 +18,17 @@ import java.util.concurrent.Executor
 object CameraCaptureBinder {
     private const val TAG = "CameraCaptureBinder"
 
+    @Volatile
+    var camera: Camera? = null
+        private set
+
     fun bindPreviewAndAnalysis(
         context: Context,
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
         analyzer: ImageAnalysis.Analyzer?,
-        analysisExecutor: Executor
+        analysisExecutor: Executor,
+        onCameraBound: ((Camera) -> Unit)? = null
     ) {
         withCameraProvider(context) { cameraProvider ->
             val preview = Preview.Builder()
@@ -33,13 +39,14 @@ object CameraCaptureBinder {
             val imageAnalysis = buildImageAnalysis(analyzer, analysisExecutor)
 
             cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
+            camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 CameraSelector.DEFAULT_BACK_CAMERA,
                 preview,
                 imageAnalysis
             )
             DebugLog.d(TAG, "Preview + analysis bound")
+            camera?.let { onCameraBound?.invoke(it) }
         }
     }
 

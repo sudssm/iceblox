@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 # --- Step 1: Connect to device ---
-USB_DEVICE=$(adb devices | grep -v emulator | grep -E 'device$' | head -1 | awk '{print $1}')
+USB_DEVICE=$(adb devices | grep -v emulator | grep -E 'device$' | head -1 | awk '{print $1}' || true)
 
 if [ -n "$USB_DEVICE" ]; then
     echo "Found USB device: $USB_DEVICE"
