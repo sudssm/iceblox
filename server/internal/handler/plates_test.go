@@ -42,6 +42,7 @@ type mockTargets struct {
 type mockNotifier struct {
 	mu         sync.Mutex
 	sightingID int64
+	plateID    int64
 	lat        float64
 	lng        float64
 	calls      int
@@ -69,10 +70,11 @@ func (m *mockTargets) Count() int {
 	return len(m.hashes)
 }
 
-func (m *mockNotifier) NotifyAsync(sightingID int64, lat, lng float64) {
+func (m *mockNotifier) NotifyAsync(sightingID int64, plateID int64, lat, lng float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.sightingID = sightingID
+	m.plateID = plateID
 	m.lat = lat
 	m.lng = lng
 	m.calls++

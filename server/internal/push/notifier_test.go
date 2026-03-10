@@ -14,10 +14,19 @@ import (
 )
 
 type mockTokenStore struct {
-	mu      sync.Mutex
-	tokens  []db.DeviceToken
-	deleted []int64
-	err     error
+	mu          sync.Mutex
+	tokens      []db.DeviceToken
+	deleted     []int64
+	err         error
+	pushes      map[int64][]db.SentPush
+	recorded    []recordedPush
+	cleanupCall bool
+}
+
+type recordedPush struct {
+	DeviceTokenID int64
+	PlateID       int64
+	Lat, Lng      float64
 }
 
 func (m *mockTokenStore) AllDeviceTokens(_ context.Context) ([]db.DeviceToken, error) {
@@ -34,6 +43,34 @@ func (m *mockTokenStore) DeleteDeviceToken(_ context.Context, id int64) error {
 	defer m.mu.Unlock()
 	m.deleted = append(m.deleted, id)
 	return nil
+}
+
+func (m *mockTokenStore) RecentPushesForDevice(_ context.Context, deviceTokenID int64) ([]db.SentPush, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.pushes == nil {
+		return nil, nil
+	}
+	return m.pushes[deviceTokenID], nil
+}
+
+func (m *mockTokenStore) RecordSentPush(_ context.Context, deviceTokenID, plateID int64, lat, lng float64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recorded = append(m.recorded, recordedPush{
+		DeviceTokenID: deviceTokenID,
+		PlateID:       plateID,
+		Lat:           lat,
+		Lng:           lng,
+	})
+	return nil
+}
+
+func (m *mockTokenStore) CleanupStalePushes(_ context.Context, _ time.Duration) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.cleanupCall = true
+	return 0, nil
 }
 
 type mockSubscriberStore struct {
@@ -96,7 +133,8 @@ func TestNotifier_DispatchesToBothPlatforms(t *testing.T) {
 	}
 
 	notifier := NewNotifier(apnsClient, fcmClient, store, subs)
-	notifier.dispatch(100, 36.16, -86.78)
+	defer notifier.Close()
+	notifier.dispatch(100, 1, 36.16, -86.78)
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -129,7 +167,8 @@ func TestNotifier_CleansUpExpiredAPNsToken(t *testing.T) {
 	}
 
 	notifier := NewNotifier(apnsClient, nil, store, subs)
-	notifier.dispatch(200, 36.16, -86.78)
+	defer notifier.Close()
+	notifier.dispatch(200, 1, 36.16, -86.78)
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -173,7 +212,8 @@ func TestNotifier_CleansUpUnregisteredFCMToken(t *testing.T) {
 	}
 
 	notifier := NewNotifier(nil, fcmClient, store, subs)
-	notifier.dispatch(300, 36.16, -86.78)
+	defer notifier.Close()
+	notifier.dispatch(300, 1, 36.16, -86.78)
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -198,7 +238,8 @@ func TestNotifier_SkipsNilClients(t *testing.T) {
 	}
 
 	notifier := NewNotifier(nil, nil, store, subs)
-	notifier.dispatch(400, 36.16, -86.78)
+	defer notifier.Close()
+	notifier.dispatch(400, 1, 36.16, -86.78)
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -210,16 +251,18 @@ func TestNotifier_SkipsNilClients(t *testing.T) {
 func TestNotifier_EmptyTokenList(t *testing.T) {
 	store := &mockTokenStore{tokens: []db.DeviceToken{}}
 	notifier := NewNotifier(nil, nil, store, &mockSubscriberStore{})
-	notifier.dispatch(500, 36.16, -86.78)
+	defer notifier.Close()
+	notifier.dispatch(500, 1, 36.16, -86.78)
 }
 
 func TestNotifier_NotifyAsyncDoesNotBlock(t *testing.T) {
 	store := &mockTokenStore{tokens: []db.DeviceToken{}}
 	notifier := NewNotifier(nil, nil, store, &mockSubscriberStore{})
+	defer notifier.Close()
 
 	done := make(chan struct{})
 	go func() {
-		notifier.NotifyAsync(600, 36.16, -86.78)
+		notifier.NotifyAsync(600, 1, 36.16, -86.78)
 		close(done)
 	}()
 
@@ -257,10 +300,173 @@ func TestNotifier_FiltersBySubscriberDistance(t *testing.T) {
 	}
 
 	notifier := NewNotifier(apnsClient, nil, store, subs)
-	notifier.dispatch(700, 36.20, -86.80)
+	defer notifier.Close()
+	notifier.dispatch(700, 1, 36.20, -86.80)
 
 	if apnsCalls != 1 {
 		t.Fatalf("expected 1 APNs call for the nearby subscriber, got %d", apnsCalls)
+	}
+}
+
+func TestIsDuplicate_SamePlate(t *testing.T) {
+	pushes := []db.SentPush{
+		{PlateID: 42, Latitude: 0, Longitude: 0, SentAt: time.Now().Add(-10 * time.Minute)},
+	}
+	if !isDuplicate(pushes, 42, 50, 50) {
+		t.Fatal("expected duplicate for same plate ID")
+	}
+}
+
+func TestIsDuplicate_Proximity(t *testing.T) {
+	pushes := []db.SentPush{
+		{PlateID: 99, Latitude: 36.16, Longitude: -86.78, SentAt: time.Now().Add(-10 * time.Minute)},
+	}
+	if !isDuplicate(pushes, 100, 36.161, -86.781) {
+		t.Fatal("expected duplicate for nearby location (< 1 mile)")
+	}
+}
+
+func TestIsDuplicate_Cooldown(t *testing.T) {
+	pushes := []db.SentPush{
+		{PlateID: 99, Latitude: 0, Longitude: 0, SentAt: time.Now().Add(-1 * time.Minute)},
+	}
+	if !isDuplicate(pushes, 100, 50, 50) {
+		t.Fatal("expected duplicate for push within 2 min cooldown")
+	}
+}
+
+func TestIsDuplicate_Clear(t *testing.T) {
+	pushes := []db.SentPush{
+		{PlateID: 99, Latitude: 0, Longitude: 0, SentAt: time.Now().Add(-5 * time.Minute)},
+	}
+	if isDuplicate(pushes, 100, 50, 50) {
+		t.Fatal("expected no duplicate: different plate, far location, past cooldown")
+	}
+}
+
+func TestIsDuplicate_EmptyHistory(t *testing.T) {
+	if isDuplicate(nil, 42, 36.16, -86.78) {
+		t.Fatal("expected no duplicate with empty history")
+	}
+}
+
+func TestIsDuplicate_BoundaryOneMile(t *testing.T) {
+	// 1 degree latitude ≈ 69 miles, so 1/69 ≈ 0.01449 degrees ≈ 1 mile
+	pushes := []db.SentPush{
+		{PlateID: 99, Latitude: 36.16, Longitude: -86.78, SentAt: time.Now().Add(-10 * time.Minute)},
+	}
+	// ~1.5 miles away — should NOT be a duplicate
+	if isDuplicate(pushes, 100, 36.16+0.022, -86.78) {
+		t.Fatal("expected no duplicate for location > 1 mile away")
+	}
+}
+
+func TestIsDuplicate_BoundaryCooldown(t *testing.T) {
+	pushes := []db.SentPush{
+		{PlateID: 99, Latitude: 0, Longitude: 0, SentAt: time.Now().Add(-2*time.Minute - time.Second)},
+	}
+	if isDuplicate(pushes, 100, 50, 50) {
+		t.Fatal("expected no duplicate for push just past 2 min cooldown")
+	}
+}
+
+func TestNotifier_SkipsDuplicatePlate(t *testing.T) {
+	apnsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apnsServer.Close()
+	apnsClient := newTestAPNsClient(t, apnsServer)
+
+	store := &mockTokenStore{
+		tokens: []db.DeviceToken{
+			{ID: 1, HardwareID: "hw1", Token: "ios-tok", Platform: "ios"},
+		},
+		pushes: map[int64][]db.SentPush{
+			1: {{PlateID: 42, Latitude: 0, Longitude: 0, SentAt: time.Now().Add(-10 * time.Minute)}},
+		},
+	}
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw1": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(apnsClient, nil, store, subs)
+	defer notifier.Close()
+	notifier.dispatch(100, 42, 36.16, -86.78)
+
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.recorded) != 0 {
+		t.Fatalf("expected no push recorded (duplicate plate), got %d", len(store.recorded))
+	}
+}
+
+func TestNotifier_SkipsDuplicateProximity(t *testing.T) {
+	apnsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apnsServer.Close()
+	apnsClient := newTestAPNsClient(t, apnsServer)
+
+	store := &mockTokenStore{
+		tokens: []db.DeviceToken{
+			{ID: 1, HardwareID: "hw1", Token: "ios-tok", Platform: "ios"},
+		},
+		pushes: map[int64][]db.SentPush{
+			1: {{PlateID: 99, Latitude: 36.16, Longitude: -86.78, SentAt: time.Now().Add(-10 * time.Minute)}},
+		},
+	}
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw1": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(apnsClient, nil, store, subs)
+	defer notifier.Close()
+	notifier.dispatch(100, 50, 36.161, -86.781)
+
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.recorded) != 0 {
+		t.Fatalf("expected no push recorded (proximity duplicate), got %d", len(store.recorded))
+	}
+}
+
+func TestNotifier_RecordsPushAfterSend(t *testing.T) {
+	apnsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apnsServer.Close()
+	apnsClient := newTestAPNsClient(t, apnsServer)
+
+	store := &mockTokenStore{
+		tokens: []db.DeviceToken{
+			{ID: 5, HardwareID: "hw1", Token: "ios-tok", Platform: "ios"},
+		},
+	}
+	subs := &mockSubscriberStore{
+		subs: map[string]subscribers.Subscriber{
+			"hw1": {Lat: 36.16, Lng: -86.78, RadiusMiles: 100},
+		},
+	}
+
+	notifier := NewNotifier(apnsClient, nil, store, subs)
+	defer notifier.Close()
+	notifier.dispatch(100, 42, 36.16, -86.78)
+
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.recorded) != 1 {
+		t.Fatalf("expected 1 recorded push, got %d", len(store.recorded))
+	}
+	r := store.recorded[0]
+	if r.DeviceTokenID != 5 {
+		t.Errorf("expected device_token_id 5, got %d", r.DeviceTokenID)
+	}
+	if r.PlateID != 42 {
+		t.Errorf("expected plate_id 42, got %d", r.PlateID)
 	}
 }
 
