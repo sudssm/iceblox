@@ -378,6 +378,9 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Device registration** (`tests/test_device_registration.sh`): Calls `POST /api/v1/devices` with a valid token and verifies status=ok and the token is stored in the database. Also verifies upsert behavior (re-registering the same device does not duplicate) and that an empty token returns 400.
 - **Match debug label** (`tests/test_match_debug_label.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies the server logged a match and the debug feed shows a `[MTCH]` label for the matched plate.
 - **Queued entries clear** (`tests/test_queued_clears.sh`): Pushes a target plate image, enables debug mode via triple-tap, waits for the batch flush, then verifies all detection feed entries have transitioned from QUEUED to either SENT or MATCHED (no entries remain stuck in QUEUED state).
+- **Report API** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Submits a report via `POST /api/v1/reports` with a photo, description, and coordinates. Verifies the response includes `status: ok` and a `report_id`, and that the report is stored in the database with correct fields (description, latitude, longitude, photo path).
+- **Report validation** (`tests/test_report_submission.sh` / `tests/test_report_ice.sh`): Verifies that missing required fields (description, photo, X-Device-ID) and out-of-range coordinates return `400 Bad Request`.
+- **Report app UI** (Android: `tests/test_report_submission.sh`): Taps "Report ICE Activity" on the splash screen, verifies the report form opens with a description field visible, and attempts a submission through the app UI.
 
 ### Prerequisites
 

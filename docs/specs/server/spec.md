@@ -237,6 +237,22 @@ CREATE INDEX idx_sent_pushes_device_token_id ON sent_pushes(device_token_id);
 CREATE INDEX idx_sent_pushes_sent_at ON sent_pushes(sent_at);
 ```
 
+**Table: `reports`** — user-submitted ICE vehicle reports
+```sql
+CREATE TABLE reports (
+    id              SERIAL PRIMARY KEY,
+    description     TEXT NOT NULL,
+    plate_number    TEXT,
+    latitude        DOUBLE PRECISION NOT NULL,
+    longitude       DOUBLE PRECISION NOT NULL,
+    photo_path      TEXT NOT NULL,
+    hardware_id     TEXT NOT NULL,
+    stop_ice_status TEXT NOT NULL DEFAULT 'pending',
+    stop_ice_error  TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 **Data flow:**
 1. On startup, plates from `data/plates.txt` are upserted into the `plates` table
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
@@ -452,6 +468,75 @@ The server MUST run a background goroutine that periodically cleans up stale `se
 - **Stale threshold**: 30 minutes — delete `sent_pushes` rows for device tokens whose `device_tokens.updated_at` is older than 30 minutes (indicating the device has not checked in recently)
 - **Subscribe touch**: The subscribe endpoint (`POST /api/v1/subscribe`) MUST update the `updated_at` timestamp of the device's token row(s), so that active subscribers are not considered stale
 
+### REQ-S-20: ICE Vehicle Report Submission
+
+The server MUST expose an endpoint for users to submit ICE vehicle reports with a photo, description, and location.
+
+```
+POST /api/v1/reports
+Content-Type: multipart/form-data
+X-Device-ID: <device identifier>
+
+Fields:
+  description: string (required)
+  latitude: number (required, range [-90, 90])
+  longitude: number (required, range [-180, 180])
+  plate_number: string (optional)
+  photo: file (required, image/jpeg)
+```
+
+**Field validation:**
+- `description`: Required. Non-empty string.
+- `latitude`: Required. MUST be in range [-90, 90].
+- `longitude`: Required. MUST be in range [-180, 180].
+- `plate_number`: Optional. If provided, stored as-is.
+- `photo`: Required. Uploaded file saved to the report upload directory with a UUID-based filename.
+
+**Headers:**
+- `X-Device-ID`: Required. Identifies the submitting device. Maps to `hardware_id` in the `reports` table.
+
+**Behavior:**
+- Save the uploaded photo to disk under the configured `--report-upload-dir` directory (default: `data/reports`). The directory is created at startup if it does not exist.
+- Store a `Report` record in the database with `stop_ice_status` set to `"pending"`.
+- After storing, asynchronously submit the report upstream to StopICE (REQ-S-21).
+- Body size limit: 10 MB.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "report_id": 1
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — missing required fields, invalid coordinates, or missing `X-Device-ID` header.
+- `405 Method Not Allowed` — non-POST request to this endpoint.
+- `500 Internal Server Error` — file save or database write failure.
+
+**Configuration:**
+- `--report-upload-dir` flag (env: `REPORT_UPLOAD_DIR`): Directory for report photo uploads. Default: `data/reports`.
+
+### REQ-S-21: StopICE Upstream Submission
+
+After storing a report (REQ-S-20), the server MUST asynchronously submit it to the StopICE plate tracker.
+
+**Target:** `POST https://www.stopice.net/platetracker/index.cgi` (form-encoded)
+
+**Form fields:**
+- `vehicle_license`: Plate number from the report
+- `address`: Formatted as `"<lat>, <lng>"` (6 decimal places)
+- `comments`: Description from the report
+- `get_location_gps`: Same as `address`
+- `guest`: `"1"`
+- `alert_token`: Current Unix timestamp in milliseconds
+
+**Behavior:**
+- Submission runs in a background goroutine — MUST NOT block the HTTP response to the reporting device.
+- On success (HTTP 2xx from StopICE), update the report's `stop_ice_status` to `"submitted"`.
+- On failure (HTTP error or network error), update `stop_ice_status` to `"failed"` and store the error message in `stop_ice_error`.
+- HTTP client timeout: 30 seconds.
+
 ## Out of Scope (v1)
 
 - Admin dashboard
@@ -519,11 +604,16 @@ server/
 │   │   └── haversine.go         # Haversine distance, bounding box calculation
 │   ├── subscribers/
 │   │   └── store.go             # In-memory subscriber store (map with TTL cleanup)
+│   ├── stopice/
+│   │   ├── client.go            # Async form submission to StopICE plate tracker (REQ-S-21)
+│   │   └── client_test.go       # StopICE client tests
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
 │       ├── subscribe.go         # POST /api/v1/subscribe handler
 │       ├── health.go            # GET /healthz handler
 │       ├── devices.go           # POST /api/v1/devices handler
+│       ├── reports.go           # POST /api/v1/reports handler (REQ-S-20)
+│       ├── reports_test.go      # Reports handler tests
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
 │       ├── version.go           # API version + deprecation middleware
 │       └── logger.go            # JSONL file writer (legacy, optional)
@@ -544,7 +634,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`, `FCM_SERVICE_ACCOUNT_JSON`). Subscriber storage is in-memory (no external config needed). |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`, `--report-upload-dir`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`). Subscriber storage is in-memory (no external config needed). |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -563,10 +653,12 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
 | 20 | Request logging middleware | REQ-S-17 | Wrap mux, record method/path/status/duration/device_id, recover panics as 500 |
+| 21 | Reports handler | REQ-S-20 | Multipart POST `/api/v1/reports`, save photo to disk, store report in DB |
+| 22 | StopICE client | REQ-S-21 | Async form submission to StopICE plate tracker with status callback |
 
 ### Key Technical Notes
 
-- **External dependencies**: `gorm.io/gorm` (ORM) and `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally).
+- **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), and `github.com/google/uuid` (UUID generation for report photo filenames).
 - **Schema migrations**: GORM's `AutoMigrate` derives the schema from Go struct tags (types, indexes, constraints, foreign keys). It creates tables, adds missing columns, and creates missing indexes idempotently on each startup. A `make migrate` entrypoint runs migrations and exits for deploy-time execution (e.g., Railway predeploy).
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
@@ -588,4 +680,4 @@ The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
 - **Railway config** (`railway.toml`): Configures the build to use the Dockerfile, runs `make migrate` as the predeploy command, exposes `/healthz` for health checks, and uses an ON_FAILURE restart policy.
-- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials are also configurable via env vars: `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`. For environments where mounting a file is not possible, `FCM_SERVICE_ACCOUNT_JSON` accepts the raw JSON content and writes it to a temporary file at startup. All env vars override their corresponding CLI flag defaults.
+- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials are also configurable via env vars: `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`. Report photo storage is configured via `REPORT_UPLOAD_DIR` (default: `data/reports`). For environments where mounting a file is not possible, `FCM_SERVICE_ACCOUNT_JSON` accepts the raw JSON content and writes it to a temporary file at startup. All env vars override their corresponding CLI flag defaults.
