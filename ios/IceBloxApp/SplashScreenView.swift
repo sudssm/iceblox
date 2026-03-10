@@ -3,6 +3,7 @@ import SwiftUI
 struct SplashScreenView: View {
     let onStartCamera: () -> Void
     @State private var showReportSheet = false
+    @State private var showSettingsSheet = false
     @State private var e2eTriggerTask: Task<Void, Never>?
     @State private var offlineQueue = OfflineQueue()
     @State private var queueCount = 0
@@ -13,6 +14,19 @@ struct SplashScreenView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Button { showSettingsSheet = true } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .padding(16)
+                    }
+                }
+                Spacer()
+            }
 
             VStack(spacing: 32) {
                 Text("IceBlox")
@@ -81,6 +95,9 @@ struct SplashScreenView: View {
             if AppConfig.autoShowReport {
                 showReportSheet = true
             }
+            if AppConfig.autoShowSettings {
+                showSettingsSheet = true
+            }
             guard AppConfig.useSplashTrigger else { return }
 
             e2eTriggerTask?.cancel()
@@ -107,6 +124,9 @@ struct SplashScreenView: View {
         }
         .sheet(isPresented: $showReportSheet) {
             ReportICEView()
+        }
+        .sheet(isPresented: $showSettingsSheet) {
+            SettingsView()
         }
     }
 }

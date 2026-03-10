@@ -15,7 +15,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
-        if !AppConfig.skipNotificationRequest {
+        if !AppConfig.skipNotificationRequest && UserSettings.shared.pushNotificationsEnabled {
             requestNotificationPermission(application: application)
         }
         return true

@@ -48,6 +48,8 @@
 		A1B2C3D4E5F60001000070 /* ZoomController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000070 /* ZoomController.swift */; };
 		A1B2C3D4E5F60001000071 /* PreviewFreezer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000071 /* PreviewFreezer.swift */; };
 		A1B2C3D4E5F60001000072 /* ZoomControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000072 /* ZoomControllerTests.swift */; };
+		A1B2C3D4E5F60001000080 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000080 /* SettingsView.swift */; };
+		A1B2C3D4E5F60001000081 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000081 /* UserSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +105,8 @@
 		A1B2C3D4E5F60002000070 /* ZoomController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomController.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000071 /* PreviewFreezer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewFreezer.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000072 /* ZoomControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomControllerTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000080 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000081 /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +155,7 @@
 				A1B2C3D4E5F60008000018 /* Models */,
 				A1B2C3D4E5F60008000016 /* Processing */,
 				A1B2C3D4E5F60008000017 /* Views */,
+				A1B2C3D4E5F60008000020 /* Settings */,
 				A1B2C3D4E5F60008000019 /* Debug */,
 			);
 			path = IceBloxApp;
@@ -255,8 +260,17 @@
 				A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */,
 				A1B2C3D4E5F60002000060 /* ReportICEView.swift */,
 				A1B2C3D4E5F60002000061 /* CameraPickerView.swift */,
+				A1B2C3D4E5F60002000080 /* SettingsView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60008000020 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60002000081 /* UserSettings.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F60008000019 /* Debug */ = {
@@ -408,6 +422,8 @@
 				A1B2C3D4E5F60001000062 /* ReportClient.swift in Sources */,
 				A1B2C3D4E5F60001000070 /* ZoomController.swift in Sources */,
 				A1B2C3D4E5F60001000071 /* PreviewFreezer.swift in Sources */,
+				A1B2C3D4E5F60001000080 /* SettingsView.swift in Sources */,
+				A1B2C3D4E5F60001000081 /* UserSettings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
