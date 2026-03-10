@@ -6,7 +6,6 @@ import android.graphics.Matrix
 import android.graphics.RectF
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import com.iceblox.app.BuildConfig
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.detection.PlateDetector
@@ -29,6 +28,13 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private var frameCount = 0
 
     @Volatile var frameSkipCount = AppConfig.FRAME_SKIP_COUNT
+    @Volatile var isThrottled = false
+
+    var zoomController: ZoomController? = null
+    var previewFreezer: PreviewFreezer? = null
+    var debugMode = false
+
+    private var lastBitmap: Bitmap? = null
 
     private var lastFpsTime = System.nanoTime()
     private var fpsFrameCount = 0
@@ -42,8 +48,23 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     private val _rawDetections = MutableStateFlow<List<RawDetectionBox>>(emptyList())
     val rawDetections: StateFlow<List<RawDetectionBox>> = _rawDetections
 
+    private enum class ZoomRetryState { IDLE, AWAITING_FRAME }
+    @Volatile private var zoomRetryState = ZoomRetryState.IDLE
+    private var framesToSkipAfterZoom = 0
+    private var zoomRetryStartTime = 0L
+
     override fun analyze(imageProxy: ImageProxy) {
         try {
+            if (zoomRetryState == ZoomRetryState.AWAITING_FRAME) {
+                if (framesToSkipAfterZoom > 0) {
+                    framesToSkipAfterZoom--
+                    return
+                }
+                val bitmap = extractBitmap(imageProxy)
+                processZoomedFrame(bitmap)
+                return
+            }
+
             frameCount++
             if (frameCount % (frameSkipCount + 1) != 0) {
                 return
@@ -51,25 +72,9 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
             updateFps()
 
-            val rawBitmap = imageProxy.toBitmap()
-            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
-            val bitmap = if (rotationDegrees != 0) {
-                rotationMatrix.reset()
-                rotationMatrix.postRotate(rotationDegrees.toFloat())
-                val rotated = Bitmap.createBitmap(
-                    rawBitmap,
-                    0,
-                    0,
-                    rawBitmap.width,
-                    rawBitmap.height,
-                    rotationMatrix,
-                    true
-                )
-                rawBitmap.recycle()
-                rotated
-            } else {
-                rawBitmap
-            }
+            val bitmap = extractBitmap(imageProxy)
+            lastBitmap = bitmap
+
             val detections = detector.detect(bitmap)
             if (detections.isNotEmpty()) {
                 DebugLog.d(TAG, "analyze: frame=$frameCount, detections=${detections.size}")
@@ -84,17 +89,24 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                 )
             }
 
-            val plates = detections.mapNotNull { detection ->
-                val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
-                    ?: return@mapNotNull null
-                val normalized = PlateNormalizer.normalize(ocrResult.text)
-                    ?: return@mapNotNull null
+            val plates = mutableListOf<ProcessedPlate>()
+            val failedDetections = mutableListOf<Triple<RectF, Int, Int>>()
 
-                ProcessedPlate(
-                    normalizedText = normalized,
-                    boundingBox = detection.boundingBox,
-                    confidence = detection.confidence
-                )
+            for (detection in detections) {
+                val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
+                if (ocrResult != null) {
+                    val normalized = PlateNormalizer.normalize(ocrResult.text)
+                        ?: continue
+                    plates.add(
+                        ProcessedPlate(
+                            normalizedText = normalized,
+                            boundingBox = detection.boundingBox,
+                            confidence = detection.confidence
+                        )
+                    )
+                } else {
+                    failedDetections.add(Triple(detection.boundingBox, bitmap.width, bitmap.height))
+                }
             }
 
             _debugDetections.value = plates.map { plate ->
@@ -110,10 +122,91 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
             if (plates.isNotEmpty()) {
                 onPlatesDetected(plates)
             }
+
+            if (failedDetections.isNotEmpty()) {
+                attemptZoomRetry(failedDetections, bitmap)
+            }
         } catch (e: Exception) {
             DebugLog.e(TAG, "Frame analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
         } finally {
             imageProxy.close()
+        }
+    }
+
+    private fun attemptZoomRetry(
+        failedDetections: List<Triple<RectF, Int, Int>>,
+        bitmap: Bitmap
+    ) {
+        val zc = zoomController ?: return
+        if (!zc.isZoomRetryAvailable || zc.isOnCooldown() || isThrottled) return
+
+        val bestIdx = zc.bestCandidateIndex(failedDetections) ?: return
+
+        previewFreezer?.freeze(if (!debugMode) bitmap else null, debugMode)
+
+        if (!zc.zoomIn()) {
+            previewFreezer?.unfreeze()
+            return
+        }
+
+        framesToSkipAfterZoom = 2
+        zoomRetryStartTime = System.currentTimeMillis()
+        zoomRetryState = ZoomRetryState.AWAITING_FRAME
+        DebugLog.d(TAG, "Zoom retry: zooming to ${zc.maxOpticalZoom}x")
+    }
+
+    private fun processZoomedFrame(bitmap: Bitmap) {
+        try {
+            val elapsedMs = System.currentTimeMillis() - zoomRetryStartTime
+            if (elapsedMs > AppConfig.ZOOM_RETRY_MAX_WAIT_MS) {
+                DebugLog.w(TAG, "Zoom retry timed out after ${elapsedMs}ms")
+                return
+            }
+
+            val detections = detector.detect(bitmap)
+            DebugLog.d(TAG, "Zoom retry: ${detections.size} detections in zoomed frame")
+
+            val zoomedPlates = mutableListOf<ProcessedPlate>()
+
+            for (detection in detections) {
+                val ocrResult = ocr.recognizeText(bitmap, detection.boundingBox)
+                    ?: continue
+                val normalized = PlateNormalizer.normalize(ocrResult.text)
+                    ?: continue
+                zoomedPlates.add(
+                    ProcessedPlate(
+                        normalizedText = normalized,
+                        boundingBox = detection.boundingBox,
+                        confidence = detection.confidence
+                    )
+                )
+                zoomController?.recordSuccess()
+                DebugLog.d(TAG, "Zoom retry SUCCESS: $normalized")
+            }
+
+            if (zoomedPlates.isNotEmpty()) {
+                onPlatesDetected(zoomedPlates)
+            }
+        } finally {
+            zoomRetryState = ZoomRetryState.IDLE
+            zoomController?.restoreZoom()
+            previewFreezer?.unfreeze()
+        }
+    }
+
+    private fun extractBitmap(imageProxy: ImageProxy): Bitmap {
+        val rawBitmap = imageProxy.toBitmap()
+        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+        return if (rotationDegrees != 0) {
+            rotationMatrix.reset()
+            rotationMatrix.postRotate(rotationDegrees.toFloat())
+            val rotated = Bitmap.createBitmap(
+                rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, rotationMatrix, true
+            )
+            rawBitmap.recycle()
+            rotated
+        } else {
+            rawBitmap
         }
     }
 

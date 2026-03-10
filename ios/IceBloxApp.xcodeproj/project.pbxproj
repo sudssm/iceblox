@@ -42,6 +42,9 @@
 		A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000045 /* Pepper.swift */; };
 		A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */; };
 		A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */; };
+		A1B2C3D4E5F60001000060 /* ZoomController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000060 /* ZoomController.swift */; };
+		A1B2C3D4E5F60001000061 /* PreviewFreezer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000061 /* PreviewFreezer.swift */; };
+		A1B2C3D4E5F60001000062 /* ZoomControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000062 /* ZoomControllerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +94,9 @@
 		A1B2C3D4E5F60002000045 /* Pepper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pepper.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpander.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpanderTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000060 /* ZoomController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000061 /* PreviewFreezer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewFreezer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000062 /* ZoomControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomControllerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +157,7 @@
 				A1B2C3D4E5F60002000041 /* AlertClientTests.swift */,
 				A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */,
 				A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */,
+				A1B2C3D4E5F60002000062 /* ZoomControllerTests.swift */,
 			);
 			path = IceBloxAppTests;
 			sourceTree = "<group>";
@@ -170,6 +177,8 @@
 				A1B2C3D4E5F60002000010 /* CameraManager.swift */,
 				A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */,
 				A1B2C3D4E5F60002000032 /* FrameProcessor.swift */,
+				A1B2C3D4E5F60002000060 /* ZoomController.swift */,
+				A1B2C3D4E5F60002000061 /* PreviewFreezer.swift */,
 				A1B2C3D4E5F60002000039 /* SimulatorCamera.swift */,
 			);
 			path = Camera;
@@ -385,6 +394,8 @@
 				A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */,
 				A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */,
 				A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */,
+				A1B2C3D4E5F60001000060 /* ZoomController.swift in Sources */,
+				A1B2C3D4E5F60001000061 /* PreviewFreezer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -396,6 +407,7 @@
 				A1B2C3D4E5F60001000041 /* AlertClientTests.swift in Sources */,
 				A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */,
 				A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */,
+				A1B2C3D4E5F60001000062 /* ZoomControllerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

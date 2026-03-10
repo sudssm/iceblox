@@ -90,6 +90,34 @@ struct ContentView: View {
                 #else
                 CameraPreviewView(session: cameraManager.session)
                     .ignoresSafeArea()
+
+                if let fp = frameProcessor, fp.zoomRetryFrozen {
+                    if !debugMode, let frozenImage = fp.frozenPreviewImage {
+                        Image(uiImage: frozenImage)
+                            .resizable()
+                            .scaledToFill()
+                            .ignoresSafeArea()
+                    }
+
+                    Text("Enhancing...")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(.black.opacity(0.6))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    if debugMode {
+                        Text("ZOOM RETRY")
+                            .font(.system(.caption, design: .monospaced).weight(.bold))
+                            .foregroundStyle(.yellow)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.black.opacity(0.75))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .offset(y: 30)
+                    }
+                }
                 #endif
             } else {
                 Color.black
@@ -189,6 +217,7 @@ struct ContentView: View {
         .onTapGesture(count: 3) {
             if !showingSummary {
                 debugMode.toggle()
+                frameProcessor?.debugMode = debugMode
             }
         }
         #endif

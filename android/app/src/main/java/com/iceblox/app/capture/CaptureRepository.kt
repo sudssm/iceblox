@@ -6,7 +6,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.PowerManager
 import com.iceblox.app.camera.FrameAnalyzer
+import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.camera.ProcessedPlate
+import com.iceblox.app.camera.ZoomController
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.location.LocationProvider
 import com.iceblox.app.network.AlertClient
@@ -85,8 +87,14 @@ class CaptureRepository(private val application: Application) {
         }
     )
 
+    val zoomController = ZoomController(application)
+    val previewFreezer = PreviewFreezer()
+
     val frameAnalyzer = FrameAnalyzer(application) { plates ->
         onPlatesDetected(plates)
+    }.also {
+        it.zoomController = zoomController
+        it.previewFreezer = previewFreezer
     }
 
     private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
@@ -96,6 +104,7 @@ class CaptureRepository(private val application: Application) {
         } else {
             AppConfig.FRAME_SKIP_COUNT
         }
+        frameAnalyzer.isThrottled = throttled
     }
 
     private val powerManager =

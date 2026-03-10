@@ -38,6 +38,11 @@ enum AppConfig {
     static let frameSkipCount = 2
     static let throttledFrameSkipCount = 6
 
+    static let isZoomRetryEnabled = true
+    static let zoomRetryCooldownSeconds: TimeInterval = 2.0
+    static let zoomRetryMargin: Double = 0.8
+    static let zoomRetryMaxWaitMs: Int = 500
+
     static let devicesEndpoint = "/api/v1/devices"
     static let subscribeEndpoint = "/api/v1/subscribe"
     static let subscribeIntervalSeconds: TimeInterval = 600

@@ -59,6 +59,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     val frameAnalyzer = repository.frameAnalyzer
+    val zoomController = repository.zoomController
+    val previewFreezer = repository.previewFreezer
 
     fun startForegroundPipeline(isTestMode: Boolean = false) {
         if (_sessionSummary.value != null) return
