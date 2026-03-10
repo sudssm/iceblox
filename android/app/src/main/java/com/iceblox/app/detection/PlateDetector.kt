@@ -3,6 +3,7 @@ package com.iceblox.app.detection
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
+import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -16,7 +17,7 @@ data class DetectedPlate(val boundingBox: RectF, val confidence: Float)
 class PlateDetector(context: Context) {
     private var interpreter: Interpreter? = null
     private val inputSize = 640
-    private val confidenceThreshold = 0.5f
+    private val confidenceThreshold = AppConfig.DETECTION_CONFIDENCE_THRESHOLD
     private val iouThreshold = 0.45f
     private val inputBuffer: ByteBuffer =
         ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)

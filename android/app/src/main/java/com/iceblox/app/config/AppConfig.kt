@@ -11,7 +11,7 @@ object AppConfig {
     const val BACKGROUND_CAPTURE_CHANNEL_NAME = "Background Capture"
     const val BACKGROUND_CAPTURE_NOTIFICATION_ID = 2001
 
-    const val DETECTION_CONFIDENCE_THRESHOLD = 0.7f
+    const val DETECTION_CONFIDENCE_THRESHOLD = 0.5f
     const val OCR_CONFIDENCE_THRESHOLD = 0.6f
     const val DEDUPLICATION_WINDOW_MS = 60_000L
     const val MIN_PLATE_LENGTH = 2
