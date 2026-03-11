@@ -607,6 +607,8 @@ server/
 │   ├── stopice/
 │   │   ├── client.go            # Async form submission to StopICE plate tracker (REQ-S-21)
 │   │   └── client_test.go       # StopICE client tests
+│   ├── storage/
+│   │   └── s3.go                # S3 client: upload + presigned URL generation (REQ-S-23)
 │   └── handler/
 │       ├── plates.go            # POST /api/v1/plates handler
 │       ├── subscribe.go         # POST /api/v1/subscribe handler
@@ -614,6 +616,8 @@ server/
 │       ├── devices.go           # POST /api/v1/devices handler
 │       ├── reports.go           # POST /api/v1/reports handler (REQ-S-20)
 │       ├── reports_test.go      # Reports handler tests
+│       ├── map_sightings.go     # GET /api/v1/map-sightings handler (REQ-S-22)
+│       ├── map_sightings_test.go # Map sightings handler tests
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
 │       ├── version.go           # API version + deprecation middleware
 │       └── logger.go            # JSONL file writer (legacy, optional)
@@ -634,7 +638,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`, `--report-upload-dir`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`). Subscriber storage is in-memory (no external config needed). |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--apns-key-file`, `--apns-key-id`, `--apns-team-id`, `--apns-bundle-id`, `--apns-production`, `--fcm-service-account`, `--report-upload-dir`, `--s3-bucket`, `--s3-region`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`, `S3_BUCKET`, `AWS_REGION`). Subscriber storage is in-memory (no external config needed). |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -660,7 +664,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 
 ### Key Technical Notes
 
-- **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), and `github.com/google/uuid` (UUID generation for report photo filenames).
+- **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), `github.com/google/uuid` (UUID generation for report photo filenames), and `github.com/aws/aws-sdk-go-v2` (S3 photo upload + presigned URLs).
 - **Schema migrations**: GORM's `AutoMigrate` derives the schema from Go struct tags (types, indexes, constraints, foreign keys). It creates tables, adds missing columns, and creates missing indexes idempotently on each startup. A `make migrate` entrypoint runs migrations and exits for deploy-time execution (e.g., Railway predeploy).
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
