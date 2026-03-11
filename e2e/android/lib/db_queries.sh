@@ -97,6 +97,15 @@ get_latest_report() {
     "
 }
 
+count_map_sightings() {
+    local lat="$1"
+    local lng="$2"
+    local radius="$3"
+    local response
+    response=$(curl -sf "http://localhost:$E2E_SERVER_PORT/api/v1/map-sightings?lat=$lat&lng=$lng&radius=$radius" 2>/dev/null)
+    echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('sightings',[])))" 2>/dev/null
+}
+
 get_report_field() {
     local field="$1"
     # Validate field name contains only safe characters (letters, underscores)

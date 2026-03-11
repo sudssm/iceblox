@@ -3,6 +3,7 @@ package com.iceblox.app
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -37,6 +38,7 @@ import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.service.BackgroundCaptureService
 import com.iceblox.app.settings.UserSettings
 import com.iceblox.app.ui.CameraScreen
+import com.iceblox.app.ui.MapViewScreen
 import com.iceblox.app.ui.ReportICEScreen
 import com.iceblox.app.ui.SettingsScreen
 import com.iceblox.app.ui.SplashScreen
@@ -47,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private var hasLocationPermission by mutableStateOf(false)
     private var showCamera by mutableStateOf(false)
     private var showReport by mutableStateOf(false)
+    private var showMap by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var isTestMode = false
 
@@ -81,6 +84,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        if (intent.getBooleanExtra("SHOW_MAP", false)) {
+            showMap = true
+        }
 
         isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
         if (isTestMode) {
@@ -118,6 +125,24 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                } else if (showMap) {
+                    LaunchedEffect(hasLocationPermission) {
+                        if (!hasLocationPermission) {
+                            requestLocationPermission()
+                        }
+                    }
+                    val mapViewModel: MainViewModel = viewModel()
+                    LaunchedEffect(hasLocationPermission) {
+                        if (hasLocationPermission) {
+                            mapViewModel.locationProvider.startUpdates()
+                        }
+                    }
+                    val mapLocation by mapViewModel.locationProvider.currentLocation.collectAsState()
+                    MapViewScreen(
+                        locationLat = mapLocation?.latitude,
+                        locationLng = mapLocation?.longitude,
+                        onBack = { showMap = false }
+                    )
                 } else if (showReport) {
                     LaunchedEffect(hasLocationPermission) {
                         if (!hasLocationPermission) {
@@ -154,12 +179,20 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onReportICE = { showReport = true },
+                        onViewMap = { showMap = true },
                         onSettings = { showSettings = true },
                         queueDepth = splashQueueDepth,
                         onClearQueue = { splashViewModel.clearUploadQueue() }
                     )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra("SHOW_MAP", false)) {
+            showMap = true
         }
     }
 

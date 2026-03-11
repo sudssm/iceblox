@@ -2,7 +2,12 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
+class NavigationState: ObservableObject {
+    @Published var showMap = false
+}
+
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    var navigationState: NavigationState?
     func application(
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
@@ -60,6 +65,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             DebugLog.shared.d("Push", "Foreground notification, sighting_id: \(sightingId)")
         }
         completionHandler([.banner, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        DebugLog.shared.d("Push", "Notification tapped, opening map")
+        DispatchQueue.main.async { [weak self] in
+            self?.navigationState?.showMap = true
+        }
+        completionHandler()
     }
 }
 
@@ -120,16 +137,25 @@ enum DeviceTokenHelper {
 @main
 struct IceBloxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var navigationState = NavigationState()
     @State private var showCamera = AppConfig.autoStartCamera
 
     var body: some Scene {
         WindowGroup {
-            if showCamera {
-                ContentView(onExitToSplash: { showCamera = false })
-                    .preferredColorScheme(.dark)
-            } else {
-                SplashScreenView(onStartCamera: { showCamera = true })
-                    .preferredColorScheme(.dark)
+            Group {
+                if showCamera {
+                    ContentView(onExitToSplash: { showCamera = false })
+                        .preferredColorScheme(.dark)
+                } else {
+                    SplashScreenView(onStartCamera: { showCamera = true })
+                        .preferredColorScheme(.dark)
+                }
+            }
+            .sheet(isPresented: $navigationState.showMap) {
+                MapView()
+            }
+            .onAppear {
+                appDelegate.navigationState = navigationState
             }
         }
     }

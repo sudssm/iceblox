@@ -17,6 +17,7 @@ import (
 	"iceblox/server/internal/handler"
 	"iceblox/server/internal/push"
 	"iceblox/server/internal/stopice"
+	"iceblox/server/internal/storage"
 	"iceblox/server/internal/subscribers"
 	"iceblox/server/internal/targets"
 )
@@ -43,6 +44,8 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	dbDSN := fs.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
 	reportUploadDir := fs.String("report-upload-dir", "data/reports", "directory for report photo uploads")
 	migrateOnly := fs.Bool("migrate-only", false, "run database migrations and exit")
+	s3Bucket := fs.String("s3-bucket", "", "S3 bucket for report photos")
+	s3Region := fs.String("s3-region", "us-east-1", "AWS region for S3")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -97,6 +100,12 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		}
 		f.Close()
 		*fcmServiceAccount = f.Name()
+	}
+	if v := getenv("S3_BUCKET"); v != "" {
+		*s3Bucket = v
+	}
+	if v := getenv("AWS_REGION"); v != "" {
+		*s3Region = v
 	}
 
 	database, err := db.Connect(*dbDSN)
@@ -161,6 +170,16 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		return fmt.Errorf("failed to create report upload dir: %w", err)
 	}
 
+	// Initialize S3 client if bucket is configured
+	var s3Client storage.S3Client
+	if *s3Bucket != "" {
+		s3Client, err = storage.NewS3Client(ctx, *s3Bucket, *s3Region)
+		if err != nil {
+			return fmt.Errorf("failed to create S3 client: %w", err)
+		}
+		log.Printf("S3 client initialized (bucket=%s, region=%s)", *s3Bucket, *s3Region)
+	}
+
 	stopiceSubmitter := stopice.NewSubmitter(
 		"https://www.stopice.net/platetracker/index.cgi",
 		func(reportID int64, status, errMsg string) {
@@ -171,7 +190,7 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	)
 
 	mux := http.NewServeMux()
-	registerV1Routes(mux, database, store, notifier, subStore, *reportUploadDir, stopiceSubmitter)
+	registerV1Routes(mux, database, store, notifier, subStore, *reportUploadDir, stopiceSubmitter, s3Client)
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := &http.Server{
@@ -236,12 +255,73 @@ func (q *dbSightingQuerier) RecentSightings(ctx context.Context, minLat, maxLat,
 	return results, nil
 }
 
-func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store, notifier handler.PushNotifier, subStore *subscribers.Store, reportUploadDir string, stopiceSubmitter *stopice.Submitter) {
+// dbMapQuerier adapts db.DB to the handler.MapSightingQuerier interface.
+type dbMapQuerier struct {
+	db *db.DB
+}
+
+func (q *dbMapQuerier) MapSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]handler.MapSightingEntry, error) {
+	rows, err := q.db.MapSightings(ctx, minLat, maxLat, minLng, maxLng, since)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]handler.MapSightingEntry, len(rows))
+	for i, r := range rows {
+		results[i] = handler.MapSightingEntry{
+			Latitude:  r.Latitude,
+			Longitude: r.Longitude,
+			SeenAt:    r.SeenAt,
+		}
+	}
+	return results, nil
+}
+
+func (q *dbMapQuerier) MapReports(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]handler.MapReportEntry, error) {
+	rows, err := q.db.MapReports(ctx, minLat, maxLat, minLng, maxLng, since)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]handler.MapReportEntry, len(rows))
+	for i, r := range rows {
+		results[i] = handler.MapReportEntry{
+			Latitude:    r.Latitude,
+			Longitude:   r.Longitude,
+			CreatedAt:   r.CreatedAt,
+			Description: r.Description,
+			PhotoPath:   r.PhotoPath,
+		}
+	}
+	return results, nil
+}
+
+// s3PhotoSigner adapts storage.S3Client to handler.PhotoSigner.
+type s3PhotoSigner struct {
+	client storage.S3Client
+}
+
+func (s *s3PhotoSigner) PresignedPhotoURL(ctx context.Context, key string) (string, error) {
+	return s.client.PresignedURL(ctx, key, 60*time.Minute)
+}
+
+func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store, notifier handler.PushNotifier, subStore *subscribers.Store, reportUploadDir string, stopiceSubmitter *stopice.Submitter, s3Client storage.S3Client) {
 	version := handler.APIVersionMiddleware("v1")
 	mux.Handle("/api/v1/plates", version(handler.PlatesHandler(database, store, notifier)))
 	mux.Handle("/api/v1/devices", version(handler.DevicesHandler(database)))
 	mux.Handle("/api/v1/subscribe", version(handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}, database)))
-	mux.Handle("/api/v1/reports", version(handler.ReportsHandler(&dbReportStore{db: database}, reportUploadDir, stopiceSubmitter)))
+
+	// Reports handler: use S3 for photos if configured, else fall back to disk
+	var photoUploader handler.PhotoUploader
+	if s3Client != nil {
+		photoUploader = s3Client
+	}
+	mux.Handle("/api/v1/reports", version(handler.ReportsHandler(&dbReportStore{db: database}, reportUploadDir, stopiceSubmitter, photoUploader)))
+
+	// Map sightings handler
+	var signer handler.PhotoSigner
+	if s3Client != nil {
+		signer = &s3PhotoSigner{client: s3Client}
+	}
+	mux.Handle("/api/v1/map-sightings", version(handler.MapSightingsHandler(&dbMapQuerier{db: database}, signer)))
 }
 
 // dbReportStore adapts db.DB to the handler.ReportStore interface.

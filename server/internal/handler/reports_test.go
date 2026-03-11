@@ -83,7 +83,7 @@ func TestReportsHandler_ValidSubmission(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
 	submitter := &mockStopICESubmitter{}
-	h := ReportsHandler(store, uploadDir, submitter)
+	h := ReportsHandler(store, uploadDir, submitter, nil)
 
 	fields := map[string]string{
 		"description":  "ICE vehicle blocking bike lane",
@@ -146,7 +146,7 @@ func TestReportsHandler_ValidSubmission(t *testing.T) {
 func TestReportsHandler_WithoutPlateNumber(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"description": "suspicious vehicle",
@@ -169,7 +169,7 @@ func TestReportsHandler_WithoutPlateNumber(t *testing.T) {
 func TestReportsHandler_MissingDescription(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"latitude":  "40.0",
@@ -188,7 +188,7 @@ func TestReportsHandler_MissingDescription(t *testing.T) {
 func TestReportsHandler_MissingPhoto(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"description": "test",
@@ -208,7 +208,7 @@ func TestReportsHandler_MissingPhoto(t *testing.T) {
 func TestReportsHandler_MissingDeviceID(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"description": "test",
@@ -229,7 +229,7 @@ func TestReportsHandler_MissingDeviceID(t *testing.T) {
 func TestReportsHandler_InvalidLatitude(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"description": "test",
@@ -249,7 +249,7 @@ func TestReportsHandler_InvalidLatitude(t *testing.T) {
 func TestReportsHandler_LatitudeOutOfRange(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"description": "test",
@@ -268,7 +268,7 @@ func TestReportsHandler_LatitudeOutOfRange(t *testing.T) {
 
 func TestReportsHandler_MethodNotAllowed(t *testing.T) {
 	store := &mockReportStore{}
-	h := ReportsHandler(store, t.TempDir(), nil)
+	h := ReportsHandler(store, t.TempDir(), nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/reports", nil)
 	w := httptest.NewRecorder()
@@ -283,7 +283,7 @@ func TestReportsHandler_MethodNotAllowed(t *testing.T) {
 func TestReportsHandler_StoreError(t *testing.T) {
 	uploadDir := t.TempDir()
 	store := &mockReportStore{err: fmt.Errorf("db error")}
-	h := ReportsHandler(store, uploadDir, nil)
+	h := ReportsHandler(store, uploadDir, nil, nil)
 
 	fields := map[string]string{
 		"description": "test",

@@ -12,6 +12,7 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 - [ ] **Hash matcher hardening** — Switch to constant-time comparison via `crypto/subtle` to prevent timing attacks. The current O(1) map lookup satisfies REQ-S-2 but is not timing-attack resistant.
 - [ ] **Rate limiter** — Token bucket per device_id, 429 + Retry-After response (REQ-S-6). Not yet implemented.
+- [ ] **Pagination for map sightings** — Add cursor-based pagination to `GET /api/v1/map-sightings` for areas with many sightings.
 
 ---
 
@@ -51,7 +52,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ## Push Notifications
 
-- [ ] **Descriptive push notification text** — Include plate info, location, and confidence in the notification body. Tapping the notification should open a map view showing alert location, confidence score, and user's current location.
+- [x] **Descriptive push notification text** — ~~Include plate info, location, and confidence in the notification body.~~ Updated to "Potential ICE Activity reported". Tapping the notification opens the map view.
 - [x] **Dedupe push notifications** — Suppress duplicate notifications when the same location or vehicle is detected multiple times in a short window.
 - [ ] **Confidence score** — Calculate a confidence score based on the number of reports at a location and the number of character substitutions in the plate match.
 - [ ] **Enable iOS push notifications** — Integrate APNs, register device tokens, and wire up server-side delivery for iOS clients.
@@ -64,6 +65,8 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 - [x] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
 - [ ] **Splash page** — Build a marketing/landing splash page for the project.
+- [ ] **Cluster overlapping map pins** — Merge multiple plates at same location into single high-confidence pin.
+- [ ] **Add instructions to app** — In-app onboarding or help content explaining how to use the app.
 
 ---
 
@@ -88,6 +91,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 - [ ] **US-plate fine-tuned OCR model** — Fine-tune the CCT-XS model specifically for US license plates to improve accuracy beyond the current ~92-94% global model. Training data: OpenALPR US plate benchmark or similar. The [fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) project provides training infrastructure.
 - [ ] **Investigate backgrounding iOS** — Revisit whether any App Store-safe, user-visible iOS mode can relax the foreground-only camera requirement without violating Apple's background camera restrictions.
+- [ ] **Confidence score for map pins** — Replace hardcoded 1.0 with score based on sighting count + substitution count.
 
 ---
 
@@ -95,4 +99,4 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 - [ ] **Enable SSL** — Configure TLS for the server. Railway provides automatic HTTPS via its proxy, but update mobile app `SERVER_BASE_URL` to use `https://` and ensure `DATABASE_URL` uses `sslmode=require` for the Postgres connection.
 - [ ] **Redis subscriber store** — Replace the in-memory `subscribers.Store` with Redis-backed storage so subscriber state survives server restarts and scales across multiple instances.
-- [ ] **S3 photo storage** — Set up an S3 bucket for report photo uploads. Configure `S3_BUCKET` and `AWS_REGION` env vars so the server uploads photos to S3 instead of local disk.
+- [x] **S3 photo storage** — S3 upload + presigned URLs implemented. Configured via `S3_BUCKET` and `AWS_REGION` env vars.

@@ -147,8 +147,8 @@ func (n *Notifier) dispatch(sightingID int64, plateID int64, lat, lng float64) {
 			}
 			sendErr = n.apns.SendNotification(
 				dt.Token,
-				"Target Detected",
-				"A target plate was detected",
+				"Potential ICE Activity Reported",
+				"Potential ICE Activity reported",
 				map[string]string{"sighting_id": sightingIDStr},
 			)
 			if sendErr == ErrAPNsTokenExpired {
@@ -167,8 +167,8 @@ func (n *Notifier) dispatch(sightingID int64, plateID int64, lat, lng float64) {
 				dt.Token,
 				map[string]string{
 					"sighting_id": sightingIDStr,
-					"title":       "Target Detected",
-					"body":        "A target plate was detected",
+					"title":       "Potential ICE Activity Reported",
+					"body":        "Potential ICE Activity reported",
 				},
 			)
 			if sendErr == ErrFCMTokenExpired {

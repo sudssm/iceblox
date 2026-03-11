@@ -22,6 +22,7 @@ source "$SCRIPT_DIR/tests/test_device_registration.sh"
 source "$SCRIPT_DIR/tests/test_report_submission.sh"
 source "$SCRIPT_DIR/tests/test_zoom_retry_init.sh"
 source "$SCRIPT_DIR/tests/test_settings.sh"
+source "$SCRIPT_DIR/tests/test_map_sightings.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -77,6 +78,9 @@ run_test_report_app_ui
 run_test_zoom_retry_init
 run_test_settings_ui
 run_test_settings_toggle
+run_test_map_sightings_api
+run_test_map_sightings_validation
+run_test_map_view_ui
 
 echo ""
 echo "=========================================="

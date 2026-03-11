@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 fun SplashScreen(
     onStartCamera: () -> Unit,
     onReportICE: () -> Unit = {},
+    onViewMap: () -> Unit = {},
     onSettings: () -> Unit = {},
     queueDepth: Int = 0,
     onClearQueue: () -> Unit = {},
@@ -75,6 +76,23 @@ fun SplashScreen(
             ) {
                 Text(
                     text = "Start Camera",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                )
+            }
+
+            Button(
+                onClick = onViewMap,
+                modifier = Modifier.padding(top = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black
+                )
+            ) {
+                Text(
+                    text = "View Map",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)

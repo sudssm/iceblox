@@ -655,6 +655,8 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 20 | Request logging middleware | REQ-S-17 | Wrap mux, record method/path/status/duration/device_id, recover panics as 500 |
 | 21 | Reports handler | REQ-S-20 | Multipart POST `/api/v1/reports`, save photo to disk, store report in DB |
 | 22 | StopICE client | REQ-S-21 | Async form submission to StopICE plate tracker with status callback |
+| 23 | Map sightings endpoint | REQ-S-22 | GET `/api/v1/map-sightings?lat=X&lng=Y&radius=Z`, returns sightings + reports within bounding box from last 2h, deduped by plate, with confidence 1.0 |
+| 24 | Report photo serving | REQ-S-23 | S3 upload for report photos (`reports/{uuid}.jpg`), presigned GET URLs (60min TTL) in map sightings response, fallback to local disk if S3 not configured |
 
 ### Key Technical Notes
 
@@ -680,4 +682,4 @@ The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
 - **Railway config** (`railway.toml`): Configures the build to use the Dockerfile, runs `make migrate` as the predeploy command, exposes `/healthz` for health checks, and uses an ON_FAILURE restart policy.
-- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials are also configurable via env vars: `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`. Report photo storage is configured via `REPORT_UPLOAD_DIR` (default: `data/reports`). For environments where mounting a file is not possible, `FCM_SERVICE_ACCOUNT_JSON` accepts the raw JSON content and writes it to a temporary file at startup. All env vars override their corresponding CLI flag defaults.
+- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials are also configurable via env vars: `APNS_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION`, `FCM_SERVICE_ACCOUNT`. Report photo storage is configured via `REPORT_UPLOAD_DIR` (default: `data/reports`). S3 photo storage is configured via `S3_BUCKET` and `AWS_REGION` (default: `us-east-1`); AWS credentials come from the default credential chain (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`). For environments where mounting a file is not possible, `FCM_SERVICE_ACCOUNT_JSON` accepts the raw JSON content and writes it to a temporary file at startup. All env vars override their corresponding CLI flag defaults.
