@@ -50,6 +50,8 @@
 		A1B2C3D4E5F60001000072 /* ZoomControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000072 /* ZoomControllerTests.swift */; };
 		A1B2C3D4E5F60001000080 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000080 /* SettingsView.swift */; };
 		A1B2C3D4E5F60001000081 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000081 /* UserSettings.swift */; };
+		A1B2C3D4E5F60001000090 /* MapClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000090 /* MapClient.swift */; };
+		A1B2C3D4E5F60001000091 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000091 /* MapView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +109,8 @@
 		A1B2C3D4E5F60002000072 /* ZoomControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomControllerTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000080 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000081 /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000090 /* MapClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapClient.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000091 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -226,6 +230,7 @@
 			children = (
 				A1B2C3D4E5F60002000029 /* APIClient.swift */,
 				A1B2C3D4E5F60002000040 /* AlertClient.swift */,
+				A1B2C3D4E5F60002000090 /* MapClient.swift */,
 				A1B2C3D4E5F60002000062 /* ReportClient.swift */,
 				A1B2C3D4E5F60002000030 /* RetryManager.swift */,
 				A1B2C3D4E5F60002000031 /* ConnectivityMonitor.swift */,
@@ -258,6 +263,7 @@
 			children = (
 				A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */,
 				A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */,
+				A1B2C3D4E5F60002000091 /* MapView.swift */,
 				A1B2C3D4E5F60002000060 /* ReportICEView.swift */,
 				A1B2C3D4E5F60002000061 /* CameraPickerView.swift */,
 				A1B2C3D4E5F60002000080 /* SettingsView.swift */,
@@ -424,6 +430,8 @@
 				A1B2C3D4E5F60001000071 /* PreviewFreezer.swift in Sources */,
 				A1B2C3D4E5F60001000080 /* SettingsView.swift in Sources */,
 				A1B2C3D4E5F60001000081 /* UserSettings.swift in Sources */,
+				A1B2C3D4E5F60001000090 /* MapClient.swift in Sources */,
+				A1B2C3D4E5F60001000091 /* MapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

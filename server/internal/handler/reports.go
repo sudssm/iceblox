@@ -32,7 +32,12 @@ type StopICESubmitter interface {
 	SubmitAsync(reportID int64, plateNumber, description string, lat, lng float64)
 }
 
-func ReportsHandler(store ReportStore, uploadDir string, submitter StopICESubmitter) http.HandlerFunc {
+// PhotoUploader uploads report photos and returns the stored key/path.
+type PhotoUploader interface {
+	Upload(ctx context.Context, key string, body io.Reader, contentType string) (string, error)
+}
+
+func ReportsHandler(store ReportStore, uploadDir string, submitter StopICESubmitter, s3 PhotoUploader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -90,20 +95,29 @@ func ReportsHandler(store ReportStore, uploadDir string, submitter StopICESubmit
 		defer file.Close()
 
 		filename := uuid.New().String() + ".jpg"
-		photoPath := filepath.Join(uploadDir, filename)
+		s3Key := "reports/" + filename
 
-		dst, err := os.Create(photoPath)
-		if err != nil {
-			log.Printf("failed to create photo file: %v", err)
-			writeError(w, http.StatusInternalServerError, "failed to save photo")
-			return
-		}
-		defer dst.Close()
+		if s3 != nil {
+			if _, err := s3.Upload(r.Context(), s3Key, file, "image/jpeg"); err != nil {
+				log.Printf("failed to upload photo to S3: %v", err)
+				writeError(w, http.StatusInternalServerError, "failed to save photo")
+				return
+			}
+		} else {
+			photoPath := filepath.Join(uploadDir, filename)
+			dst, err := os.Create(photoPath)
+			if err != nil {
+				log.Printf("failed to create photo file: %v", err)
+				writeError(w, http.StatusInternalServerError, "failed to save photo")
+				return
+			}
+			defer dst.Close()
 
-		if _, err := io.Copy(dst, file); err != nil {
-			log.Printf("failed to write photo file: %v", err)
-			writeError(w, http.StatusInternalServerError, "failed to save photo")
-			return
+			if _, err := io.Copy(dst, file); err != nil {
+				log.Printf("failed to write photo file: %v", err)
+				writeError(w, http.StatusInternalServerError, "failed to save photo")
+				return
+			}
 		}
 
 		report := &Report{
@@ -111,7 +125,7 @@ func ReportsHandler(store ReportStore, uploadDir string, submitter StopICESubmit
 			PlateNumber:   plateNumber,
 			Latitude:      lat,
 			Longitude:     lng,
-			PhotoPath:     filepath.Join("reports", filename),
+			PhotoPath:     s3Key,
 			HardwareID:    sanitizeHeader(hardwareID),
 			StopICEStatus: "pending",
 		}

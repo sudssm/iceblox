@@ -1,11 +1,14 @@
 package com.iceblox.app.notification
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.iceblox.app.MainActivity
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import java.io.IOException
@@ -32,9 +35,20 @@ class PushNotificationService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         DebugLog.d(TAG, "Push notification received")
-        val title = message.data["title"] ?: "Target Detected"
-        val body = message.data["body"] ?: "A target plate was detected"
+        val title = message.data["title"] ?: "Potential ICE Activity Reported"
+        val body = message.data["body"] ?: "Potential ICE Activity reported"
         val sightingId = message.data["sighting_id"]
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("SHOW_MAP", true)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = NotificationCompat.Builder(this, AppConfig.NOTIFICATION_CHANNEL_ID)
@@ -43,6 +57,7 @@ class PushNotificationService : FirebaseMessagingService() {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
             .build()
 
         val notificationId = sightingId?.hashCode() ?: System.currentTimeMillis().toInt()

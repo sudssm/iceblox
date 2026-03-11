@@ -3,6 +3,7 @@ import SwiftUI
 struct SplashScreenView: View {
     let onStartCamera: () -> Void
     @State private var showReportSheet = false
+    @State private var showMapSheet = false
     @State private var showSettingsSheet = false
     @State private var e2eTriggerTask: Task<Void, Never>?
     @State private var offlineQueue = OfflineQueue()
@@ -36,6 +37,17 @@ struct SplashScreenView: View {
 
                 Button(action: onStartCamera) {
                     Text("Start Camera")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 14)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                Button { showMapSheet = true } label: {
+                    Text("View Map")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(.black)
@@ -125,6 +137,9 @@ struct SplashScreenView: View {
         }
         .sheet(isPresented: $showReportSheet) {
             ReportICEView()
+        }
+        .sheet(isPresented: $showMapSheet) {
+            MapView()
         }
         .sheet(isPresented: $showSettingsSheet) {
             SettingsView()

@@ -273,6 +273,57 @@ func (d *DB) Pool() *sql.DB {
 	return sqlDB
 }
 
+// MapSightingWindow is the time window for map sightings queries.
+const MapSightingWindow = 2 * time.Hour
+
+// MapSightingRow is a denormalized sighting for map display (latest per plate).
+type MapSightingRow struct {
+	Latitude  float64
+	Longitude float64
+	SeenAt    time.Time
+}
+
+// MapReportRow is a report for map display.
+type MapReportRow struct {
+	Latitude    float64
+	Longitude   float64
+	CreatedAt   time.Time
+	Description string
+	PhotoPath   string
+}
+
+// MapSightings returns the latest sighting per plate within a bounding box from the last 2 hours.
+func (d *DB) MapSightings(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]MapSightingRow, error) {
+	var results []MapSightingRow
+	err := d.gorm.WithContext(ctx).
+		Table("sightings").
+		Select("latitude, longitude, MAX(seen_at) AS seen_at").
+		Where("seen_at >= ? AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?",
+			since, minLat, maxLat, minLng, maxLng).
+		Group("plate_id, latitude, longitude").
+		Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("query map sightings: %w", err)
+	}
+	return results, nil
+}
+
+// MapReports returns reports within a bounding box from the last 2 hours.
+func (d *DB) MapReports(ctx context.Context, minLat, maxLat, minLng, maxLng float64, since time.Time) ([]MapReportRow, error) {
+	var results []MapReportRow
+	err := d.gorm.WithContext(ctx).
+		Table("reports").
+		Select("latitude, longitude, created_at, description, photo_path").
+		Where("created_at >= ? AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?",
+			since, minLat, maxLat, minLng, maxLng).
+		Order("created_at DESC").
+		Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("query map reports: %w", err)
+	}
+	return results, nil
+}
+
 func (d *DB) Close() error {
 	sqlDB, err := d.gorm.DB()
 	if err != nil {

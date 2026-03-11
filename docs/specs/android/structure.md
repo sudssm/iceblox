@@ -49,6 +49,7 @@ android/
         │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates + /api/v1/devices, batch, 429 handling
         │   │   │   ├── ConnectivityMonitor.kt # ConnectivityManager.NetworkCallback
         │   │   │   ├── DeviceTokenManager.kt # FCM token registration with retry
+        │   │   │   ├── MapClient.kt        # OkHttp GET /api/v1/map-sightings for map view
         │   │   │   ├── ReportClient.kt     # OkHttp multipart POST to /api/v1/reports (ICE vehicle reports)
         │   │   │   └── RetryManager.kt     # Exponential backoff, rate limit tracking
         │   │   ├── notification/
@@ -72,6 +73,7 @@ android/
         │   │   └── ui/
         │   │       ├── CameraScreen.kt     # Compose: camera preview + status bar + stop control + session summary (includes StatusBar, TestImagePreview, SessionSummaryOverlay composables)
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
+        │   │       ├── MapViewScreen.kt    # Map view showing nearby sightings and reports with offline caching
         │   │       ├── ReportICEScreen.kt  # ICE vehicle report form (photo capture, description, plate, Google Map, submit)
         │   │       ├── SettingsScreen.kt  # Settings screen with push notification toggle
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed

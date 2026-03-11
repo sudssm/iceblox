@@ -385,6 +385,9 @@ e2e/ios/run.sh --skip-build     # reuse existing .app build
 - **Zoom retry initialization** (Android: `tests/test_zoom_retry_init.sh`): Launches the app in test mode and verifies that ZoomController initializes at camera startup, logging its optical zoom detection results. On emulators, verifies `maxOpticalZoom=1.0` and `available=false` (no optical zoom hardware).
 - **Settings UI** (Android: `tests/test_settings.sh`, iOS: `tests/test_settings.sh`): Opens the settings screen and verifies the Push Notifications toggle is visible. Android version taps the Settings button on the splash screen. iOS version launches with `E2E_AUTO_SHOW_SETTINGS=1` and captures a screenshot.
 - **Settings toggle persistence** (Android: `tests/test_settings.sh`): Opens settings, toggles the Push Notifications switch, navigates back, reopens settings, and verifies the toggle state persisted.
+- **Map sightings API** (Android: `tests/test_map_sightings.sh`, iOS: `tests/test_map_sightings.sh`): Seeds a plate sighting and a report, then queries `GET /api/v1/map-sightings` and verifies the response contains both entries with required fields (latitude, longitude, confidence, seen_at, type).
+- **Map sightings validation** (Android: `tests/test_map_sightings.sh`, iOS: `tests/test_map_sightings.sh`): Verifies that missing lat returns 400, out-of-range radius returns 400, empty area returns 0 sightings, and POST method returns 405.
+- **Map view UI** (Android: `tests/test_map_sightings.sh`, iOS: `tests/test_map_sightings.sh`): Taps "View Map" on the splash screen, verifies the map header text is visible, then navigates back to the splash screen.
 
 ### Prerequisites
 

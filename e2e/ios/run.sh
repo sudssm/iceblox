@@ -20,6 +20,7 @@ source "$SCRIPT_DIR/tests/test_match_debug_label.sh"
 source "$SCRIPT_DIR/tests/test_queued_clears.sh"
 source "$SCRIPT_DIR/tests/test_report_ice.sh"
 source "$SCRIPT_DIR/tests/test_settings.sh"
+source "$SCRIPT_DIR/tests/test_map_sightings.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -68,6 +69,9 @@ run_test_match_debug_label
 run_test_queued_clears
 run_test_report_ice
 run_test_settings_ui
+run_test_map_sightings_api
+run_test_map_sightings_validation
+run_test_map_view_ios_ui
 
 echo ""
 echo "=========================================="
