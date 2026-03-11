@@ -25,10 +25,12 @@ final class MapClient {
     private let session = URLSession.shared
 
     func fetchSightings(lat: Double, lng: Double, radius: Double) async throws -> [MapSighting] {
-        var components = URLComponents(
+        guard var components = URLComponents(
             url: AppConfig.serverBaseURL.appendingPathComponent(AppConfig.mapSightingsEndpoint),
             resolvingAgainstBaseURL: false
-        )!
+        ) else {
+            throw URLError(.badURL)
+        }
         components.queryItems = [
             URLQueryItem(name: "lat", value: String(lat)),
             URLQueryItem(name: "lng", value: String(lng)),

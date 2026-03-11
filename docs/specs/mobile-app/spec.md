@@ -300,7 +300,7 @@ The app MUST handle incoming push notifications:
 
 #### REQ-M-63: Notification Privacy
 
-Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Target plate detected") and a sighting reference ID.
+Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. On Android, tapping the notification MUST open the map view.
 
 ### Settings
 
@@ -345,7 +345,7 @@ The app MUST process the `recent_sightings` array in the subscribe response. For
 - Log each sighting's location and timestamp to `DebugLog` without including plaintext plate text
 - Maintain a counter of nearby sightings visible in the status bar or debug overlay
 
-Full UI for displaying a sighting list/map is deferred to a future spec.
+A map view for displaying nearby sightings and reports is implemented on both platforms (see server spec REQ-S-22 for the API). The map view shows pins for sightings and user-submitted reports, with offline caching and debounced fetching on camera movement.
 
 #### REQ-M-68: Background Subscription Persistence
 

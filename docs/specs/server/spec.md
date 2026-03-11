@@ -311,8 +311,8 @@ When a plate hash matches a target (REQ-S-2), the server MUST send a push notifi
 - Push delivery failures MUST be logged but MUST NOT affect the plates endpoint response.
 
 **Notification content:**
-- Title: `"Target Detected"`
-- Body: `"A target plate was detected"`
+- Title: `"Potential ICE Activity Reported"`
+- Body: `"Potential ICE Activity reported"`
 - Custom data: `sighting_id` (references the `sightings` table)
 - No plaintext plate text, hash, or target label in the payload (privacy model).
 

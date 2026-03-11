@@ -9,7 +9,6 @@ struct MapView: View {
     @State private var isLoading = true
     @State private var isOffline = false
     @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var selectedSighting: MapSighting?
     @State private var fetchTask: Task<Void, Never>?
 
     private let mapClient = MapClient()
