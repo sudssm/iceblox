@@ -152,10 +152,16 @@ final class FrameProcessor: ObservableObject {
             guard let cropped = PlateDetector.cropPlateRegion(
                 from: detection.pixelBuffer,
                 rect: detection.boundingBox
-            ) else { continue }
+            ) else {
+                DebugLog.shared.w("FrameProcessor", "Crop failed for box: \(detection.boundingBox)")
+                continue
+            }
 
             if let rawText = PlateOCR.recognizeText(in: cropped) {
-                guard let normalized = PlateNormalizer.normalize(rawText) else { continue }
+                guard let normalized = PlateNormalizer.normalize(rawText) else {
+                    DebugLog.shared.w("FrameProcessor", "Normalization failed for raw: '\(rawText)'")
+                    continue
+                }
                 guard let result = recordPlate(
                     rawText: rawText,
                     normalizedText: normalized,
@@ -311,7 +317,7 @@ final class FrameProcessor: ObservableObject {
         let primaryPrefix = variantHashQueue.sync { variantHashMap[prefix] } ?? prefix
 
         if matched {
-            variantHashQueue.sync { pendingVariants.removeValue(forKey: primaryPrefix) }
+            _ = variantHashQueue.sync { pendingVariants.removeValue(forKey: primaryPrefix) }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 var feed = self.detectionFeed
