@@ -117,7 +117,7 @@ object LookalikeExpander {
         seen.add(seedIndices.toList())
 
         while (queue.isNotEmpty() && results.size < maxVariants) {
-            val entry = queue.poll()!!
+            val entry = queue.poll() ?: break
             val sb = StringBuilder(n)
             var subs = 0
             for (i in 0 until n) {
