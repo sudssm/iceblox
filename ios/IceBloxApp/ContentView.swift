@@ -226,7 +226,6 @@ struct ContentView: View {
                     logEntries: debugLog.entries
                 )
                 .ignoresSafeArea()
-                .allowsHitTesting(false)
             }
         }
         #endif

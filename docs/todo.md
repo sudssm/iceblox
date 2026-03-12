@@ -25,7 +25,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 - [ ] **App icon** — Add 1024×1024 PNG to `AppIcon.appiconset`
-- [ ] **Development team** — Set `DEVELOPMENT_TEAM` to Apple Team ID (requires Apple Developer account)
+- [x] **Development team** — Set `DEVELOPMENT_TEAM` to Apple Team ID (Z9AXZ3RHT2)
 - [ ] **App Store Connect listing** — Screenshots, description, privacy policy URL, category, age rating
 - [ ] **TestFlight build** — Archive and upload for beta testing
 

@@ -202,7 +202,7 @@ The app MUST send hashed plates to the server via HTTPS POST using the batch API
 - Send a batch when the queue reaches 65 plates, OR
 - Send a batch every 30 seconds if the queue is non-empty, OR
 - Send a batch immediately when connectivity is restored after an offline period
-- **(Android)**: Additionally, send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
+- Send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
 
 Whichever condition is met first triggers the send. When the queue contains more entries than the batch size, the app MUST send consecutive batches in a loop until the queue is drained or an error occurs.
 
@@ -300,7 +300,7 @@ The app MUST handle incoming push notifications:
 
 #### REQ-M-63: Notification Privacy
 
-Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. Tapping the notification MUST open the map view on both platforms.
+Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. Tapping a proximity alert notification MUST open the map view on both platforms. Tapping other local notifications (e.g., background-pause) MUST navigate to the contextually appropriate screen (e.g., returning to the camera view).
 
 ### Settings
 
