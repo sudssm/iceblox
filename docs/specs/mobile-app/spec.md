@@ -231,7 +231,7 @@ When the user taps "Stop Recording", the app MUST trigger an immediate upload at
 When the device has no network connectivity, the app MUST queue hashed plates in local storage. The queue MUST:
 - Persist across app restarts (stored in a local database)
 - Store a maximum of 1,000 entries (oldest entries are dropped when full)
-- Store only: hash, timestamp (UTC), location (if available), and local session identifier metadata
+- Store only: hash, timestamp (UTC), location (if available), local session identifier metadata, per-variant confidence (float), and isPrimary flag (boolean)
 - NOT store plaintext plate text or images
 - Entries older than 10 minutes MUST be pruned at the start of each batch upload cycle (stale entries are unlikely to be useful and could cause unbounded queue growth after extended offline periods). Pruned entries MUST trigger `onPlateSent` callbacks with `matched=false` so the debug feed transitions them from QUEUED to SENT rather than leaving them stuck.
 
