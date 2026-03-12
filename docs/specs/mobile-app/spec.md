@@ -300,7 +300,7 @@ The app MUST handle incoming push notifications:
 
 #### REQ-M-63: Notification Privacy
 
-Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. Tapping the notification MUST open the map view on both platforms.
+Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. Tapping a proximity alert notification MUST open the map view on both platforms. Tapping other local notifications (e.g., background-pause) MUST navigate to the contextually appropriate screen (e.g., returning to the camera view).
 
 ### Settings
 

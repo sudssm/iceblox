@@ -417,6 +417,8 @@ For stop-summary verification, the iOS harness sets `E2E_USE_STOP_RECORDING_TRIG
 
 ## Local Device Testing
 
+### Android
+
 `scripts/android-test.sh` supports testing on a physical Android device connected via USB or Wi-Fi ADB. It automates the full build-deploy-run cycle for local development.
 
 ```bash
@@ -434,6 +436,26 @@ scripts/android-test.sh --prod-server  # prod server (Railway)
 6. **(Local only)** Starts a Docker PostgreSQL container if needed, sets up `adb reverse tcp:8080`, and runs the Go server in the foreground
 
 A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates.
+
+### iOS
+
+`scripts/ios-test.sh` supports testing on a physical iOS device connected via USB. It automates the full build-deploy-run cycle for local development.
+
+```bash
+scripts/ios-test.sh               # local server (default)
+scripts/ios-test.sh --prod-server  # prod server (Railway)
+```
+
+**What it does:**
+
+1. **Detects** a USB-connected iOS device via `xcrun xctrace list devices`
+2. **Patches** `AppConfig.serverBaseURL` for the target (host machine's LAN IP for local, or the Railway production URL)
+3. **Builds** the app for device (`generic/platform=iOS`) with automatic provisioning
+4. **Reverts** the AppConfig patch after build
+5. **Installs and launches** the app on the device via `xcrun devicectl`
+6. **(Local only)** Starts a Docker PostgreSQL container if needed and runs the Go server in the foreground
+
+A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates. For local server mode, the script detects the Mac's LAN IP (via `ipconfig getifaddr`) and patches AppConfig to point at `http://<LAN_IP>:8080` since `localhost` is not reachable from a physical device.
 
 ## Future Enhancements
 
