@@ -159,7 +159,7 @@ final class FrameProcessor: ObservableObject {
 
             if let rawText = PlateOCR.recognizeText(in: cropped) {
                 guard let normalized = PlateNormalizer.normalize(rawText) else {
-                    DebugLog.shared.w("FrameProcessor", "Normalization failed for raw: '\(rawText)'")
+                    DebugLog.shared.w("FrameProcessor", "Normalization failed for raw text (\(rawText.count) chars)")
                     continue
                 }
                 guard let result = recordPlate(

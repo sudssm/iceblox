@@ -176,9 +176,9 @@ enum PlateOCR {
 
         let avgConfidence = totalConfidence / Float(decoded.count)
         let text = String(decoded)
-        DebugLog.shared.d("PlateOCR", "Decoded: '\(text)' avgConf=\(String(format: "%.3f", avgConfidence)) threshold=\(AppConfig.ocrConfidenceThreshold)")
+        DebugLog.shared.d("PlateOCR", "Decoded: (\(text.count) chars) avgConf=\(String(format: "%.3f", avgConfidence)) threshold=\(AppConfig.ocrConfidenceThreshold)")
         guard avgConfidence >= AppConfig.ocrConfidenceThreshold else {
-            DebugLog.shared.w("PlateOCR", "REJECTED low confidence: '\(text)' \(String(format: "%.3f", avgConfidence)) < \(AppConfig.ocrConfidenceThreshold)")
+            DebugLog.shared.w("PlateOCR", "REJECTED low confidence: (\(text.count) chars) \(String(format: "%.3f", avgConfidence)) < \(AppConfig.ocrConfidenceThreshold)")
             return nil
         }
 

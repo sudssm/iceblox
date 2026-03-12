@@ -1,10 +1,7 @@
 import Combine
-import os
 import SwiftUI
 import UIKit
 import UserNotifications
-
-private let appLog = Logger(subsystem: "com.iceblox.app", category: "network")
 
 class NavigationState: ObservableObject {
     @Published var showMap = false
@@ -28,6 +25,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         if !AppConfig.skipNotificationRequest && UserSettings.shared.pushNotificationsEnabled {
             requestNotificationPermission(application: application)
         }
+        #if DEBUG
         // Connectivity probe at launch (synchronous for console capture)
         let baseURL = AppConfig.serverBaseURL
         NSLog("[Probe] Server URL: %@", baseURL.absoluteString)
@@ -48,6 +46,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }.resume()
         _ = sem.wait(timeout: .now() + 6)
         NSLog("[Probe] Done")
+        #endif
         return true
     }
 
