@@ -1,5 +1,5 @@
 [build]
-rootDirectory = "."
+builder = "DOCKERFILE"
 dockerfilePath = "server/Dockerfile"
 
 [deploy]
