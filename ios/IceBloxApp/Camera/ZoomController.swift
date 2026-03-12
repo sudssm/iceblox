@@ -20,7 +20,9 @@ final class ZoomController {
         let threshold = device.activeFormat.videoZoomFactorUpscaleThreshold
         self.maxOpticalZoom = threshold > 1.0 ? threshold : 1.0
         self.isZoomRetryAvailable = AppConfig.isZoomRetryEnabled && threshold > 1.0
-        DebugLog.shared.d("ZoomController", "maxOpticalZoom=\(maxOpticalZoom) available=\(isZoomRetryAvailable) baselineZoom=\(baselineZoom) deviceType=\(device.deviceType)")
+        DebugLog.shared.d("ZoomController",
+            "maxOpticalZoom=\(maxOpticalZoom) available=\(isZoomRetryAvailable)" +
+            " baselineZoom=\(baselineZoom) deviceType=\(device.deviceType)")
     }
 
     func isOnCooldown() -> Bool {
