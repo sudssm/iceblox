@@ -8,6 +8,7 @@ struct DebugOverlayView: View {
     let queueDepth: Int
     let isConnected: Bool
     let logEntries: [LogEntry]
+    var showFeedAndLogs: Bool = true
 
     private var screenSize: CGSize { UIScreen.main.bounds.size }
 
@@ -64,35 +65,37 @@ struct DebugOverlayView: View {
                 .position(x: rect.midX * scaleX, y: rect.midY * scaleY)
             }
 
-            // Debug header (top-left, below status bar + 40pt gap)
-            debugHeader
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, topSafeArea + 40)
-                .padding(.leading, 8)
-
-            // Detection feed (top-right, same vertical offset as header)
-            if !feedEntries.isEmpty {
-                detectionFeed
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            if showFeedAndLogs {
+                // Debug header (top-left, below status bar + 40pt gap)
+                debugHeader
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(.top, topSafeArea + 40)
-                    .padding(.trailing, 8)
-                    .padding(.bottom, 40)
+                    .padding(.leading, 8)
+
+                // Detection feed (top-right, same vertical offset as header)
+                if !feedEntries.isEmpty {
+                    detectionFeed
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, topSafeArea + 40)
+                        .padding(.trailing, 8)
+                        .padding(.bottom, 40)
+                }
+
+                // Log panel (bottom-center)
+                DebugLogPanel(entries: logEntries)
+                    .frame(maxWidth: screenSize.width - 16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 32)
+
+                // [DEBUG MODE] label (bottom-left)
+                Text("[DEBUG MODE]")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.yellow)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(.leading, 8)
+                    .padding(.bottom, 186)
             }
-
-            // Log panel (bottom-center)
-            DebugLogPanel(entries: logEntries)
-                .frame(maxWidth: screenSize.width - 16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 32)
-
-            // [DEBUG MODE] label (bottom-left)
-            Text("[DEBUG MODE]")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.yellow)
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .padding(.leading, 8)
-                .padding(.bottom, 186)
         }
         .frame(width: screenSize.width, height: screenSize.height)
     }

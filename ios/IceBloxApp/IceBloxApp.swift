@@ -1,9 +1,11 @@
+import Combine
 import SwiftUI
 import UIKit
 import UserNotifications
 
 class NavigationState: ObservableObject {
     @Published var showMap = false
+    @Published var returnToCamera = false
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -23,6 +25,28 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         if !AppConfig.skipNotificationRequest && UserSettings.shared.pushNotificationsEnabled {
             requestNotificationPermission(application: application)
         }
+        #if DEBUG
+        // Connectivity probe at launch (synchronous for console capture)
+        let baseURL = AppConfig.serverBaseURL
+        NSLog("[Probe] Server URL: %@", baseURL.absoluteString)
+        let healthURL = baseURL.appendingPathComponent("/healthz")
+        NSLog("[Probe] Testing: %@", healthURL.absoluteString)
+        let sem = DispatchSemaphore(value: 0)
+        var probeRequest = URLRequest(url: healthURL)
+        probeRequest.timeoutInterval = 5
+        URLSession.shared.dataTask(with: probeRequest) { _, response, error in
+            if let error {
+                NSLog("[Probe] FAILED: %@", error.localizedDescription)
+            } else if let http = response as? HTTPURLResponse {
+                NSLog("[Probe] OK: status=%d", http.statusCode)
+            } else {
+                NSLog("[Probe] No HTTP response")
+            }
+            sem.signal()
+        }.resume()
+        _ = sem.wait(timeout: .now() + 6)
+        NSLog("[Probe] Done")
+        #endif
         return true
     }
 
@@ -72,9 +96,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        DebugLog.shared.d("Push", "Notification tapped, opening map")
-        DispatchQueue.main.async { [weak self] in
-            self?.navigationState?.showMap = true
+        let identifier = response.notification.request.identifier
+        if identifier == "background-pause" {
+            DebugLog.shared.d("Push", "Notification tapped, returning to camera")
+            DispatchQueue.main.async { [weak self] in
+                self?.navigationState?.returnToCamera = true
+            }
+        } else {
+            DebugLog.shared.d("Push", "Notification tapped, opening map")
+            DispatchQueue.main.async { [weak self] in
+                self?.navigationState?.showMap = true
+            }
         }
         completionHandler()
     }
@@ -156,6 +188,12 @@ struct IceBloxApp: App {
             }
             .onAppear {
                 appDelegate.navigationState = navigationState
+            }
+            .onReceive(navigationState.$returnToCamera) { shouldReturn in
+                if shouldReturn {
+                    showCamera = true
+                    navigationState.returnToCamera = false
+                }
             }
         }
     }
