@@ -31,6 +31,7 @@ type Sighting struct {
 	Longitude     float64   `gorm:"type:double precision;not null;index:idx_sightings_location,composite:location"`
 	HardwareID    string    `gorm:"type:text;not null"`
 	Substitutions int       `gorm:"not null;default:0"`
+	Confidence    float64   `gorm:"type:double precision;not null;default:0"`
 }
 
 type DeviceToken struct {
@@ -81,6 +82,7 @@ type SightingResult struct {
 	Longitude     float64
 	HardwareID    string
 	Substitutions int
+	Confidence    float64
 }
 
 func Connect(dsn string) (*DB, error) {
@@ -146,7 +148,7 @@ func (d *DB) LoadPlateIDs(ctx context.Context) (map[string]int64, error) {
 	return mapping, nil
 }
 
-func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error) {
+func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int, confidence float64) (int64, error) {
 	s := Sighting{
 		PlateID:       plateID,
 		SeenAt:        seenAt,
@@ -154,6 +156,7 @@ func (d *DB) RecordSighting(ctx context.Context, plateID int64, seenAt time.Time
 		Longitude:     lng,
 		HardwareID:    hardwareID,
 		Substitutions: substitutions,
+		Confidence:    confidence,
 	}
 	if err := d.gorm.WithContext(ctx).Create(&s).Error; err != nil {
 		return 0, fmt.Errorf("insert sighting: %w", err)
@@ -194,7 +197,7 @@ func (d *DB) RecentSightings(ctx context.Context, minLat, maxLat, minLng, maxLng
 	var results []SightingResult
 	err := d.gorm.WithContext(ctx).
 		Table("sightings s").
-		Select("s.id, s.plate_id, p.plate, s.seen_at, s.latitude, s.longitude, s.hardware_id, s.substitutions").
+		Select("s.id, s.plate_id, p.plate, s.seen_at, s.latitude, s.longitude, s.hardware_id, s.substitutions, s.confidence").
 		Joins("JOIN plates p ON p.id = s.plate_id").
 		Where("s.seen_at >= ? AND s.latitude BETWEEN ? AND ? AND s.longitude BETWEEN ? AND ?",
 			since, minLat, maxLat, minLng, maxLng).

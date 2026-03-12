@@ -39,6 +39,7 @@ struct DetectionFeedEntry: Identifiable {
     let hashPrefix: String
     var state: DetectionState
     let timestamp: Date
+    let isExpanded: Bool
 }
 
 final class FrameProcessor: ObservableObject {
@@ -67,10 +68,6 @@ final class FrameProcessor: ObservableObject {
     private var frameCount = 0
     private var fpsFrameCount = 0
     private var fpsTimer = Date()
-    private var variantHashMap: [String: String] = [:]
-    private var pendingVariants: [String: Int] = [:]
-    private let variantHashQueue = DispatchQueue(label: "com.iceblox.variantHashMap")
-
     private var awaitingZoomedFrame = false
     private var zoomRetryStartTime: Date?
     private var framesToSkipAfterZoom = 0
@@ -157,16 +154,20 @@ final class FrameProcessor: ObservableObject {
                 continue
             }
 
-            if let rawText = PlateOCR.recognizeText(in: cropped) {
-                guard let normalized = PlateNormalizer.normalize(rawText) else {
-                    DebugLog.shared.w("FrameProcessor", "Normalization failed for raw text (\(rawText.count) chars)")
+            if let ocrOutput = PlateOCR.recognizeText(in: cropped) {
+                guard let normalized = PlateNormalizer.normalize(ocrOutput.text) else {
+                    DebugLog.shared.w("FrameProcessor", "Normalization failed for raw text (\(ocrOutput.text.count) chars)")
                     continue
                 }
+                let charConfs = Array(ocrOutput.charConfidences.prefix(normalized.count))
+                let slotCands = Array(ocrOutput.slotCandidates.prefix(normalized.count))
                 guard let result = recordPlate(
-                    rawText: rawText,
+                    rawText: ocrOutput.text,
                     normalizedText: normalized,
                     boundingBox: detection.boundingBox,
-                    confidence: detection.confidence
+                    confidence: detection.confidence,
+                    charConfidences: charConfs,
+                    slotCandidates: slotCands
                 ) else { continue }
                 results.append(result)
             } else {
@@ -244,13 +245,17 @@ final class FrameProcessor: ObservableObject {
                 rect: detection.boundingBox
             ) else { continue }
 
-            guard let rawText = PlateOCR.recognizeText(in: cropped) else { continue }
-            guard let normalized = PlateNormalizer.normalize(rawText) else { continue }
+            guard let ocrOutput = PlateOCR.recognizeText(in: cropped) else { continue }
+            guard let normalized = PlateNormalizer.normalize(ocrOutput.text) else { continue }
+            let charConfs = Array(ocrOutput.charConfidences.prefix(normalized.count))
+            let slotCands = Array(ocrOutput.slotCandidates.prefix(normalized.count))
             guard let result = recordPlate(
-                rawText: rawText,
+                rawText: ocrOutput.text,
                 normalizedText: normalized,
                 boundingBox: detection.boundingBox,
-                confidence: detection.confidence
+                confidence: detection.confidence,
+                charConfidences: charConfs,
+                slotCandidates: slotCands
             ) else { continue }
 
             zoomedResults.append(result)
@@ -288,11 +293,14 @@ final class FrameProcessor: ObservableObject {
             height: CGFloat(imageHeight) * 0.2
         )
 
+        let charConfs = [Float](repeating: 0, count: normalized.count)
         guard let result = recordPlate(
             rawText: plateText,
             normalizedText: normalized,
             boundingBox: boundingBox,
-            confidence: 1.0
+            confidence: 1.0,
+            charConfidences: charConfs,
+            slotCandidates: []
         ) else {
             return
         }
@@ -314,50 +322,20 @@ final class FrameProcessor: ObservableObject {
 
     func onPlateSent(hash: String, matched: Bool) {
         let prefix = String(hash.prefix(8))
-        let primaryPrefix = variantHashQueue.sync { variantHashMap[prefix] } ?? prefix
+        let newState: DetectionState = matched ? .matched : .sent
 
-        if matched {
-            _ = variantHashQueue.sync { pendingVariants.removeValue(forKey: primaryPrefix) }
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                var feed = self.detectionFeed
-                if let idx = feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state != .matched }) {
-                    feed[idx] = DetectionFeedEntry(
-                        plateText: feed[idx].plateText,
-                        hashPrefix: feed[idx].hashPrefix,
-                        state: .matched,
-                        timestamp: feed[idx].timestamp
-                    )
-                    self.detectionFeed = feed
-                }
-            }
-        } else {
-            let allSent = variantHashQueue.sync { () -> Bool in
-                if var remaining = pendingVariants[primaryPrefix] {
-                    remaining -= 1
-                    if remaining <= 0 {
-                        pendingVariants.removeValue(forKey: primaryPrefix)
-                        return true
-                    }
-                    pendingVariants[primaryPrefix] = remaining
-                    return false
-                }
-                return true
-            }
-            if allSent {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    var feed = self.detectionFeed
-                    if let idx = feed.lastIndex(where: { $0.hashPrefix == primaryPrefix && $0.state == .queued }) {
-                        feed[idx] = DetectionFeedEntry(
-                            plateText: feed[idx].plateText,
-                            hashPrefix: feed[idx].hashPrefix,
-                            state: .sent,
-                            timestamp: feed[idx].timestamp
-                        )
-                        self.detectionFeed = feed
-                    }
-                }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            var feed = self.detectionFeed
+            if let idx = feed.lastIndex(where: { $0.hashPrefix == prefix && $0.state == .queued }) {
+                feed[idx] = DetectionFeedEntry(
+                    plateText: feed[idx].plateText,
+                    hashPrefix: feed[idx].hashPrefix,
+                    state: newState,
+                    timestamp: feed[idx].timestamp,
+                    isExpanded: feed[idx].isExpanded
+                )
+                self.detectionFeed = feed
             }
         }
     }
@@ -392,44 +370,39 @@ final class FrameProcessor: ObservableObject {
         rawText: String,
         normalizedText: String,
         boundingBox: CGRect,
-        confidence: Float
+        confidence: Float,
+        charConfidences: [Float],
+        slotCandidates: [[PlateOCR.SlotCandidate]] = []
     ) -> FrameResult? {
         if dedupCache.isDuplicate(normalizedText) { return nil }
 
-        let variants = LookalikeExpander.expand(normalizedText)
+        let variants = LookalikeExpander.expand(normalizedText, charConfidences: charConfidences, slotCandidates: slotCandidates)
         let primaryHash = PlateHasher.hash(normalizedPlate: variants[0].0)
-        let primaryPrefix = String(primaryHash.prefix(8))
 
-        DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(primaryPrefix) variants=\(variants.count)")
+        DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(primaryHash.prefix(8))) variants=\(variants.count)")
 
-        variantHashQueue.sync { pendingVariants[primaryPrefix] = variants.count }
-
-        for (variantText, substitutions) in variants {
+        for (variantText, substitutions, variantConfidence) in variants {
             let hash = substitutions == 0 ? primaryHash : PlateHasher.hash(normalizedPlate: variantText)
             let prefix = String(hash.prefix(8))
-            if prefix != primaryPrefix {
-                variantHashQueue.sync { variantHashMap[prefix] = primaryPrefix }
-            }
-            let entry = OfflineQueueEntry(
+            let isPrimary = substitutions == 0
+
+            offlineQueue.enqueue(OfflineQueueEntry(
                 plateHash: hash,
                 latitude: locationManager.latitude,
                 longitude: locationManager.longitude,
                 sessionID: sessionID,
-                substitutions: substitutions
-            )
-            offlineQueue.enqueue(entry)
+                confidence: variantConfidence,
+                isPrimary: isPrimary
+            ))
+
+            addFeedEntry(DetectionFeedEntry(
+                plateText: variantText,
+                hashPrefix: prefix,
+                state: .queued,
+                timestamp: Date(),
+                isExpanded: !isPrimary
+            ))
         }
-
-        let extraCount = variants.count - 1
-        let feedText = extraCount > 0 ? "\(normalizedText) (+\(extraCount))" : normalizedText
-
-        let feedEntry = DetectionFeedEntry(
-            plateText: feedText,
-            hashPrefix: primaryPrefix,
-            state: .queued,
-            timestamp: Date()
-        )
-        addFeedEntry(feedEntry)
 
         DispatchQueue.main.async { [weak self] in
             self?.totalPlates += 1

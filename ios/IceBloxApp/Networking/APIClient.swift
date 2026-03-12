@@ -10,7 +10,7 @@ struct PlateSubmission: Codable {
     let latitude: Double?
     let longitude: Double?
     let timestamp: String?
-    let substitutions: Int
+    let confidence: Float
 }
 
 struct BatchPlateRequest: Codable {
@@ -115,7 +115,7 @@ final class APIClient {
                     latitude: entry.latitude,
                     longitude: entry.longitude,
                     timestamp: formatter.string(from: entry.timestamp),
-                    substitutions: entry.substitutions
+                    confidence: entry.confidence
                 )
             }
             let batch = BatchPlateRequest(plates: submissions)

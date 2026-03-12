@@ -30,6 +30,7 @@ object AppConfig {
     const val RETRY_MAX_ATTEMPTS = 10
 
     const val MAX_LOOKALIKE_VARIANTS = 64
+    const val OCR_CANDIDATE_THRESHOLD = 0.05f
 
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6

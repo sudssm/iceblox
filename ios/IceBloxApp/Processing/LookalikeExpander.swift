@@ -1,78 +1,180 @@
 import Foundation
 
 enum LookalikeExpander {
-    private static let groups: [[Character]] = [
-        ["0", "O", "D", "Q", "8", "B"],
-        ["1", "I", "L"],
-        ["5", "S"],
-        ["2", "Z"],
-        ["A", "4"]
-    ]
 
-    private static let charToGroup: [Character: [Character]] = {
-        var map = [Character: [Character]]()
-        for group in groups {
-            for ch in group {
-                map[ch] = group
-            }
+    static func expand(
+        _ text: String,
+        charConfidences: [Float],
+        slotCandidates: [[PlateOCR.SlotCandidate]] = [],
+        maxVariants: Int = AppConfig.maxLookalikeVariants
+    ) -> [(String, Int, Float)] { // swiftlint:disable:this large_tuple
+        let slots = buildSlotLists(text: text, charConfidences: charConfidences, slotCandidates: slotCandidates)
+
+        var totalCombinations: Int64 = 1
+        for slot in slots {
+            totalCombinations *= Int64(slot.count)
+            if totalCombinations > Int64(maxVariants) { break }
         }
-        return map
-    }()
 
-    static func expand(_ text: String, maxVariants: Int = AppConfig.maxLookalikeVariants) -> [(String, Int)] {
+        if totalCombinations <= Int64(maxVariants) {
+            return cartesianExpand(slots: slots, primaryText: text)
+        } else {
+            return priorityQueueExpand(slots: slots, primaryText: text, maxVariants: maxVariants)
+        }
+    }
+
+    private static func buildSlotLists(
+        text: String,
+        charConfidences: [Float],
+        slotCandidates: [[PlateOCR.SlotCandidate]]
+    ) -> [[PlateOCR.SlotCandidate]] {
         let chars = Array(text)
-        var confusablePositions = [Int]()
+        var result = [[PlateOCR.SlotCandidate]]()
         for i in chars.indices {
-            if let group = charToGroup[chars[i]], group.count > 1 {
-                confusablePositions.append(i)
+            if i < slotCandidates.count && slotCandidates[i].count > 1 {
+                result.append(slotCandidates[i])
+            } else {
+                let conf: Float = i < charConfidences.count ? charConfidences[i] : 0
+                result.append([PlateOCR.SlotCandidate(char: chars[i], probability: conf)])
+            }
+        }
+        return result
+    }
+
+    private static func computeConfidence(slots: [[PlateOCR.SlotCandidate]], indices: [Int]) -> Float {
+        let count = slots.count
+        guard count > 0 else { return 0 }
+        var logSum: Float = 0
+        for i in 0..<count {
+            logSum += log(max(slots[i][indices[i]].probability, 1e-6))
+        }
+        return exp(logSum / Float(count))
+    }
+
+    private static func cartesianExpand(
+        slots: [[PlateOCR.SlotCandidate]],
+        primaryText: String
+    ) -> [(String, Int, Float)] { // swiftlint:disable:this large_tuple
+        var results = [(String, Int, Float)]() // swiftlint:disable:this large_tuple
+        let slotCount = slots.count
+        var indices = [Int](repeating: 0, count: slotCount)
+
+        while true {
+            var chars = [Character]()
+            chars.reserveCapacity(slotCount)
+            var subs = 0
+            for i in 0..<slotCount {
+                chars.append(slots[i][indices[i]].char)
+                if indices[i] != 0 { subs += 1 }
+            }
+            let conf = computeConfidence(slots: slots, indices: indices)
+            results.append((String(chars), subs, conf))
+
+            var pos = slotCount - 1
+            while pos >= 0 {
+                indices[pos] += 1
+                if indices[pos] < slots[pos].count { break }
+                indices[pos] = 0
+                pos -= 1
+            }
+            if pos < 0 { break }
+        }
+
+        results.sort { $0.2 > $1.2 }
+        if let primaryIdx = results.firstIndex(where: { $0.0 == primaryText }), primaryIdx > 0 {
+            let primary = results.remove(at: primaryIdx)
+            results.insert(primary, at: 0)
+        }
+        return results
+    }
+
+    private static func priorityQueueExpand(
+        slots: [[PlateOCR.SlotCandidate]],
+        primaryText: String,
+        maxVariants: Int
+    ) -> [(String, Int, Float)] { // swiftlint:disable:this large_tuple
+        let slotCount = slots.count
+        var results = [(String, Int, Float)]()
+        var seen = Set<[Int]>()
+
+        struct Entry: Comparable {
+            let indices: [Int]
+            let lastModified: Int
+            let confidence: Float
+
+            static func < (lhs: Entry, rhs: Entry) -> Bool {
+                lhs.confidence > rhs.confidence
             }
         }
 
-        if confusablePositions.isEmpty {
-            return [(text, 0)]
+        var heap = [Entry]()
+
+        func heapPush(_ entry: Entry) {
+            heap.append(entry)
+            var i = heap.count - 1
+            while i > 0 {
+                let parent = (i - 1) / 2
+                if heap[i] < heap[parent] {
+                    heap.swapAt(i, parent)
+                    i = parent
+                } else { break }
+            }
         }
 
-        var results = [(String, Int)]()
-        var seen = Set<String>()
-
-        struct State {
-            let chars: [Character]
-            let nextIdx: Int
-            let substitutions: Int
+        func heapPop() -> Entry {
+            let top = heap[0]
+            let last = heap.removeLast()
+            if !heap.isEmpty {
+                heap[0] = last
+                var i = 0
+                while true {
+                    let left = 2 * i + 1
+                    let right = 2 * i + 2
+                    var smallest = i
+                    if left < heap.count && heap[left] < heap[smallest] { smallest = left }
+                    if right < heap.count && heap[right] < heap[smallest] { smallest = right }
+                    if smallest == i { break }
+                    heap.swapAt(i, smallest)
+                    i = smallest
+                }
+            }
+            return top
         }
 
-        var queue = [State]()
-        queue.append(State(chars: chars, nextIdx: 0, substitutions: 0))
-        seen.insert(text)
-        results.append((text, 0))
+        let seedIndices = [Int](repeating: 0, count: slotCount)
+        let seedConf = computeConfidence(slots: slots, indices: seedIndices)
+        heapPush(Entry(indices: seedIndices, lastModified: 0, confidence: seedConf))
+        seen.insert(seedIndices)
 
-        var head = 0
+        while !heap.isEmpty && results.count < maxVariants {
+            let entry = heapPop()
+            results.append(buildVariant(slots: slots, indices: entry.indices, confidence: entry.confidence))
 
-        while head < queue.count && results.count < maxVariants {
-            let state = queue[head]
-            head += 1
-
-            for posIdx in state.nextIdx..<confusablePositions.count {
-                let pos = confusablePositions[posIdx]
-                guard let group = charToGroup[state.chars[pos]] else { continue }
-                let originalChar = state.chars[pos]
-
-                for alt in group {
-                    if alt == originalChar { continue }
-                    var newChars = state.chars
-                    newChars[pos] = alt
-                    let variant = String(newChars)
-
-                    if seen.insert(variant).inserted {
-                        let subs = state.substitutions + 1
-                        results.append((variant, subs))
-                        if results.count >= maxVariants { return results }
-                        queue.append(State(chars: newChars, nextIdx: posIdx + 1, substitutions: subs))
+            for pos in entry.lastModified..<slotCount {
+                let nextIdx = entry.indices[pos] + 1
+                if nextIdx < slots[pos].count {
+                    var childIndices = entry.indices
+                    childIndices[pos] = nextIdx
+                    if seen.insert(childIndices).inserted {
+                        let conf = computeConfidence(slots: slots, indices: childIndices)
+                        heapPush(Entry(indices: childIndices, lastModified: pos, confidence: conf))
                     }
                 }
             }
         }
 
         return results
+    }
+
+    // swiftlint:disable:next large_tuple
+    private static func buildVariant(slots: [[PlateOCR.SlotCandidate]], indices: [Int], confidence: Float) -> (String, Int, Float) {
+        var chars = [Character]()
+        chars.reserveCapacity(slots.count)
+        var subs = 0
+        for i in 0..<slots.count {
+            chars.append(slots[i][indices[i]].char)
+            if indices[i] != 0 { subs += 1 }
+        }
+        return (String(chars), subs, confidence)
     }
 }

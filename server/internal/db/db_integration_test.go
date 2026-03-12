@@ -127,7 +127,7 @@ func TestRecordSighting_InsertsSighting(t *testing.T) {
 	plateID := mapping[hash]
 
 	seenAt := time.Date(2026, 3, 8, 14, 30, 0, 0, time.UTC)
-	sightingID, err := database.RecordSighting(ctx, plateID, seenAt, 34.0522, -118.2437, "device-abc", 0)
+	sightingID, err := database.RecordSighting(ctx, plateID, seenAt, 34.0522, -118.2437, "device-abc", 0, 0)
 	if err != nil {
 		t.Fatalf("RecordSighting: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestRecordSighting_MultipleSightingsPerPlate(t *testing.T) {
 
 	for i := range 3 {
 		seenAt := time.Date(2026, 3, 8, 10+i, 0, 0, 0, time.UTC)
-		_, err = database.RecordSighting(ctx, plateID, seenAt, float64(30+i), float64(-100-i), "device-xyz", 0)
+		_, err = database.RecordSighting(ctx, plateID, seenAt, float64(30+i), float64(-100-i), "device-xyz", 0, 0)
 		if err != nil {
 			t.Fatalf("RecordSighting %d: %v", i, err)
 		}
@@ -201,7 +201,7 @@ func TestRecordSighting_ForeignKeyConstraint(t *testing.T) {
 	database := testDB(t)
 	ctx := context.Background()
 
-	_, err := database.RecordSighting(ctx, 999999, time.Now(), 0, 0, "device-bad", 0)
+	_, err := database.RecordSighting(ctx, 999999, time.Now(), 0, 0, "device-bad", 0, 0)
 	if err == nil {
 		t.Fatal("expected FK violation error for non-existent plate_id")
 	}

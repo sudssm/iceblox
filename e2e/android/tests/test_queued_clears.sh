@@ -33,9 +33,9 @@ run_test_queued_clears() {
     ui_texts="$(ui_dump_texts)"
 
     local queued_count
-    queued_count=$(printf '%s\n' "$ui_texts" | grep -cF '[QUED]' || echo "0")
+    queued_count=$(printf '%s\n' "$ui_texts" | grep -cF '[QUED]' || true)
     local sent_or_matched_count
-    sent_or_matched_count=$(printf '%s\n' "$ui_texts" | grep -cE '\[SENT\]|\[MTCH\]' || echo "0")
+    sent_or_matched_count=$(printf '%s\n' "$ui_texts" | grep -cE '\[SENT\]|\[MTCH\]' || true)
 
     if [ "$sent_or_matched_count" -gt 0 ] && [ "$queued_count" -eq 0 ]; then
         echo "  PASS: All feed entries transitioned from QUEUED ($sent_or_matched_count entries SENT/MATCHED, 0 QUEUED)"

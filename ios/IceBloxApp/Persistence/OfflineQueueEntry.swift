@@ -7,7 +7,8 @@ struct OfflineQueueEntry: Codable {
     let latitude: Double?
     let longitude: Double?
     let sessionID: String
-    let substitutions: Int
+    let confidence: Float
+    let isPrimary: Bool
 
     init(
         plateHash: String,
@@ -15,7 +16,8 @@ struct OfflineQueueEntry: Codable {
         latitude: Double? = nil,
         longitude: Double? = nil,
         sessionID: String,
-        substitutions: Int = 0
+        confidence: Float = 0,
+        isPrimary: Bool = false
     ) {
         self.id = nil
         self.plateHash = plateHash
@@ -23,16 +25,19 @@ struct OfflineQueueEntry: Codable {
         self.latitude = latitude
         self.longitude = longitude
         self.sessionID = sessionID
-        self.substitutions = substitutions
+        self.confidence = confidence
+        self.isPrimary = isPrimary
     }
 
-    init(id: Int64, plateHash: String, timestamp: Date, latitude: Double?, longitude: Double?, sessionID: String, substitutions: Int = 0) {
+    // swiftlint:disable:next line_length
+    init(id: Int64, plateHash: String, timestamp: Date, latitude: Double?, longitude: Double?, sessionID: String, confidence: Float = 0, isPrimary: Bool = false) {
         self.id = id
         self.plateHash = plateHash
         self.timestamp = timestamp
         self.latitude = latitude
         self.longitude = longitude
         self.sessionID = sessionID
-        self.substitutions = substitutions
+        self.confidence = confidence
+        self.isPrimary = isPrimary
     }
 }

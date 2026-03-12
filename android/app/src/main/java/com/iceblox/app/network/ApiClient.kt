@@ -142,7 +142,7 @@ class ApiClient(
                         .atOffset(ZoneOffset.UTC)
                         .format(DateTimeFormatter.ISO_INSTANT)
                     put("timestamp", ts)
-                    put("substitutions", entry.substitutions)
+                    put("confidence", entry.confidence.toDouble())
                 }
                 platesArray.put(plate)
             }

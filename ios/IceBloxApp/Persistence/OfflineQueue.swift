@@ -25,12 +25,13 @@ final class OfflineQueue {
                     latitude REAL,
                     longitude REAL,
                     session_id TEXT NOT NULL DEFAULT '',
-                    substitutions INTEGER NOT NULL DEFAULT 0
+                    confidence REAL NOT NULL DEFAULT 0,
+                    is_primary INTEGER NOT NULL DEFAULT 0
                 )
                 """
             sqlite3_exec(db, sql, nil, nil, nil)
             ensureSessionIDColumn()
-            ensureSubstitutionsColumn()
+            ensureConfidenceColumns()
         }
     }
 
@@ -42,8 +43,8 @@ final class OfflineQueue {
         queue.sync {
             evictIfNeeded()
             let sql = """
-                INSERT INTO queue (plate_hash, timestamp, latitude, longitude, session_id, substitutions)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO queue (plate_hash, timestamp, latitude, longitude, session_id, confidence, is_primary)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
@@ -62,7 +63,8 @@ final class OfflineQueue {
                 sqlite3_bind_null(stmt, 4)
             }
             sqlite3_bind_text(stmt, 5, (entry.sessionID as NSString).utf8String, -1, SQLITE_TRANSIENT)
-            sqlite3_bind_int(stmt, 6, Int32(entry.substitutions))
+            sqlite3_bind_double(stmt, 6, Double(entry.confidence))
+            sqlite3_bind_int(stmt, 7, entry.isPrimary ? 1 : 0)
             sqlite3_step(stmt)
         }
     }
@@ -70,7 +72,7 @@ final class OfflineQueue {
     func dequeue(limit: Int) -> [OfflineQueueEntry] {
         queue.sync {
             let sql = """
-                SELECT id, plate_hash, timestamp, latitude, longitude, session_id, substitutions
+                SELECT id, plate_hash, timestamp, latitude, longitude, session_id, confidence, is_primary
                 FROM queue
                 ORDER BY id ASC
                 LIMIT ?
@@ -88,7 +90,8 @@ final class OfflineQueue {
                 let lat: Double? = sqlite3_column_type(stmt, 3) != SQLITE_NULL ? sqlite3_column_double(stmt, 3) : nil
                 let lng: Double? = sqlite3_column_type(stmt, 4) != SQLITE_NULL ? sqlite3_column_double(stmt, 4) : nil
                 let sessionID = String(cString: sqlite3_column_text(stmt, 5))
-                let substitutions = Int(sqlite3_column_int(stmt, 6))
+                let confidence = Float(sqlite3_column_double(stmt, 6))
+                let isPrimary = sqlite3_column_int(stmt, 7) != 0
                 entries.append(
                     OfflineQueueEntry(
                         id: id,
@@ -97,7 +100,8 @@ final class OfflineQueue {
                         latitude: lat,
                         longitude: lng,
                         sessionID: sessionID,
-                        substitutions: substitutions
+                        confidence: confidence,
+                        isPrimary: isPrimary
                     )
                 )
             }
@@ -118,7 +122,7 @@ final class OfflineQueue {
 
     func pendingPlateCount(sessionID: String) -> Int {
         queue.sync {
-            let sql = "SELECT COUNT(*) FROM queue WHERE session_id = ? AND substitutions = 0"
+            let sql = "SELECT COUNT(*) FROM queue WHERE session_id = ? AND is_primary = 1"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
             defer { sqlite3_finalize(stmt) }
@@ -180,7 +184,7 @@ final class OfflineQueue {
         sqlite3_step(stmt)
     }
 
-    private func ensureSubstitutionsColumn() {
+    private func ensureConfidenceColumns() {
         guard let db else { return }
 
         var stmt: OpaquePointer?
@@ -188,19 +192,28 @@ final class OfflineQueue {
 
         guard sqlite3_prepare_v2(db, "PRAGMA table_info(queue)", -1, &stmt, nil) == SQLITE_OK else { return }
 
-        var hasSubstitutions = false
+        var hasConfidence = false
+        var hasIsPrimary = false
         while sqlite3_step(stmt) == SQLITE_ROW {
             guard let cName = sqlite3_column_text(stmt, 1) else { continue }
-            if String(cString: cName) == "substitutions" {
-                hasSubstitutions = true
-                break
-            }
+            let name = String(cString: cName)
+            if name == "confidence" { hasConfidence = true }
+            if name == "is_primary" { hasIsPrimary = true }
         }
 
-        if !hasSubstitutions {
+        if !hasConfidence {
             sqlite3_exec(
                 db,
-                "ALTER TABLE queue ADD COLUMN substitutions INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE queue ADD COLUMN confidence REAL NOT NULL DEFAULT 0",
+                nil,
+                nil,
+                nil
+            )
+        }
+        if !hasIsPrimary {
+            sqlite3_exec(
+                db,
+                "ALTER TABLE queue ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
                 nil,
                 nil,
                 nil

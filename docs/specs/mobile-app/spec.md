@@ -154,35 +154,36 @@ Output: 64-character lowercase hex string.
 
 #### REQ-M-12a: Lookalike Character Expansion
 
-The CCT-XS OCR model (64×128px input, ~18px per character) frequently confuses visually similar characters. To compensate, the app MUST expand each OCR'd plate into all "lookalike" variants before hashing.
+The CCT-XS OCR model (64×128px input, ~18px per character) frequently confuses visually similar characters. To compensate, the app MUST expand each OCR'd plate into all "lookalike" variants before hashing, using the model's own softmax candidate characters per slot.
 
-**Lookalike character groups:**
+**Model-derived candidate extraction:**
 
-| Group | Characters | Rationale |
-|-------|-----------|-----------|
-| G1 | `0, O, D, Q, 8, B` | Round/oval/loop shapes merge at 18px |
-| G2 | `1, I, L` | Vertical strokes |
-| G3 | `5, S` | Similar curves |
-| G4 | `2, Z` | Angular strokes |
-| G5 | `A, 4` | Triangular top + crossbar |
+During fixed-slot decoding, `PlateOCR` collects all characters with softmax probability >= `ocrCandidateThreshold` (default: 0.05, configurable via `AppConfig`) at each decoded slot. These per-slot candidate lists are sorted by probability descending and passed alongside the decoded text. This replaces hardcoded confusable character groups with data-driven, context-sensitive candidates derived from what the model actually considers likely at each position.
 
-**Expansion algorithm (BFS by substitution distance):**
-1. Identify positions in the plate text that contain a confusable character
-2. Start with the original text (substitutions = 0)
-3. Generate all 1-substitution variants, then 2-substitution, etc.
-4. Stop when reaching `maxVariants` cap (default: 64)
-5. Each variant is paired with its substitution count (number of character positions changed from the original OCR reading)
+**Per-variant confidence scoring:**
 
-This BFS ordering ensures the most likely variants (fewest substitutions) are always included when the cap is hit.
+Each variant carries a confidence value computed as the geometric mean of the actual softmax probabilities for the chosen character at each slot:
+- Geometric mean formula: `exp(sum(log(max(p_i, 1e-6))) / n)`
+- The primary (original OCR reading) variant's confidence is the geometric mean of the top-candidate probabilities
+
+**Expansion algorithm (cartesian product with priority-queue fallback):**
+1. Build per-slot candidate lists from the model's softmax output. Slots with only one candidate above threshold produce no expansion at that position.
+2. Compute total combinations = product of per-slot candidate counts
+3. If total ≤ `maxVariants` (default: 64): generate all via cartesian product, sort by confidence descending
+4. If total > `maxVariants`: use a priority queue ordered by confidence. Seed with the primary (all index-0 candidates). Pop best, generate children by advancing one slot's candidate index (at positions ≥ `lastModified` to avoid duplicates). Stop at `maxVariants`.
+5. `substitutions` = count of positions where selected candidate ≠ index-0 candidate
+6. The primary text is always returned as the first result
 
 **Queue and upload behavior:**
-- Each variant MUST be hashed independently and queued as a separate offline queue entry with its substitution count
-- The substitution count MUST be sent to the server with each plate hash submission
+- Each variant MUST be hashed independently and queued as a separate offline queue entry with its confidence and isPrimary flag
+- The confidence value (0.0–1.0) MUST be sent to the server with each plate hash submission
+- The primary variant (substitutions = 0) has `isPrimary = true`; all others have `isPrimary = false`
 - The plate counter MUST increment by 1 per original OCR reading (not per variant)
 
 **Debug feed format:**
-- Feed entry MUST show `"ABC1234 (+5)"` format where 5 is the number of additional variants (total minus 1)
-- The hash prefix shown MUST be from the original (0-substitution) variant
+- Each variant MUST appear as a separate feed entry
+- Non-primary (expanded) variants MUST be displayed in italic
+- Each feed entry MUST show the hash prefix of its own variant hash
 
 #### REQ-M-13: No Plaintext Persistence
 
@@ -214,8 +215,7 @@ The server response includes a `results` array with a per-plate `matched` boolea
 - Iterate over the `results` array and correlate each result with the corresponding queued entry by position
 - Increment the originating session target counter for each plate where `matched` is `true`
 - Display the updated match count in the status bar
-- Map each variant hash back to its original plate's primary hash prefix (using an in-memory variant→primary mapping) and update the corresponding debug feed entry to MATCHED. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
-- For non-matched responses, defer updating the debug feed entry from QUEUED to SENT until all variants for the same primary plate have been acknowledged. This prevents premature SENT display while variants are still in-flight.
+- Update the corresponding debug feed entry by matching on hash prefix. Since each variant has its own feed entry (REQ-M-12a), each variant transitions independently: `matched=true` sets state to MATCHED, `matched=false` sets state to SENT. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
 - Fire `onPlateSent` callbacks for ALL entries in a successfully deleted batch, even if response body parsing fails (defaulting to `matched=false`). This prevents entries from getting stuck in the QUEUED state in the debug feed when the server returns a 200 but the response body is malformed or empty.
 - NOT alert the user or provide any visual/audio feedback on matches
 
@@ -231,7 +231,7 @@ When the user taps "Stop Recording", the app MUST trigger an immediate upload at
 When the device has no network connectivity, the app MUST queue hashed plates in local storage. The queue MUST:
 - Persist across app restarts (stored in a local database)
 - Store a maximum of 1,000 entries (oldest entries are dropped when full)
-- Store only: hash, timestamp (UTC), location (if available), and local session identifier metadata
+- Store only: hash, timestamp (UTC), location (if available), local session identifier metadata, per-variant confidence (float), and isPrimary flag (boolean)
 - NOT store plaintext plate text or images
 - Entries older than 10 minutes MUST be pruned at the start of each batch upload cycle (stale entries are unlikely to be useful and could cause unbounded queue growth after extended offline periods). Pruned entries MUST trigger `onPlateSent` callbacks with `matched=false` so the debug feed transitions them from QUEUED to SENT rather than leaving them stuck.
 
