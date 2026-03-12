@@ -1,8 +1,11 @@
 package com.iceblox.app.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -33,6 +36,8 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var pushEnabled by remember { mutableStateOf(UserSettings.isPushNotificationsEnabled(context)) }
 
+    var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(context)) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -51,27 +56,58 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         },
         containerColor = Color.Black
     ) { padding ->
-        Row(
+        Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.Top
+                .fillMaxWidth()
         ) {
-            Text(
-                text = "Push Notifications",
-                color = Color.White,
-                fontSize = 16.sp,
-                modifier = Modifier.weight(1f).padding(top = 8.dp)
-            )
-            Switch(
-                checked = pushEnabled,
-                onCheckedChange = { enabled ->
-                    pushEnabled = enabled
-                    UserSettings.setPushNotificationsEnabled(context, enabled)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Push Notifications",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f).padding(top = 8.dp)
+                )
+                Switch(
+                    checked = pushEnabled,
+                    onCheckedChange = { enabled ->
+                        pushEnabled = enabled
+                        UserSettings.setPushNotificationsEnabled(context, enabled)
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Debug Mode",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Text(
+                        text = "Shows detection bounding boxes on the camera preview",
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
-            )
+                Switch(
+                    checked = userDebugEnabled,
+                    onCheckedChange = { enabled ->
+                        userDebugEnabled = enabled
+                        UserSettings.setUserDebugEnabled(context, enabled)
+                    }
+                )
+            }
         }
     }
 }

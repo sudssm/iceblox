@@ -65,7 +65,7 @@ android/
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, pepper from BuildConfig
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
         │   │   ├── settings/
-        │   │   │   └── UserSettings.kt       # SharedPreferences-backed push notification toggle
+        │   │   │   └── UserSettings.kt       # SharedPreferences-backed push notification + user debug mode toggles
         │   │   ├── service/
         │   │   │   └── BackgroundCaptureService.kt # Foreground service that keeps analysis running when app backgrounds
         │   │   ├── debug/
@@ -75,7 +75,7 @@ android/
         │   │       ├── SplashScreen.kt     # Splash screen with app name and Start Camera button
         │   │       ├── MapViewScreen.kt    # Map view showing nearby sightings and reports with offline caching
         │   │       ├── ReportICEScreen.kt  # ICE vehicle report form (photo capture, description, plate, Google Map, submit)
-        │   │       ├── SettingsScreen.kt  # Settings screen with push notification toggle
+        │   │       ├── SettingsScreen.kt  # Settings screen with push notification + debug mode toggles
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay
         │   │       └── theme/
@@ -190,7 +190,7 @@ Release builds enable R8 minification and resource shrinking. ProGuard rules for
 | **Background capture** | Android background capture runs in a `LifecycleService` foreground service with `foregroundServiceType="camera"`. The activity stops that service on foreground so CameraX preview can rebind cleanly without competing for the camera. |
 | **DebugLog replaces android.util.Log** | All `Log.d/w/e` calls are replaced with `DebugLog.d/w/e`. This routes logs through both `android.util.Log` (for logcat) and a 50-entry ring buffer (for the in-app panel). Throwable overloads (`d/w/e(tag, msg, throwable)`) append the exception message. |
 | **Thread safety for StateFlow** | `DebugLog` uses `@Synchronized` on the buffer mutation and emits via `MutableStateFlow`. `CaptureRepository` uses `MutableStateFlow.update {}` for atomic read-modify-write on the detection feed (prevents lost updates from concurrent add/markSent calls). Compose collects via `collectAsState()` — no main-thread dispatch needed since Compose recomposition handles the thread hop. |
-| **Debug gating** | Debug overlay is gated behind `BuildConfig.DEBUG` — stripped from release builds by ProGuard/R8. |
+| **Debug gating** | Developer debug mode (triple-tap toggle) is gated behind `BuildConfig.DEBUG` — stripped from release builds by ProGuard/R8. The debug overlay bounding boxes are available in all builds via the user debug mode setting (REQ-M-18). The detection feed, log panel, and FPS header are gated behind developer debug mode (`showFeedAndLogs`). |
 | **TFLite output tensor format** | YOLOv8 TFLite outputs `[1, 5, 8400]` for single-class (not `[1, 8400, 5]`). NMS must be implemented manually — unlike Core ML which bakes NMS into the export. |
 | **keytool location** | System `keytool` may not be in PATH. Use Android Studio's bundled JDK: `/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool`. |
 

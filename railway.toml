@@ -1,6 +1,6 @@
 [build]
-rootDirectory = "."
-dockerfilePath = "server/Dockerfile"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 healthcheckPath = "/healthz"
