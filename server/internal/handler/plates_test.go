@@ -22,15 +22,17 @@ type mockSighting struct {
 	Lat, Lng      float64
 	HardwareID    string
 	Substitutions int
+	Confidence    float64
 }
 
-func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error) {
+func (m *mockRecorder) RecordSighting(_ context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int, confidence float64) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.sightings = append(m.sightings, mockSighting{
 		PlateID: plateID, SeenAt: seenAt,
 		Lat: lat, Lng: lng, HardwareID: hardwareID,
 		Substitutions: substitutions,
+		Confidence:    confidence,
 	})
 	return int64(len(m.sightings)), nil
 }
@@ -383,6 +385,57 @@ func TestPlatesHandler_SubstitutionsDefaultZero(t *testing.T) {
 	}
 	if recorder.sightings[0].Substitutions != 0 {
 		t.Errorf("expected substitutions 0 (default), got %d", recorder.sightings[0].Substitutions)
+	}
+}
+
+func TestPlatesHandler_ConfidenceStored(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
+	h := PlatesHandler(recorder, targets, nil)
+
+	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"confidence":0.85}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	req.Header.Set("X-Device-ID", "test-device")
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	if len(recorder.sightings) != 1 {
+		t.Fatalf("expected 1 sighting, got %d", len(recorder.sightings))
+	}
+	if recorder.sightings[0].Confidence != 0.85 {
+		t.Errorf("expected confidence 0.85, got %f", recorder.sightings[0].Confidence)
+	}
+}
+
+func TestPlatesHandler_ConfidenceOutOfRange(t *testing.T) {
+	tests := []struct {
+		name string
+		conf string
+	}{
+		{"negative", "-0.1"},
+		{"greater than 1", "1.5"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := &mockRecorder{}
+			targets := &mockTargets{hashes: map[string]int64{}}
+			h := PlatesHandler(recorder, targets, nil)
+
+			body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.0,"longitude":-106.0,"confidence":` + tt.conf + `}`)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+			w := httptest.NewRecorder()
+			h(w, req)
+
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+		})
 	}
 }
 

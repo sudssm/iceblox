@@ -3,6 +3,17 @@ import Foundation
 import OnnxRuntimeBindings
 
 enum PlateOCR {
+    struct SlotCandidate {
+        let char: Character
+        let probability: Float
+    }
+
+    struct OCROutput {
+        let text: String
+        let charConfidences: [Float]
+        let slotCandidates: [[SlotCandidate]]
+    }
+
     private static let targetHeight = 64
     private static let targetWidth = 128
     private static let alphabet: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_")
@@ -36,7 +47,7 @@ enum PlateOCR {
         return (try? session.inputNames().first) ?? "input"
     }()
 
-    static func recognizeText(in pixelBuffer: CVPixelBuffer) -> String? {
+    static func recognizeText(in pixelBuffer: CVPixelBuffer) -> OCROutput? {
         guard let session else { return nil }
 
         let srcWidth = CVPixelBufferGetWidth(pixelBuffer)
@@ -113,7 +124,7 @@ enum PlateOCR {
         return data
     }
 
-    private static func fixedSlotDecode(data: Data, shape: [NSNumber]) -> String? {
+    private static func fixedSlotDecode(data: Data, shape: [NSNumber]) -> OCROutput? {
         let numSlots: Int
         let alphabetSize: Int
 
@@ -128,6 +139,8 @@ enum PlateOCR {
         }
 
         var decoded: [Character] = []
+        var charConfidences: [Float] = []
+        var allSlotCandidates: [[SlotCandidate]] = []
         var totalConfidence: Float = 0
 
         data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
@@ -150,7 +163,18 @@ enum PlateOCR {
                 let ch = alphabet[maxIdx]
                 if ch != padChar {
                     decoded.append(ch)
+                    charConfidences.append(maxVal)
                     totalConfidence += maxVal
+
+                    var candidates: [SlotCandidate] = []
+                    for ci in 0..<min(alphabetSize, alphabet.count) {
+                        let c = alphabet[ci]
+                        if c != padChar && floatPtr[base + ci] >= AppConfig.ocrCandidateThreshold {
+                            candidates.append(SlotCandidate(char: c, probability: floatPtr[base + ci]))
+                        }
+                    }
+                    candidates.sort { $0.probability > $1.probability }
+                    allSlotCandidates.append(candidates)
                 }
             }
         }
@@ -160,6 +184,6 @@ enum PlateOCR {
         let avgConfidence = totalConfidence / Float(decoded.count)
         guard avgConfidence >= AppConfig.ocrConfidenceThreshold else { return nil }
 
-        return String(decoded)
+        return OCROutput(text: String(decoded), charConfidences: charConfidences, slotCandidates: allSlotCandidates)
     }
 }

@@ -50,6 +50,10 @@ There is no CTC collapse step — each slot independently predicts one character
 
 **Confidence** is computed as the average softmax probability of the decoded non-padding characters. The existing OCR confidence threshold (default 0.6, `AppConfig.ocrConfidenceThreshold`) is applied to this value.
 
+**Per-character confidences** — the max softmax probability at each decoded slot — MUST be preserved and returned alongside the decoded text.
+
+**Per-slot candidate lists** — at each decoded (non-padding) slot, all characters with softmax probability >= `ocrCandidateThreshold` (default: 0.05) MUST be collected, sorted by probability descending, and returned as `slotCandidates`. These candidate lists are used by LookalikeExpander (REQ-M-12a) to generate model-derived plate variants instead of relying on hardcoded confusable character groups. The OCR output type carries the decoded text, per-character confidence array, and per-slot candidate lists (iOS: `OCROutput`, Android: `OCRResult`).
+
 ## Character Alphabet
 
 The alphabet is 37 characters in ASCII order:
@@ -128,7 +132,7 @@ Before integrating into iOS or Android, the ONNX model MUST be validated in Pyth
 - Preprocessing: nearest-neighbor resize from CVPixelBuffer, BGRA→RGB byte conversion
 - Input packed as `NSMutableData` of uint8 bytes, shape `[1, 64, 128, 3]`
 - Fixed-slot decode implemented in Swift
-- Signature unchanged: `PlateOCR.recognizeText(in: CVPixelBuffer) -> String?`
+- Signature: `PlateOCR.recognizeText(in: CVPixelBuffer) -> OCROutput?` where `OCROutput` contains the decoded text and per-character confidence array
 
 ### Android
 

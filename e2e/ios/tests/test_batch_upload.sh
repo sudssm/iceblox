@@ -19,7 +19,7 @@ run_test_batch_upload() {
     wait_for_batch_flush
 
     local batch_lines
-    batch_lines=$(grep -c 'count=[0-9]' "$E2E_SERVER_LOG" 2>/dev/null || echo "0")
+    batch_lines=$(grep -c 'count=[0-9]' "$E2E_SERVER_LOG" 2>/dev/null || true)
     local total_plates
     total_plates=$(grep -o 'count=[0-9]*' "$E2E_SERVER_LOG" 2>/dev/null | sed 's/count=//' | awk '{s+=$1} END {print s+0}')
 

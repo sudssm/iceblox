@@ -10,6 +10,7 @@ import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.detection.PlateDetector
 import com.iceblox.app.detection.PlateOCR
+import com.iceblox.app.detection.SlotCandidate
 import com.iceblox.app.processing.PlateHasher
 import com.iceblox.app.processing.PlateNormalizer
 import com.iceblox.app.ui.DebugDetection
@@ -17,7 +18,13 @@ import com.iceblox.app.ui.RawDetectionBox
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-data class ProcessedPlate(val normalizedText: String, val boundingBox: RectF, val confidence: Float)
+data class ProcessedPlate(
+    val normalizedText: String,
+    val boundingBox: RectF,
+    val confidence: Float,
+    val charConfidences: FloatArray = FloatArray(0),
+    val slotCandidates: List<List<SlotCandidate>> = emptyList()
+)
 
 class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<ProcessedPlate>) -> Unit) :
     ImageAnalysis.Analyzer {
@@ -145,7 +152,9 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                         ProcessedPlate(
                             normalizedText = normalized,
                             boundingBox = detection.boundingBox,
-                            confidence = detection.confidence
+                            confidence = detection.confidence,
+                            charConfidences = ocrResult.charConfidences.copyOf(normalized.length),
+                            slotCandidates = ocrResult.slotCandidates.take(normalized.length)
                         )
                     )
                     if (ocrResult.confidence < AppConfig.ZOOM_RETRY_LOW_CONFIDENCE_THRESHOLD) {
@@ -268,7 +277,9 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                 ProcessedPlate(
                     normalizedText = normalized,
                     boundingBox = detection.boundingBox,
-                    confidence = detection.confidence
+                    confidence = detection.confidence,
+                    charConfidences = ocrResult.charConfidences.copyOf(normalized.length),
+                    slotCandidates = ocrResult.slotCandidates.take(normalized.length)
                 )
             )
             zoomController?.recordSuccess()
@@ -339,7 +350,9 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                 ProcessedPlate(
                     normalizedText = normalized,
                     boundingBox = detection.boundingBox,
-                    confidence = detection.confidence
+                    confidence = detection.confidence,
+                    charConfidences = ocrResult.charConfidences.copyOf(normalized.length),
+                    slotCandidates = ocrResult.slotCandidates.take(normalized.length)
                 )
             }
 
@@ -348,14 +361,14 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                 onPlatesDetected(plates)
             } else if (useFallback) {
                 DebugLog.w(TAG, "Test image: no plates extracted, injecting fallback")
-                onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
+                onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f, charConfidences = FloatArray(7))))
             } else {
                 DebugLog.d(TAG, "Test image: no plates extracted")
             }
         } catch (e: Exception) {
             DebugLog.w(TAG, "Test image analysis failed: ${e.javaClass.simpleName}: ${e.message}", e)
             if (useFallback) {
-                onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f)))
+                onPlatesDetected(listOf(ProcessedPlate("AB12345", RectF(), 1.0f, charConfidences = FloatArray(7))))
             }
         }
     }

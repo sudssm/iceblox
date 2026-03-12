@@ -11,7 +11,14 @@ import com.iceblox.app.debug.DebugLog
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-data class OCRResult(val text: String, val confidence: Float)
+data class SlotCandidate(val char: Char, val probability: Float)
+
+data class OCRResult(
+    val text: String,
+    val confidence: Float,
+    val charConfidences: FloatArray,
+    val slotCandidates: List<List<SlotCandidate>> = emptyList()
+)
 
 class PlateOCR(context: Context) {
     private var session: OrtSession? = null
@@ -107,6 +114,8 @@ class PlateOCR(context: Context) {
 
     private fun fixedSlotDecode(output: Array<FloatArray>): OCRResult? {
         val decoded = StringBuilder()
+        val charConfs = mutableListOf<Float>()
+        val allSlotCandidates = mutableListOf<List<SlotCandidate>>()
         var totalConfidence = 0.0f
         var decodedCount = 0
 
@@ -126,8 +135,18 @@ class PlateOCR(context: Context) {
                 val ch = ALPHABET[maxIdx]
                 if (ch != PAD_CHAR) {
                     decoded.append(ch)
+                    charConfs.add(maxVal)
                     totalConfidence += maxVal
                     decodedCount++
+
+                    val candidates = mutableListOf<SlotCandidate>()
+                    for (c in scores.indices) {
+                        if (c < ALPHABET.length && ALPHABET[c] != PAD_CHAR && scores[c] >= AppConfig.OCR_CANDIDATE_THRESHOLD) {
+                            candidates.add(SlotCandidate(ALPHABET[c], scores[c]))
+                        }
+                    }
+                    candidates.sortByDescending { it.probability }
+                    allSlotCandidates.add(candidates)
                 }
             }
         }
@@ -137,7 +156,12 @@ class PlateOCR(context: Context) {
         val avgConfidence = totalConfidence / decodedCount
         if (avgConfidence < AppConfig.OCR_CONFIDENCE_THRESHOLD) return null
 
-        return OCRResult(text = decoded.toString(), confidence = avgConfidence)
+        return OCRResult(
+            text = decoded.toString(),
+            confidence = avgConfidence,
+            charConfidences = charConfs.toFloatArray(),
+            slotCandidates = allSlotCandidates
+        )
     }
 
     fun close() {

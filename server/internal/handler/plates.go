@@ -17,6 +17,7 @@ type PlateRequest struct {
 	Longitude     float64 `json:"longitude"`
 	Timestamp     string  `json:"timestamp,omitempty"`
 	Substitutions int     `json:"substitutions"`
+	Confidence    float64 `json:"confidence"`
 }
 
 type BatchPlateRequest struct {
@@ -34,7 +35,7 @@ type TargetChecker interface {
 }
 
 type SightingRecorder interface {
-	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int) (int64, error)
+	RecordSighting(ctx context.Context, plateID int64, seenAt time.Time, lat, lng float64, hardwareID string, substitutions int, confidence float64) (int64, error)
 }
 
 type PushNotifier interface {
@@ -86,7 +87,7 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 				plateID, _ := targets.PlateID(req.PlateHash)
 				seenAt := parseTimestamp(req.Timestamp)
 
-				sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID, req.Substitutions)
+				sightingID, err := recorder.RecordSighting(r.Context(), plateID, seenAt, req.Latitude, req.Longitude, hardwareID, req.Substitutions, req.Confidence)
 				if err != nil {
 					log.Printf("failed to record sighting: %v", err)
 					writeError(w, http.StatusInternalServerError, "failed to record sighting")
@@ -125,6 +126,9 @@ func validatePlateRequest(req PlateRequest) error {
 	}
 	if req.Substitutions < 0 {
 		return fmt.Errorf("substitutions must be >= 0")
+	}
+	if req.Confidence < 0 || req.Confidence > 1 {
+		return fmt.Errorf("confidence must be between 0 and 1")
 	}
 	return nil
 }

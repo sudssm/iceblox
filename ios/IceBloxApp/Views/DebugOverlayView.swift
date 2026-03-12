@@ -125,6 +125,7 @@ struct DebugOverlayView: View {
                 ForEach(feedEntries) { entry in
                     HStack(spacing: 6) {
                         Text(entry.plateText)
+                            .italic(entry.isExpanded)
                         Text(entry.hashPrefix)
                             .foregroundStyle(.white.opacity(0.6))
                         Text(stateLabel(entry.state))

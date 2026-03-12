@@ -87,6 +87,33 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ---
 
+## Per-Character OCR Confidence Gating
+
+- [x] **AppConfig threshold** — Add `lookalikeExpansionThreshold = 0.85` constant to iOS and Android AppConfig.
+- [x] **PlateOCR per-char confidences** — Return per-slot softmax max values alongside decoded text in `OCROutput`/`OCRResult`.
+- [x] **LookalikeExpander confidence gating** — Accept `charConfidences` param, only expand positions below threshold. Compute per-plate confidence via geometric mean.
+- [x] **OfflineQueue schema** — Replace `substitutions` column with `confidence` (REAL) and `is_primary` (INTEGER) on both platforms. Update `pendingPlateCount` query.
+- [x] **APIClient confidence field** — Send `confidence` float instead of `substitutions` in plate submissions.
+- [x] **Server confidence field** — Add `Confidence float64` to `PlateRequest`, `Sighting`, `SightingResult`, and `RecordSighting`. Validate [0,1].
+- [x] **FrameProcessor/CaptureRepository integration** — Thread per-char confidences from OCR through to LookalikeExpander. Create individual feed entries per variant. Remove `variantHashMap`/`pendingVariants`.
+- [x] **Debug overlay italic variants** — Show expanded variants in italic in the detection feed on both platforms.
+- [x] **Tests** — LookalikeExpander confidence-gating tests (iOS + Android), server confidence tests, update existing tests.
+- [x] **Spec updates** — Update REQ-M-12a, license_plate_ocr.md, REQ-S-1 for confidence fields.
+
+---
+
+## Model-Derived Lookalike Expansion
+
+- [x] **AppConfig** — Replace `LOOKALIKE_EXPANSION_THRESHOLD` with `OCR_CANDIDATE_THRESHOLD = 0.05` on both platforms.
+- [x] **PlateOCR candidate extraction** — Extract per-slot candidate lists (all chars above candidate threshold) from softmax output. Add `SlotCandidate` type and `slotCandidates` field to `OCRResult`/`OCROutput`.
+- [x] **Bridge layer** — Add `slotCandidates` to `ProcessedPlate` (Android) and thread through `FrameProcessor.recordPlate()` (iOS).
+- [x] **LookalikeExpander rewrite** — Replace hardcoded confusable groups with model-derived candidate lists. New algorithm: cartesian product (small) or priority-queue (large) expansion.
+- [x] **Caller updates** — Pass `slotCandidates` to `LookalikeExpander.expand()` from `CaptureRepository` (Android) and `FrameProcessor` (iOS).
+- [x] **Tests rewrite** — Replace group-based tests with candidate-list-driven tests.
+- [x] **Spec and docs updates** — Update REQ-M-12a, license_plate_ocr.md, and todo.md.
+
+---
+
 ## Future
 
 - [ ] **US-plate fine-tuned OCR model** — Fine-tune the CCT-XS model specifically for US license plates to improve accuracy beyond the current ~92-94% global model. Training data: OpenALPR US plate benchmark or similar. The [fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) project provides training infrastructure.

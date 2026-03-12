@@ -22,7 +22,7 @@ run_test_queued_clears() {
     wait_for_batch_flush
 
     local batch_lines
-    batch_lines=$(grep -c 'count=[0-9]' "$E2E_SERVER_LOG" 2>/dev/null || echo "0")
+    batch_lines=$(grep -c 'count=[0-9]' "$E2E_SERVER_LOG" 2>/dev/null || true)
 
     if [ "$batch_lines" -gt 0 ]; then
         echo "  PASS: Server received batch POST(s) ($batch_lines batch log lines)"

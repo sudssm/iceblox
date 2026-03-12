@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iceblox.app.debug.LogEntry
@@ -47,7 +48,8 @@ data class DetectionFeedEntry(
     val plateText: String,
     val hashPrefix: String,
     val state: DetectionState,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isExpanded: Boolean = false
 )
 
 enum class DetectionState { QUEUED, SENT, MATCHED }
@@ -224,6 +226,7 @@ fun DebugOverlay(
                         color = stateColor,
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
+                        fontStyle = if (entry.isExpanded) FontStyle.Italic else FontStyle.Normal,
                         maxLines = 1
                     )
                 }

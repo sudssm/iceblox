@@ -73,7 +73,8 @@ X-Device-ID: <device identifier>
       "latitude": number,
       "longitude": number,
       "timestamp": "string (ISO 8601 / RFC 3339, optional)",
-      "substitutions": number (integer >= 0, optional, default 0)
+      "substitutions": number (integer >= 0, optional, default 0),
+      "confidence": number (float 0.0–1.0, optional, default 0)
     }
   ]
 }
@@ -88,6 +89,7 @@ X-Device-ID: <device identifier>
 - `longitude`: Required. MUST be in range [-180, 180].
 - `timestamp`: Optional. ISO 8601 / RFC 3339 format (e.g., `"2026-03-08T14:30:00Z"`). If omitted or unparseable, defaults to the server's current UTC time. Represents when the plate was seen by the device.
 - `substitutions`: Optional. Non-negative integer indicating how many character positions were changed from the original OCR reading due to lookalike character expansion (see mobile spec REQ-M-12a). Defaults to 0 if omitted. The server MUST validate that the value is >= 0 and store it with matched sightings.
+- `confidence`: Optional. Float between 0.0 and 1.0 representing the per-variant geometric mean confidence from OCR character-level softmax probabilities (see mobile spec REQ-M-12a). Defaults to 0 if omitted. The server MUST validate that the value is in range [0, 1] and store it with matched sightings.
 
 If any plate in the batch fails validation, the entire request is rejected with `400 Bad Request`.
 
@@ -124,6 +126,7 @@ When a plate hash matches a target, the server MUST insert a record into the `si
 - `latitude` / `longitude`: GPS coordinates from the request
 - `hardware_id`: Device identifier from the `X-Device-ID` header
 - `substitutions`: Number of lookalike character substitutions from the request (default 0)
+- `confidence`: Per-variant confidence score from the request (default 0)
 
 Non-matching hashes MUST NOT be persisted (privacy model: non-target plates are never stored).
 
@@ -203,7 +206,8 @@ CREATE TABLE sightings (
     latitude        DOUBLE PRECISION NOT NULL,               -- GPS latitude
     longitude       DOUBLE PRECISION NOT NULL,               -- GPS longitude
     hardware_id     TEXT NOT NULL,                            -- device identifier
-    substitutions   INTEGER NOT NULL DEFAULT 0               -- lookalike character substitution count
+    substitutions   INTEGER NOT NULL DEFAULT 0,              -- lookalike character substitution count
+    confidence      DOUBLE PRECISION NOT NULL DEFAULT 0     -- per-variant OCR confidence score
 );
 
 CREATE INDEX idx_sightings_plate_id ON sightings(plate_id);

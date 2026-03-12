@@ -41,7 +41,7 @@ get_sighting_coords() {
 }
 
 truncate_sightings() {
-    e2e_psql -c "TRUNCATE sightings;"
+    e2e_psql -c "TRUNCATE sightings CASCADE;"
 }
 
 assert_sighting_count() {
@@ -77,7 +77,7 @@ count_device_tokens() {
 }
 
 truncate_device_tokens() {
-    e2e_psql -c "TRUNCATE device_tokens;"
+    e2e_psql -c "TRUNCATE device_tokens CASCADE;"
 }
 
 count_reports() {
@@ -85,7 +85,7 @@ count_reports() {
 }
 
 truncate_reports() {
-    e2e_psql -c "TRUNCATE reports;"
+    e2e_psql -c "TRUNCATE reports CASCADE;"
 }
 
 get_latest_report() {

@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [OfflineQueueEntry::class], version = 3, exportSchema = false)
+@Database(entities = [OfflineQueueEntry::class], version = 4, exportSchema = false)
 abstract class OfflineQueueDatabase : RoomDatabase() {
     abstract fun queueDao(): OfflineQueueDao
 
@@ -31,13 +31,24 @@ abstract class OfflineQueueDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE offline_queue ADD COLUMN confidence REAL NOT NULL DEFAULT 0"
+                )
+                database.execSQL(
+                    "ALTER TABLE offline_queue ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun getInstance(context: Context): OfflineQueueDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext,
                 OfflineQueueDatabase::class.java,
                 "offline_queue.db"
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
                 .also { INSTANCE = it }
         }
