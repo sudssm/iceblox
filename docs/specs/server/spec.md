@@ -325,12 +325,12 @@ The server MUST support sending push notifications to iOS devices via the Apple 
 - Key ID and Team ID from the Apple Developer portal
 - JWT refreshed every 50 minutes (Apple requires refresh within 60 minutes)
 
-**Configuration flags:**
-- `--apns-key-file` — path to `.p8` key file
-- `--apns-key-id` — 10-character Key ID
-- `--apns-team-id` — Apple Team ID
-- `--apns-bundle-id` — iOS app bundle ID (used as `apns-topic` header)
-- `--apns-production` — use production APNs endpoint (default: false)
+**Configuration:** A single JSON env var `APNS_CONFIG_JSON` with fields:
+- `key_p8` — PEM-encoded `.p8` key contents (ECDSA P-256 private key)
+- `key_id` — 10-character Key ID
+- `team_id` — Apple Team ID
+- `bundle_id` — iOS app bundle ID (used as `apns-topic` header)
+- `production` — use production APNs endpoint (default: false)
 
 **Endpoints:**
 - Development: `https://api.development.push.apple.com`
@@ -349,8 +349,7 @@ The server MUST support sending push notifications to Android devices via the Fi
 2. Exchanging the JWT for an access token at `https://oauth2.googleapis.com/token`
 3. Caching the access token until near expiry (tokens last 1 hour, refresh at ~55 minutes)
 
-**Configuration flags:**
-- `--fcm-service-account` — path to Firebase service account JSON file (contains `project_id`, `client_email`, and `private_key`)
+**Configuration:** A single JSON env var `FCM_SERVICE_ACCOUNT_JSON` containing the raw Firebase service account JSON (must include `project_id`, `client_email`, and `private_key` fields).
 
 **Endpoint:** `POST https://fcm.googleapis.com/v1/projects/{project_id}/messages:send`
 
