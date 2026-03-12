@@ -74,17 +74,29 @@ final class PlateDetector {
     }
 
     static func cropPlateRegion(from pixelBuffer: CVPixelBuffer, rect: CGRect) -> CVPixelBuffer? {
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer).cropped(to: rect)
-        let context = CIContext()
-
         let width = Int(rect.width)
         let height = Int(rect.height)
         guard width > 0, height > 0 else { return nil }
+
+        // Convert from top-left origin (UIKit) to bottom-left origin (CIImage)
+        let imageHeight = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+        let ciRect = CGRect(
+            x: rect.origin.x,
+            y: imageHeight - rect.origin.y - rect.height,
+            width: rect.width,
+            height: rect.height
+        )
+
+        // Crop and translate to origin so it aligns with the output buffer at (0,0)
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            .cropped(to: ciRect)
+            .transformed(by: CGAffineTransform(translationX: -ciRect.origin.x, y: -ciRect.origin.y))
 
         var cropped: CVPixelBuffer?
         CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, nil, &cropped)
 
         guard let output = cropped else { return nil }
+        let context = CIContext()
         context.render(ciImage, to: output)
         return output
     }

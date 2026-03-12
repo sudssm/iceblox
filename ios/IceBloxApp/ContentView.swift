@@ -230,7 +230,6 @@ struct ContentView: View {
                     showFeedAndLogs: debugMode
                 )
                 .ignoresSafeArea()
-                .allowsHitTesting(false)
             }
         }
         .onReceive(statusTimer) { _ in
@@ -260,6 +259,7 @@ struct ContentView: View {
             startE2EStopWatcher()
         }
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             e2eStopTask?.cancel()
             e2eStopTask = nil
         }
