@@ -218,7 +218,7 @@ struct ContentView: View {
         #endif
         .overlay {
             let userDebug = userSettings.userDebugEnabled
-            if (debugMode || userDebug), !showingSummary {
+            if debugMode || userDebug, !showingSummary {
                 DebugOverlayView(
                     detections: frameProcessor?.currentDetections ?? [],
                     rawDetections: frameProcessor?.rawDetections ?? [],
