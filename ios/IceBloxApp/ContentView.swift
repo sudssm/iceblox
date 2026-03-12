@@ -257,6 +257,7 @@ struct ContentView: View {
             startE2EStopWatcher()
         }
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             e2eStopTask?.cancel()
             e2eStopTask = nil
         }
