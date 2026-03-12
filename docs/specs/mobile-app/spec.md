@@ -183,7 +183,7 @@ Each variant carries a confidence value computed as the geometric mean of the ac
 **Debug feed format:**
 - Each variant MUST appear as a separate feed entry
 - Non-primary (expanded) variants MUST be displayed in italic
-- The hash prefix shown MUST be from the original (0-substitution) variant
+- Each feed entry MUST show the hash prefix of its own variant hash
 
 #### REQ-M-13: No Plaintext Persistence
 
@@ -215,8 +215,7 @@ The server response includes a `results` array with a per-plate `matched` boolea
 - Iterate over the `results` array and correlate each result with the corresponding queued entry by position
 - Increment the originating session target counter for each plate where `matched` is `true`
 - Display the updated match count in the status bar
-- Map each variant hash back to its original plate's primary hash prefix (using an in-memory variant→primary mapping) and update the corresponding debug feed entry to MATCHED. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
-- For non-matched responses, defer updating the debug feed entry from QUEUED to SENT until all variants for the same primary plate have been acknowledged. This prevents premature SENT display while variants are still in-flight.
+- Update the corresponding debug feed entry by matching on hash prefix. Since each variant has its own feed entry (REQ-M-12a), each variant transitions independently: `matched=true` sets state to MATCHED, `matched=false` sets state to SENT. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
 - Fire `onPlateSent` callbacks for ALL entries in a successfully deleted batch, even if response body parsing fails (defaulting to `matched=false`). This prevents entries from getting stuck in the QUEUED state in the debug feed when the server returns a 200 but the response body is malformed or empty.
 - NOT alert the user or provide any visual/audio feedback on matches
 
