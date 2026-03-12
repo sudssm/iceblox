@@ -131,62 +131,66 @@ final class APIClient {
             request.httpBody = body
             request.timeoutInterval = 10
 
-            var shouldContinue = false
-            let semaphore = DispatchSemaphore(value: 0)
-
-            session.dataTask(with: request) { [weak self] data, response, error in
-                defer { semaphore.signal() }
-
-                if let error {
-                    apiLog.error("Upload FAILED: \(error.localizedDescription)")
-                    DebugLog.shared.w("APIClient", "Upload failed: \(error.localizedDescription)")
-                    _ = self?.retryManager.handleFailure()
-                    return
-                }
-
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    DebugLog.shared.w("APIClient", "No HTTP response")
-                    return
-                }
-
-                apiLog.info("Response: \(httpResponse.statusCode)")
-                DebugLog.shared.d("APIClient", "Response: \(httpResponse.statusCode)")
-
-                if httpResponse.statusCode == 429 {
-                    let retryAfter = Double(httpResponse.value(forHTTPHeaderField: "Retry-After") ?? "60") ?? 60
-                    DebugLog.shared.w("APIClient", "Rate limited for \(retryAfter)s")
-                    self?.retryManager.handleRateLimit(retryAfter: retryAfter)
-                    return
-                }
-
-                if httpResponse.statusCode == 200 {
-                    DebugLog.shared.d("APIClient", "Upload OK (\(entries.count) plates)")
-                    self?.retryManager.reset()
-
-                    let ids = entries.compactMap { $0.id }
-                    self?.offlineQueue.remove(ids: ids)
-
-                    if let data,
-                       let batchResponse = try? JSONDecoder().decode(BatchPlateResponse.self, from: data),
-                       let results = batchResponse.results {
-                        for (i, result) in results.enumerated() where i < entries.count {
-                            let entry = entries[i]
-                            if result.matched, entry.sessionID == self?.currentSessionID {
-                                DispatchQueue.main.async {
-                                    self?.totalTargets += 1
-                                }
-                            }
-                            self?.onPlateSent?(entry.plateHash, result.matched, entry.sessionID)
-                        }
-                    }
-                    shouldContinue = true
-                } else {
-                    DebugLog.shared.w("APIClient", "Unexpected status: \(httpResponse.statusCode)")
-                }
-            }.resume()
-
-            semaphore.wait()
-            if !shouldContinue { return }
+            if !sendAndProcessResponse(request: request, entries: entries) { return }
         }
+    }
+
+    private func sendAndProcessResponse(request: URLRequest, entries: [OfflineQueueEntry]) -> Bool {
+        var shouldContinue = false
+        let semaphore = DispatchSemaphore(value: 0)
+
+        session.dataTask(with: request) { [weak self] data, response, error in
+            defer { semaphore.signal() }
+
+            if let error {
+                apiLog.error("Upload FAILED: \(error.localizedDescription)")
+                DebugLog.shared.w("APIClient", "Upload failed: \(error.localizedDescription)")
+                _ = self?.retryManager.handleFailure()
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DebugLog.shared.w("APIClient", "No HTTP response")
+                return
+            }
+
+            apiLog.info("Response: \(httpResponse.statusCode)")
+            DebugLog.shared.d("APIClient", "Response: \(httpResponse.statusCode)")
+
+            if httpResponse.statusCode == 429 {
+                let retryAfter = Double(httpResponse.value(forHTTPHeaderField: "Retry-After") ?? "60") ?? 60
+                DebugLog.shared.w("APIClient", "Rate limited for \(retryAfter)s")
+                self?.retryManager.handleRateLimit(retryAfter: retryAfter)
+                return
+            }
+
+            if httpResponse.statusCode == 200 {
+                DebugLog.shared.d("APIClient", "Upload OK (\(entries.count) plates)")
+                self?.retryManager.reset()
+
+                let ids = entries.compactMap { $0.id }
+                self?.offlineQueue.remove(ids: ids)
+
+                if let data,
+                   let batchResponse = try? JSONDecoder().decode(BatchPlateResponse.self, from: data),
+                   let results = batchResponse.results {
+                    for (i, result) in results.enumerated() where i < entries.count {
+                        let entry = entries[i]
+                        if result.matched, entry.sessionID == self?.currentSessionID {
+                            DispatchQueue.main.async {
+                                self?.totalTargets += 1
+                            }
+                        }
+                        self?.onPlateSent?(entry.plateHash, result.matched, entry.sessionID)
+                    }
+                }
+                shouldContinue = true
+            } else {
+                DebugLog.shared.w("APIClient", "Unexpected status: \(httpResponse.statusCode)")
+            }
+        }.resume()
+
+        semaphore.wait()
+        return shouldContinue
     }
 }
