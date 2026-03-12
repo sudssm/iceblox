@@ -5,6 +5,7 @@ final class ZoomController {
     private let device: AVCaptureDevice
     let maxOpticalZoom: CGFloat
     let isZoomRetryAvailable: Bool
+    let baselineZoom: CGFloat
 
     private var lastRetryTime: Date = .distantPast
     private let cooldown: TimeInterval = AppConfig.zoomRetryCooldownSeconds
@@ -13,12 +14,13 @@ final class ZoomController {
     var zoomRetryAttempts = 0
     var zoomRetrySuccesses = 0
 
-    init(device: AVCaptureDevice) {
+    init(device: AVCaptureDevice, baselineZoom: CGFloat = 1.0) {
         self.device = device
+        self.baselineZoom = baselineZoom
         let threshold = device.activeFormat.videoZoomFactorUpscaleThreshold
         self.maxOpticalZoom = threshold > 1.0 ? threshold : 1.0
         self.isZoomRetryAvailable = AppConfig.isZoomRetryEnabled && threshold > 1.0
-        DebugLog.shared.d("ZoomController", "maxOpticalZoom=\(maxOpticalZoom) available=\(isZoomRetryAvailable)")
+        DebugLog.shared.d("ZoomController", "maxOpticalZoom=\(maxOpticalZoom) available=\(isZoomRetryAvailable) baselineZoom=\(baselineZoom) deviceType=\(device.deviceType)")
     }
 
     func isOnCooldown() -> Bool {
@@ -108,7 +110,7 @@ final class ZoomController {
     func restoreZoom() {
         do {
             try device.lockForConfiguration()
-            device.videoZoomFactor = 1.0
+            device.videoZoomFactor = baselineZoom
             device.unlockForConfiguration()
         } catch {
             DebugLog.shared.e("ZoomController", "Failed to restore zoom: \(error.localizedDescription)")

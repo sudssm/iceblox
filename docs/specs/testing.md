@@ -348,6 +348,8 @@ xcrun simctl privacy "$UDID" grant camera "$BUNDLE_ID"
 
 End-to-end tests validate the full pipeline: the Android and iOS apps detect a plate from injected images, hash it, post it to the Go server, and the server persists a sighting in PostgreSQL.
 
+**Important:** Always use the e2e scripts (`e2e/ios/run.sh`, `e2e/android/run.sh`) or the screenshot session script (`scripts/simulator/screenshot_session.sh`) to launch the iOS app for testing — never call `xcrun simctl launch` directly. The scripts set required `SIMCTL_CHILD_*` environment variables (e.g., `E2E_SKIP_NOTIFICATION_REQUEST=1`) that suppress system dialogs (notifications, location) which would otherwise block automation. See `e2e/ios/lib/app.sh:launch_app()` for the full set of env vars.
+
 ### Entry Point
 
 ```bash
