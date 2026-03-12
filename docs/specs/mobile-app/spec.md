@@ -431,10 +431,10 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 │                    (system status bar)                            │
 │  FPS: 28  │  Queue: 3                                            │
 │  ● Online │  Det: 5                        ┌────────────────┐    │
-│                                            │ AB12345 [SENT] │    │
-│        ┌─────────────┐                     │ XY98765 [SENT] │    │
-│        │  ABC 1234   │  ← plate text       │ TEST123 [QUED] │    │
-│        │ ┌─────────┐ │                     │                │    │
+│                                            │ Detection Feed │    │
+│        ┌─────────────┐                     │ AB12345 [SENT] │    │
+│        │  ABC 1234   │  ← plate text       │ XY98765 [SENT] │    │
+│        │ ┌─────────┐ │                     │ TEST123 [QUED] │    │
 │        │ │ (plate) │ │  ← green box        └────────────────┘    │
 │        │ └─────────┘ │                                           │
 │        │  a3f8b2c1   │  ← hash                                  │
@@ -562,6 +562,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - Total plates detected this session
   - Total match count this session (from server match responses), labeled "Matches"
   - Pending plate count (plates queued but not yet uploaded), labeled "Pending" in amber/yellow, shown only when count > 0
+  - "No GPS" warning in orange (shown only when location permission is denied)
 - **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session
   - Tapping ends the current session and opens the session summary

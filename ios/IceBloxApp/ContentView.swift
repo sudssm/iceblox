@@ -141,6 +141,22 @@ struct ContentView: View {
                     }
             }
 
+            #if DEBUG
+            if debugMode, !showingSummary, cameraManager.permissionGranted {
+                DebugOverlayView(
+                    detections: frameProcessor?.currentDetections ?? [],
+                    rawDetections: frameProcessor?.rawDetections ?? [],
+                    feedEntries: frameProcessor?.detectionFeed ?? [],
+                    fps: frameProcessor?.fps ?? 0,
+                    queueDepth: offlineQueue.count,
+                    isConnected: connectivityMonitor.isConnected,
+                    logEntries: debugLog.entries
+                )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
+            #endif
+
             if !showingSummary, cameraManager.permissionGranted {
                 VStack {
                     StatusBarView(
@@ -173,6 +189,7 @@ struct ContentView: View {
                             .background(.red.opacity(0.85))
                             .clipShape(Capsule())
                     }
+                    .accessibilityIdentifier("stop_recording_button")
                     .padding(.bottom, 12)
 
                     #if DEBUG
@@ -212,21 +229,6 @@ struct ContentView: View {
             if !showingSummary {
                 debugMode.toggle()
                 frameProcessor?.debugMode = debugMode
-            }
-        }
-        .overlay {
-            if debugMode, !showingSummary {
-                DebugOverlayView(
-                    detections: frameProcessor?.currentDetections ?? [],
-                    rawDetections: frameProcessor?.rawDetections ?? [],
-                    feedEntries: frameProcessor?.detectionFeed ?? [],
-                    fps: frameProcessor?.fps ?? 0,
-                    queueDepth: offlineQueue.count,
-                    isConnected: connectivityMonitor.isConnected,
-                    logEntries: debugLog.entries
-                )
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
             }
         }
         #endif
