@@ -106,7 +106,7 @@ fun DebugOverlay(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Raw: ${rawDetections.size}",
+                        text = "Det: ${rawDetections.size}",
                         color = Color.Yellow,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace

@@ -26,36 +26,6 @@ struct DebugOverlayView: View {
 
     var body: some View {
         ZStack {
-            if showFeedAndLogs {
-                // Debug header (top-left, below status indicators)
-                debugHeader
-                    .position(
-                        x: 100,
-                        y: topSafeArea + 40 + 25
-                    )
-
-                // Detection feed (top-right)
-                if !feedEntries.isEmpty {
-                    detectionFeed
-                        .position(
-                            x: screenSize.width - 108,
-                            y: topSafeArea + 40 + 75
-                        )
-                }
-
-                // [DEBUG MODE] label (bottom-left)
-                Text("[DEBUG MODE]")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.yellow)
-                    .padding(8)
-                    .position(x: 60, y: screenSize.height - bottomSafeArea - 16)
-
-                // Log panel (bottom-center, above the label)
-                DebugLogPanel(entries: logEntries)
-                    .frame(maxWidth: screenSize.width - 16)
-                    .position(x: screenSize.width / 2, y: screenSize.height - bottomSafeArea - 80)
-            }
-
             // Bounding boxes - yellow (raw detections)
             ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
                 let rect = raw.boundingBox
@@ -94,6 +64,38 @@ struct DebugOverlayView: View {
                 }
                 .position(x: rect.midX * scaleX, y: rect.midY * scaleY)
             }
+
+            if showFeedAndLogs {
+                // Debug header (top-left, below status bar + 40pt gap)
+                debugHeader
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, topSafeArea + 40)
+                    .padding(.leading, 8)
+
+                // Detection feed (top-right, same vertical offset as header)
+                if !feedEntries.isEmpty {
+                    detectionFeed
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, topSafeArea + 40)
+                        .padding(.trailing, 8)
+                        .padding(.bottom, 40)
+                }
+
+                // Log panel (bottom-center)
+                DebugLogPanel(entries: logEntries)
+                    .frame(maxWidth: screenSize.width - 16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 32)
+
+                // [DEBUG MODE] label (bottom-left)
+                Text("[DEBUG MODE]")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.yellow)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(.leading, 8)
+                    .padding(.bottom, 186)
+            }
         }
         .frame(width: screenSize.width, height: screenSize.height)
     }
@@ -125,6 +127,9 @@ struct DebugOverlayView: View {
     private var detectionFeed: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
+                Text("Detection Feed")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.white)
                 ForEach(feedEntries) { entry in
                     HStack(spacing: 6) {
                         Text(entry.plateText)
@@ -139,7 +144,6 @@ struct DebugOverlayView: View {
             .padding(8)
         }
         .frame(width: 200)
-        .frame(maxHeight: 300)
         .background(.black.opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }

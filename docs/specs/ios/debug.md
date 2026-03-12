@@ -30,7 +30,7 @@ State transitions are driven by a callback from `APIClient` to `FrameProcessor`.
 
 - `ios/IceBloxApp/Debug/DebugLog.swift` — Singleton with `LogEntry` model, `LogLevel` enum, ring buffer
 - `ios/IceBloxApp/Views/DebugLogPanel.swift` — SwiftUI view with `ScrollViewReader` + `LazyVStack`
-- `ios/IceBloxApp/Views/DebugOverlayView.swift` — Hosts `DebugLogPanel` in `VStack { Spacer(); panel }` at bottom
+- `ios/IceBloxApp/Views/DebugOverlayView.swift` — Uses alignment-based layout (`.frame(alignment:)` + padding) matching Android's `Box` + `Alignment` pattern: header at `.topLeading`, detection feed at `.topTrailing`, log panel at `.bottom`, `[DEBUG MODE]` at `.bottomLeading`. Bounding boxes use `.position()` for ML coordinate mapping.
 - `ios/IceBloxApp/ContentView.swift` — Passes `debugLog.entries` to overlay
 
 #### Build Notes

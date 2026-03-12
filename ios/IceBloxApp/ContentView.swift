@@ -142,6 +142,23 @@ struct ContentView: View {
                     }
             }
 
+            #if DEBUG
+            if debugMode || userSettings.userDebugEnabled, !showingSummary, cameraManager.permissionGranted {
+                DebugOverlayView(
+                    detections: frameProcessor?.currentDetections ?? [],
+                    rawDetections: frameProcessor?.rawDetections ?? [],
+                    feedEntries: frameProcessor?.detectionFeed ?? [],
+                    fps: frameProcessor?.fps ?? 0,
+                    queueDepth: offlineQueue.count,
+                    isConnected: connectivityMonitor.isConnected,
+                    logEntries: debugLog.entries,
+                    showFeedAndLogs: debugMode
+                )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
+            #endif
+
             if !showingSummary, cameraManager.permissionGranted {
                 VStack {
                     StatusBarView(
@@ -174,6 +191,7 @@ struct ContentView: View {
                             .background(.red.opacity(0.85))
                             .clipShape(Capsule())
                     }
+                    .accessibilityIdentifier("stop_recording_button")
                     .padding(.bottom, 12)
 
                     #if DEBUG
@@ -216,22 +234,6 @@ struct ContentView: View {
             }
         }
         #endif
-        .overlay {
-            let userDebug = userSettings.userDebugEnabled
-            if debugMode || userDebug, !showingSummary {
-                DebugOverlayView(
-                    detections: frameProcessor?.currentDetections ?? [],
-                    rawDetections: frameProcessor?.rawDetections ?? [],
-                    feedEntries: frameProcessor?.detectionFeed ?? [],
-                    fps: frameProcessor?.fps ?? 0,
-                    queueDepth: offlineQueue.count,
-                    isConnected: connectivityMonitor.isConnected,
-                    logEntries: debugLog.entries,
-                    showFeedAndLogs: debugMode
-                )
-                .ignoresSafeArea()
-            }
-        }
         .onReceive(statusTimer) { _ in
             lastStatusUpdate = Date()
             pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
