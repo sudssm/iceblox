@@ -63,6 +63,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 ## Client UI
 
 - [x] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
+- [x] **Debug mode toggle** — Add a user-facing debug mode toggle in Settings on both iOS and Android. Shows detection bounding boxes on the camera preview without requiring a debug build.
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
 - [ ] **Splash page** — Build a marketing/landing splash page for the project.
 - [ ] **Cluster overlapping map pins** — Merge multiple plates at same location into single high-confidence pin.
