@@ -735,7 +735,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 17 |
-| 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
+| 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 4K preset (1080p fallback), multi-lens virtual device selection (triple → dual-wide → dual → wide-angle), baseline zoom to wide lens, preview layer |
 | 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Splash screen with Start Camera button → full-screen camera preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped plate regions, normalization, validation |
