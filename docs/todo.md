@@ -20,6 +20,12 @@ Spec: [`specs/server/spec.md`](specs/server/spec.md)
 
 Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation Plan — iOS
 
+### Multi-Lens Optical Zoom (activates existing zoom retry)
+- [x] **Multi-lens camera selection** — Switch from `builtInWideAngleCamera` to a multi-lens virtual device (`builtInTripleCamera` → `builtInDualWideCamera` → `builtInDualCamera` → fallback to wide-angle) in `CameraManager.configureSession()`. This activates the existing zoom retry code which is currently dead because a single-lens camera has `videoZoomFactorUpscaleThreshold ≈ 1.0`. See `docs/future/optical_zoom_retry.md`.
+- [x] **Baseline zoom for virtual devices** — Compute `baselineZoom` from `virtualDeviceSwitchOverVideoZoomFactors` (first entry, or 1.0 if none) and set it as the initial `videoZoomFactor`. On multi-lens virtual devices, `videoZoomFactor = 1.0` is ultra-wide — the standard wide lens sits at the first switch-over factor (~2.0).
+- [x] **Restore to baseline zoom** — Update `ZoomController.restoreZoom()` to restore to `baselineZoom` instead of hardcoded `1.0`, so the user gets the wide-angle view back after a zoom retry (not ultra-wide).
+- [x] **4K session preset guard** — Add `canSetSessionPreset(.hd4K3840x2160)` guard with 1080p fallback in `configureSession()`.
+
 ### Debug & Release
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)

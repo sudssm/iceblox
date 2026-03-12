@@ -101,13 +101,35 @@ final class CameraManager: NSObject, ObservableObject {
         #endif
     }
 
+    private func bestAvailableCamera() -> AVCaptureDevice? {
+        let preferredTypes: [AVCaptureDevice.DeviceType] = [
+            .builtInTripleCamera,
+            .builtInDualWideCamera,
+            .builtInDualCamera,
+            .builtInWideAngleCamera
+        ]
+        for deviceType in preferredTypes {
+            if let device = AVCaptureDevice.default(deviceType, for: .video, position: .back) {
+                DebugLog.shared.d("CameraManager", "Selected camera: \(deviceType)")
+                return device
+            }
+        }
+        return nil
+    }
+
     private func configureSession() {
         guard session.inputs.isEmpty else { return }
 
         session.beginConfiguration()
-        session.sessionPreset = .hd4K3840x2160
 
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+        if session.canSetSessionPreset(.hd4K3840x2160) {
+            session.sessionPreset = .hd4K3840x2160
+        } else {
+            session.sessionPreset = .hd1920x1080
+            DebugLog.shared.w("CameraManager", "4K not supported, falling back to 1080p")
+        }
+
+        guard let camera = bestAvailableCamera(),
               let input = try? AVCaptureDeviceInput(device: camera) else {
             session.commitConfiguration()
             return
@@ -129,8 +151,22 @@ final class CameraManager: NSObject, ObservableObject {
 
         session.commitConfiguration()
 
+        let switchOverFactors = camera.virtualDeviceSwitchOverVideoZoomFactors
+        let baselineZoom = switchOverFactors.first?.doubleValue ?? 1.0
+        DebugLog.shared.d("CameraManager", "switchOverFactors=\(switchOverFactors) baselineZoom=\(baselineZoom)")
+
+        if baselineZoom > 1.0 {
+            do {
+                try camera.lockForConfiguration()
+                camera.videoZoomFactor = CGFloat(baselineZoom)
+                camera.unlockForConfiguration()
+            } catch {
+                DebugLog.shared.e("CameraManager", "Failed to set baseline zoom: \(error.localizedDescription)")
+            }
+        }
+
         captureDevice = camera
-        zoomController = ZoomController(device: camera)
+        zoomController = ZoomController(device: camera, baselineZoom: CGFloat(baselineZoom))
     }
 
     private func updateVideoOrientation() {

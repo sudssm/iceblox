@@ -254,12 +254,12 @@ detection + OCR on it, **so that** I get a higher-resolution read of the plate.
 
 ### US-5: Restore zoom and unfreeze preview
 **As** the app, **after** the zoom-capture-OCR cycle completes (success or
-failure), **I want to** restore the zoom to 1.0 and remove the preview overlay,
+failure), **I want to** restore the zoom to the baseline level and remove the preview overlay,
 **so that** the user sees normal camera output again.
 
 **Acceptance criteria:**
-- iOS: set `device.videoZoomFactor = 1.0`.
-- Android: call `cameraControl.setZoomRatio(1.0f)`.
+- iOS: set `device.videoZoomFactor = baselineZoom` (the wide-angle switch-over factor on multi-lens virtual devices, or 1.0 on single-lens cameras). Restoring to 1.0 on virtual devices would show ultra-wide instead of the expected wide-angle view.
+- Android: call `cameraControl.setZoomRatio(baselineZoomRatio)`.
 - Remove the frozen-frame overlay.
 - Total user-perceived freeze time should be < 500ms.
 - If zoom restore fails (device error), log and continue—don't crash.
@@ -308,7 +308,7 @@ that** they are tunable without code changes.
 more often, even without zoom retry.
 
 **Acceptance criteria:**
-- Change `session.sessionPreset` from `.hd1920x1080` to `.hd4K3840x2160`.
+- Use `canSetSessionPreset(.hd4K3840x2160)` guard: set 4K if supported, fall back to `.hd1920x1080` otherwise. This ensures compatibility with devices that lack 4K video output.
 - `alwaysDiscardsLateVideoFrames` remains `true` to handle any dropped frames.
 - Verify YOLO detection still works (input is resized to 640×640 anyway).
 - Verify OCR crop quality improves (more source pixels for the 64×128 resize).
