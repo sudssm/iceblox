@@ -67,15 +67,9 @@ func TestAPNsJWTGeneration(t *testing.T) {
 }
 
 func TestAPNsJWTCaching(t *testing.T) {
-	key, pemData := generateTestP8Key(t)
-	_ = key
+	_, pemData := generateTestP8Key(t)
 
-	keyFile := t.TempDir() + "/key.p8"
-	if err := writeFile(keyFile, pemData); err != nil {
-		t.Fatalf("write key file: %v", err)
-	}
-
-	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
+	client, err := NewAPNsClient(pemData, "KID", "TID", "com.test.app", false)
 	if err != nil {
 		t.Fatalf("NewAPNsClient: %v", err)
 	}
@@ -109,12 +103,8 @@ func TestAPNsSendNotification_Success(t *testing.T) {
 	defer server.Close()
 
 	_, pemData := generateTestP8Key(t)
-	keyFile := t.TempDir() + "/key.p8"
-	if err := writeFile(keyFile, pemData); err != nil {
-		t.Fatalf("write key file: %v", err)
-	}
 
-	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
+	client, err := NewAPNsClient(pemData, "KID", "TID", "com.test.app", false)
 	if err != nil {
 		t.Fatalf("NewAPNsClient: %v", err)
 	}
@@ -161,12 +151,8 @@ func TestAPNsSendNotification_GoneReturnsExpiredError(t *testing.T) {
 	defer server.Close()
 
 	_, pemData := generateTestP8Key(t)
-	keyFile := t.TempDir() + "/key.p8"
-	if err := writeFile(keyFile, pemData); err != nil {
-		t.Fatalf("write key file: %v", err)
-	}
 
-	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
+	client, err := NewAPNsClient(pemData, "KID", "TID", "com.test.app", false)
 	if err != nil {
 		t.Fatalf("NewAPNsClient: %v", err)
 	}
@@ -179,9 +165,9 @@ func TestAPNsSendNotification_GoneReturnsExpiredError(t *testing.T) {
 	}
 }
 
-func TestNewAPNsClient_MissingKeyFile(t *testing.T) {
-	_, err := NewAPNsClient("/nonexistent/key.p8", "KID", "TID", "com.test.app", false)
+func TestNewAPNsClient_InvalidKey(t *testing.T) {
+	_, err := NewAPNsClient([]byte("not a pem key"), "KID", "TID", "com.test.app", false)
 	if err == nil {
-		t.Fatal("expected error for missing key file")
+		t.Fatal("expected error for invalid key data")
 	}
 }
