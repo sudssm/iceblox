@@ -54,23 +54,23 @@ enum LookalikeExpander {
     private static func cartesianExpand(
         slots: [[PlateOCR.SlotCandidate]],
         primaryText: String
-    ) -> [(String, Int, Float)] {
-        var results = [(String, Int, Float)]()
-        let n = slots.count
-        var indices = [Int](repeating: 0, count: n)
+    ) -> [(String, Int, Float)] { // swiftlint:disable:this large_tuple
+        var results = [(String, Int, Float)]() // swiftlint:disable:this large_tuple
+        let slotCount = slots.count
+        var indices = [Int](repeating: 0, count: slotCount)
 
         while true {
             var chars = [Character]()
-            chars.reserveCapacity(n)
+            chars.reserveCapacity(slotCount)
             var subs = 0
-            for i in 0..<n {
+            for i in 0..<slotCount {
                 chars.append(slots[i][indices[i]].char)
                 if indices[i] != 0 { subs += 1 }
             }
             let conf = computeConfidence(slots: slots, indices: indices)
             results.append((String(chars), subs, conf))
 
-            var pos = n - 1
+            var pos = slotCount - 1
             while pos >= 0 {
                 indices[pos] += 1
                 if indices[pos] < slots[pos].count { break }
@@ -92,8 +92,8 @@ enum LookalikeExpander {
         slots: [[PlateOCR.SlotCandidate]],
         primaryText: String,
         maxVariants: Int
-    ) -> [(String, Int, Float)] {
-        let n = slots.count
+    ) -> [(String, Int, Float)] { // swiftlint:disable:this large_tuple
+        let slotCount = slots.count
         var results = [(String, Int, Float)]()
         var seen = Set<[Int]>()
 
@@ -141,23 +141,16 @@ enum LookalikeExpander {
             return top
         }
 
-        let seedIndices = [Int](repeating: 0, count: n)
+        let seedIndices = [Int](repeating: 0, count: slotCount)
         let seedConf = computeConfidence(slots: slots, indices: seedIndices)
         heapPush(Entry(indices: seedIndices, lastModified: 0, confidence: seedConf))
         seen.insert(seedIndices)
 
         while !heap.isEmpty && results.count < maxVariants {
             let entry = heapPop()
-            var chars = [Character]()
-            chars.reserveCapacity(n)
-            var subs = 0
-            for i in 0..<n {
-                chars.append(slots[i][entry.indices[i]].char)
-                if entry.indices[i] != 0 { subs += 1 }
-            }
-            results.append((String(chars), subs, entry.confidence))
+            results.append(buildVariant(slots: slots, indices: entry.indices, confidence: entry.confidence))
 
-            for pos in entry.lastModified..<n {
+            for pos in entry.lastModified..<slotCount {
                 let nextIdx = entry.indices[pos] + 1
                 if nextIdx < slots[pos].count {
                     var childIndices = entry.indices
@@ -171,5 +164,17 @@ enum LookalikeExpander {
         }
 
         return results
+    }
+
+    // swiftlint:disable:next large_tuple
+    private static func buildVariant(slots: [[PlateOCR.SlotCandidate]], indices: [Int], confidence: Float) -> (String, Int, Float) {
+        var chars = [Character]()
+        chars.reserveCapacity(slots.count)
+        var subs = 0
+        for i in 0..<slots.count {
+            chars.append(slots[i][indices[i]].char)
+            if indices[i] != 0 { subs += 1 }
+        }
+        return (String(chars), subs, confidence)
     }
 }

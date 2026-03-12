@@ -182,9 +182,9 @@ enum PlateOCR {
 
                     var candidates: [SlotCandidate] = []
                     for ci in 0..<min(alphabetSize, alphabet.count) {
-                        let c = alphabet[ci]
-                        if c != padChar && floatPtr[base + ci] >= AppConfig.ocrCandidateThreshold {
-                            candidates.append(SlotCandidate(char: c, probability: floatPtr[base + ci]))
+                        let ch = alphabet[ci]
+                        if ch != padChar && floatPtr[base + ci] >= AppConfig.ocrCandidateThreshold {
+                            candidates.append(SlotCandidate(char: ch, probability: floatPtr[base + ci]))
                         }
                     }
                     candidates.sort { $0.probability > $1.probability }
