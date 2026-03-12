@@ -65,6 +65,7 @@ struct ContentView: View {
     @State private var alertClient: AlertClient?
     @State private var debugMode = AppConfig.forceDebugMode
     @ObservedObject private var debugLog = DebugLog.shared
+    @ObservedObject private var userSettings = UserSettings.shared
     @State private var lastStatusUpdate = Date()
     @State private var sessionID = UUID().uuidString
     @State private var sessionStartedAt = Date()
@@ -141,6 +142,23 @@ struct ContentView: View {
                     }
             }
 
+            #if DEBUG
+            if debugMode || userSettings.userDebugEnabled, !showingSummary, cameraManager.permissionGranted {
+                DebugOverlayView(
+                    detections: frameProcessor?.currentDetections ?? [],
+                    rawDetections: frameProcessor?.rawDetections ?? [],
+                    feedEntries: frameProcessor?.detectionFeed ?? [],
+                    fps: frameProcessor?.fps ?? 0,
+                    queueDepth: offlineQueue.count,
+                    isConnected: connectivityMonitor.isConnected,
+                    logEntries: debugLog.entries,
+                    showFeedAndLogs: debugMode
+                )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
+            #endif
+
             if !showingSummary, cameraManager.permissionGranted {
                 VStack {
                     StatusBarView(
@@ -173,6 +191,7 @@ struct ContentView: View {
                             .background(.red.opacity(0.85))
                             .clipShape(Capsule())
                     }
+                    .accessibilityIdentifier("stop_recording_button")
                     .padding(.bottom, 12)
 
                     #if DEBUG
@@ -214,21 +233,6 @@ struct ContentView: View {
                 frameProcessor?.debugMode = debugMode
             }
         }
-        .overlay {
-            if debugMode, !showingSummary {
-                DebugOverlayView(
-                    detections: frameProcessor?.currentDetections ?? [],
-                    rawDetections: frameProcessor?.rawDetections ?? [],
-                    feedEntries: frameProcessor?.detectionFeed ?? [],
-                    fps: frameProcessor?.fps ?? 0,
-                    queueDepth: offlineQueue.count,
-                    isConnected: connectivityMonitor.isConnected,
-                    logEntries: debugLog.entries
-                )
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-            }
-        }
         #endif
         .onReceive(statusTimer) { _ in
             lastStatusUpdate = Date()
@@ -257,6 +261,7 @@ struct ContentView: View {
             startE2EStopWatcher()
         }
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             e2eStopTask?.cancel()
             e2eStopTask = nil
         }

@@ -15,14 +15,19 @@ struct StatusBarView: View {
                 Circle()
                     .fill(isConnected ? .green : .red)
                     .frame(width: 8, height: 8)
+                    .accessibilityIdentifier("status_indicator")
                 Text(isConnected ? "Online" : "Offline")
+                    .accessibilityIdentifier("status_text")
             }
             Text("Last: \(lastDetectionText)")
             Text("Plates: \(plateCount)")
+                .accessibilityIdentifier("plate_count")
             Text("Matches: \(matchCount)")
+                .accessibilityIdentifier("match_count")
             if pendingCount > 0 {
                 Text("Pending: \(pendingCount)")
                     .foregroundStyle(.yellow)
+                    .accessibilityIdentifier("pending_count")
             }
             if nearbySightings > 0 {
                 Text("Nearby: \(nearbySightings)")
@@ -30,7 +35,8 @@ struct StatusBarView: View {
             }
             if !hasGPS {
                 Text("No GPS")
-                    .foregroundStyle(.yellow)
+                    .foregroundStyle(Color(red: 1.0, green: 0.596, blue: 0.0))
+                    .accessibilityIdentifier("gps_warning")
             }
         }
         .font(.system(.caption, design: .monospaced))
@@ -39,6 +45,7 @@ struct StatusBarView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .background(.black.opacity(0.6), ignoresSafeAreaEdges: .top)
+        .accessibilityIdentifier("status_bar")
     }
 
     private var lastDetectionText: String {

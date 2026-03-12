@@ -31,7 +31,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 - [ ] **App icon** — Add 1024×1024 PNG to `AppIcon.appiconset`
-- [ ] **Development team** — Set `DEVELOPMENT_TEAM` to Apple Team ID (requires Apple Developer account)
+- [x] **Development team** — Set `DEVELOPMENT_TEAM` to Apple Team ID (Z9AXZ3RHT2)
 - [ ] **App Store Connect listing** — Screenshots, description, privacy policy URL, category, age rating
 - [ ] **TestFlight build** — Archive and upload for beta testing
 
@@ -69,6 +69,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 ## Client UI
 
 - [x] **Notification toggle** — Add a UI toggle on both iOS and Android to let users disable/enable push notifications.
+- [x] **Debug mode toggle** — Add a user-facing debug mode toggle in Settings on both iOS and Android. Shows detection bounding boxes on the camera preview without requiring a debug build.
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
 - [ ] **Splash page** — Build a marketing/landing splash page for the project.
 - [ ] **Cluster overlapping map pins** — Merge multiple plates at same location into single high-confidence pin.
