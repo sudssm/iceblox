@@ -473,12 +473,8 @@ func TestNotifier_RecordsPushAfterSend(t *testing.T) {
 func newTestAPNsClient(t *testing.T, server *httptest.Server) *APNsClient {
 	t.Helper()
 	_, pemData := generateTestP8Key(t)
-	keyFile := t.TempDir() + "/key.p8"
-	if err := writeFile(keyFile, pemData); err != nil {
-		t.Fatalf("write key file: %v", err)
-	}
 
-	client, err := NewAPNsClient(keyFile, "KID", "TID", "com.test.app", false)
+	client, err := NewAPNsClient(pemData, "KID", "TID", "com.test.app", false)
 	if err != nil {
 		t.Fatalf("NewAPNsClient: %v", err)
 	}
@@ -490,9 +486,9 @@ func newTestAPNsClient(t *testing.T, server *httptest.Server) *APNsClient {
 func newTestFCMClient(t *testing.T, tokenURL, sendURL string) *FCMClient {
 	t.Helper()
 	_, keyPEM := generateTestRSAKey(t)
-	path := writeServiceAccount(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
+	saJSON := makeServiceAccountJSON(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
 
-	client, err := NewFCMClient(path)
+	client, err := NewFCMClient(saJSON)
 	if err != nil {
 		t.Fatalf("NewFCMClient: %v", err)
 	}

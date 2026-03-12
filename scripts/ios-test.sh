@@ -134,22 +134,7 @@ if [ ! -f server/data/plates.txt ]; then
     make extract
 fi
 
-MAKE_ARGS=""
-FCM_SA="server/fcm-service-account.json"
-if [ -f "$FCM_SA" ]; then
-    MAKE_ARGS="FCM_SERVICE_ACCOUNT=fcm-service-account.json"
-    echo "FCM service account found"
-fi
-
-APNS_KEY=$(find server -maxdepth 1 -name "*.p8" 2>/dev/null | head -1 || true)
-if [ -n "$APNS_KEY" ]; then
-    MAKE_ARGS="$MAKE_ARGS APNS_KEY_FILE=$(basename "$APNS_KEY")"
-    echo "APNS key found — push notifications enabled"
-else
-    echo "WARNING: No APNS key (.p8) found in server/ — push notifications disabled"
-fi
-
 echo ""
 echo "=== App launched! Starting Go server with $(wc -l < server/data/plates.txt | tr -d ' ') plates (Ctrl+C to stop) ==="
 echo ""
-make run-server DB_DSN="$DB_DSN" $MAKE_ARGS
+make run-server DB_DSN="$DB_DSN"

@@ -8,8 +8,6 @@ import (
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -28,7 +26,7 @@ func generateTestRSAKey(t *testing.T) (*rsa.PrivateKey, string) {
 	return key, string(pemData)
 }
 
-func writeServiceAccount(t *testing.T, projectID, email, keyPEM string) string {
+func makeServiceAccountJSON(t *testing.T, projectID, email, keyPEM string) []byte {
 	t.Helper()
 	sa := map[string]string{
 		"project_id":   projectID,
@@ -39,18 +37,14 @@ func writeServiceAccount(t *testing.T, projectID, email, keyPEM string) string {
 	if err != nil {
 		t.Fatalf("marshal service account: %v", err)
 	}
-	path := filepath.Join(t.TempDir(), "sa.json")
-	if err := os.WriteFile(path, data, 0600); err != nil {
-		t.Fatalf("write service account: %v", err)
-	}
-	return path
+	return data
 }
 
 func TestNewFCMClient(t *testing.T) {
 	_, keyPEM := generateTestRSAKey(t)
-	path := writeServiceAccount(t, "my-project", "test@test.iam.gserviceaccount.com", keyPEM)
+	saJSON := makeServiceAccountJSON(t, "my-project", "test@test.iam.gserviceaccount.com", keyPEM)
 
-	client, err := NewFCMClient(path)
+	client, err := NewFCMClient(saJSON)
 	if err != nil {
 		t.Fatalf("NewFCMClient: %v", err)
 	}
@@ -59,21 +53,15 @@ func TestNewFCMClient(t *testing.T) {
 	}
 }
 
-func TestNewFCMClient_MissingFile(t *testing.T) {
-	_, err := NewFCMClient("/nonexistent/sa.json")
+func TestNewFCMClient_InvalidJSON(t *testing.T) {
+	_, err := NewFCMClient([]byte("not valid json"))
 	if err == nil {
-		t.Fatal("expected error for missing file")
+		t.Fatal("expected error for invalid JSON")
 	}
 }
 
 func TestNewFCMClient_MissingFields(t *testing.T) {
-	data := `{"project_id":"","client_email":"","private_key":""}`
-	path := filepath.Join(t.TempDir(), "sa.json")
-	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
-		t.Fatalf("write service account: %v", err)
-	}
-
-	_, err := NewFCMClient(path)
+	_, err := NewFCMClient([]byte(`{"project_id":"","client_email":"","private_key":""}`))
 	if err == nil {
 		t.Fatal("expected error for missing fields")
 	}
@@ -96,8 +84,8 @@ func TestFCMTokenExchange(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	path := writeServiceAccount(t, "my-project", "test@test.iam.gserviceaccount.com", keyPEM)
-	client, err := NewFCMClient(path)
+	saJSON := makeServiceAccountJSON(t, "my-project", "test@test.iam.gserviceaccount.com", keyPEM)
+	client, err := NewFCMClient(saJSON)
 	if err != nil {
 		t.Fatalf("NewFCMClient: %v", err)
 	}
@@ -128,8 +116,8 @@ func TestFCMTokenCaching(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	path := writeServiceAccount(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
-	client, err := NewFCMClient(path)
+	saJSON := makeServiceAccountJSON(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
+	client, err := NewFCMClient(saJSON)
 	if err != nil {
 		t.Fatalf("NewFCMClient: %v", err)
 	}
@@ -173,8 +161,8 @@ func TestFCMSend_Success(t *testing.T) {
 	}))
 	defer fcmServer.Close()
 
-	path := writeServiceAccount(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
-	client, err := NewFCMClient(path)
+	saJSON := makeServiceAccountJSON(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
+	client, err := NewFCMClient(saJSON)
 	if err != nil {
 		t.Fatalf("NewFCMClient: %v", err)
 	}
@@ -228,8 +216,8 @@ func TestFCMSend_UnregisteredError(t *testing.T) {
 	}))
 	defer fcmServer.Close()
 
-	path := writeServiceAccount(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
-	client, err := NewFCMClient(path)
+	saJSON := makeServiceAccountJSON(t, "proj", "email@test.iam.gserviceaccount.com", keyPEM)
+	client, err := NewFCMClient(saJSON)
 	if err != nil {
 		t.Fatalf("NewFCMClient: %v", err)
 	}

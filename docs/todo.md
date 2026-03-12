@@ -95,6 +95,12 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ---
 
+## Account
+
+- [ ] **Switch to organization enrollment** — Get a D-U-N-S number and re-enroll as an organization so the App Store seller name shows a company name instead of personal name.
+
+---
+
 ## Productionizing
 
 - [ ] **Enable SSL** — Configure TLS for the server. Railway provides automatic HTTPS via its proxy, but update mobile app `SERVER_BASE_URL` to use `https://` and ensure `DATABASE_URL` uses `sslmode=require` for the Postgres connection.
