@@ -8,6 +8,7 @@ struct DebugOverlayView: View {
     let queueDepth: Int
     let isConnected: Bool
     let logEntries: [LogEntry]
+    var showFeedAndLogs: Bool = true
 
     private var screenSize: CGSize { UIScreen.main.bounds.size }
 
@@ -25,33 +26,35 @@ struct DebugOverlayView: View {
 
     var body: some View {
         ZStack {
-            // Debug header (top-left, below status indicators)
-            debugHeader
-                .position(
-                    x: 100,
-                    y: topSafeArea + 40 + 25
-                )
-
-            // Detection feed (top-right)
-            if !feedEntries.isEmpty {
-                detectionFeed
+            if showFeedAndLogs {
+                // Debug header (top-left, below status indicators)
+                debugHeader
                     .position(
-                        x: screenSize.width - 108,
-                        y: topSafeArea + 40 + 75
+                        x: 100,
+                        y: topSafeArea + 40 + 25
                     )
+
+                // Detection feed (top-right)
+                if !feedEntries.isEmpty {
+                    detectionFeed
+                        .position(
+                            x: screenSize.width - 108,
+                            y: topSafeArea + 40 + 75
+                        )
+                }
+
+                // [DEBUG MODE] label (bottom-left)
+                Text("[DEBUG MODE]")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.yellow)
+                    .padding(8)
+                    .position(x: 60, y: screenSize.height - bottomSafeArea - 16)
+
+                // Log panel (bottom-center, above the label)
+                DebugLogPanel(entries: logEntries)
+                    .frame(maxWidth: screenSize.width - 16)
+                    .position(x: screenSize.width / 2, y: screenSize.height - bottomSafeArea - 80)
             }
-
-            // [DEBUG MODE] label (bottom-left)
-            Text("[DEBUG MODE]")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.yellow)
-                .padding(8)
-                .position(x: 60, y: screenSize.height - bottomSafeArea - 16)
-
-            // Log panel (bottom-center, above the label)
-            DebugLogPanel(entries: logEntries)
-                .frame(maxWidth: screenSize.width - 16)
-                .position(x: screenSize.width / 2, y: screenSize.height - bottomSafeArea - 80)
 
             // Bounding boxes - yellow (raw detections)
             ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in

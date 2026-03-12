@@ -15,6 +15,15 @@ struct SettingsView: View {
                             .tint(.blue)
                     }
                     .listRowBackground(Color.white.opacity(0.1))
+
+                    Section {
+                        Toggle("Debug Mode", isOn: $settings.userDebugEnabled)
+                            .tint(.blue)
+                    } footer: {
+                        Text("Shows detection bounding boxes on the camera preview")
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .listRowBackground(Color.white.opacity(0.1))
                 }
                 .scrollContentBackground(.hidden)
             }
