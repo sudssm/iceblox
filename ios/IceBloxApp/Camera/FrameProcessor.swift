@@ -149,10 +149,16 @@ final class FrameProcessor: ObservableObject {
             guard let cropped = PlateDetector.cropPlateRegion(
                 from: detection.pixelBuffer,
                 rect: detection.boundingBox
-            ) else { continue }
+            ) else {
+                DebugLog.shared.w("FrameProcessor", "Crop failed for box: \(detection.boundingBox)")
+                continue
+            }
 
             if let ocrOutput = PlateOCR.recognizeText(in: cropped) {
-                guard let normalized = PlateNormalizer.normalize(ocrOutput.text) else { continue }
+                guard let normalized = PlateNormalizer.normalize(ocrOutput.text) else {
+                    DebugLog.shared.w("FrameProcessor", "Normalization failed for raw text (\(ocrOutput.text.count) chars)")
+                    continue
+                }
                 let charConfs = Array(ocrOutput.charConfidences.prefix(normalized.count))
                 let slotCands = Array(ocrOutput.slotCandidates.prefix(normalized.count))
                 guard let result = recordPlate(

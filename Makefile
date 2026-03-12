@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean
+.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -53,14 +53,9 @@ migrate:
 		cd server && go run ./cmd/server/... --migrate-only --db-dsn "$${DATABASE_URL:-$(DB_DSN)}"; \
 	fi
 
-FCM_SERVICE_ACCOUNT ?=
-APNS_KEY_FILE ?=
-
-## run-server: Build and run the Go server
-run-server:
-	cd server && go run ./cmd/server/... --db-dsn "$(DB_DSN)" \
-		$(if $(FCM_SERVICE_ACCOUNT),--fcm-service-account "$(FCM_SERVICE_ACCOUNT)") \
-		$(if $(APNS_KEY_FILE),--apns-key-file "$(APNS_KEY_FILE)")
+## run-server: Build and run the Go server (reads push config from .env)
+run-server: .env
+	@set -a && . $(CURDIR)/.env && set +a && cd server && go run ./cmd/server/... --db-dsn "$(DB_DSN)"
 
 ## run-test-server: Run server with test plates (known plates for E2E testing)
 run-test-server:
@@ -92,6 +87,63 @@ db:
 ## db-stop: Stop PostgreSQL container
 db-stop:
 	docker stop iceblox-postgres
+
+# ── Run Apps ─────────────────────────────────────────────────────────────────
+
+ANDROID_SDK := $(HOME)/Library/Android/sdk
+ADB := $(ANDROID_SDK)/platform-tools/adb
+EMULATOR_BIN := $(ANDROID_SDK)/emulator/emulator
+ANDROID_AVD := Medium_Phone_API_36.1
+ANDROID_PACKAGE := com.iceblox.app
+ANDROID_ACTIVITY := .MainActivity
+
+IOS_SIMULATOR_UDID := C06D96F6-6AE3-4B73-874F-C8324A15B0B9
+IOS_BUNDLE_ID := com.iceblox.app
+IOS_SCHEME := IceBloxApp
+IOS_BUILD_DIR := ios/build
+
+## run-android: Build, install, and launch the Android app on an emulator
+run-android: .env
+	@source ~/.zshrc && cd android && ./gradlew assembleDebug --quiet
+	@if ! $(ADB) devices 2>/dev/null | grep -q "emulator"; then \
+		echo "Starting Android emulator..."; \
+		$(EMULATOR_BIN) -avd $(ANDROID_AVD) &>/dev/null & \
+		$(ADB) wait-for-device; \
+		while [ "$$($(ADB) shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]; do sleep 1; done; \
+		echo "Emulator booted."; \
+	fi
+	$(ADB) install -r android/app/build/outputs/apk/debug/app-debug.apk
+	$(ADB) shell am start -n $(ANDROID_PACKAGE)/$(ANDROID_ACTIVITY)
+
+## run-ios: Build, install, and launch the iOS app on a simulator
+run-ios:
+	@if ! xcrun simctl list devices booted 2>/dev/null | grep -q "$(IOS_SIMULATOR_UDID)"; then \
+		echo "Booting iOS simulator..."; \
+		xcrun simctl boot "$(IOS_SIMULATOR_UDID)"; \
+		open -a Simulator; \
+		sleep 2; \
+		echo "Simulator booted."; \
+	fi
+	xcodebuild build \
+		-project ios/IceBloxApp.xcodeproj \
+		-scheme $(IOS_SCHEME) \
+		-destination "platform=iOS Simulator,id=$(IOS_SIMULATOR_UDID)" \
+		-derivedDataPath $(IOS_BUILD_DIR) \
+		-quiet
+	xcrun simctl install "$(IOS_SIMULATOR_UDID)" \
+		$$(find $(IOS_BUILD_DIR) -name "$(IOS_SCHEME).app" -path "*/Debug-iphonesimulator/*" | head -1)
+	xcrun simctl launch "$(IOS_SIMULATOR_UDID)" $(IOS_BUNDLE_ID)
+
+PROD_SERVER ?=
+PROD_FLAG := $(if $(filter true,$(PROD_SERVER)),--prod-server)
+
+## run-android-device: Build, install, and launch Android app on a connected device (PROD_SERVER=true for prod)
+run-android-device: .env
+	bash scripts/android-test.sh $(PROD_FLAG)
+
+## run-ios-device: Build, install, and launch iOS app on a connected device (PROD_SERVER=true for prod)
+run-ios-device:
+	bash scripts/ios-test.sh $(PROD_FLAG)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 

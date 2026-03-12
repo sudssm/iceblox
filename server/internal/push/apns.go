@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -36,13 +35,8 @@ type APNsClient struct {
 	jwtExpires time.Time
 }
 
-func NewAPNsClient(keyFile, keyID, teamID, bundleID string, production bool) (*APNsClient, error) {
-	data, err := os.ReadFile(keyFile)
-	if err != nil {
-		return nil, fmt.Errorf("apns: read key file: %w", err)
-	}
-
-	key, err := parseP8Key(data)
+func NewAPNsClient(keyData []byte, keyID, teamID, bundleID string, production bool) (*APNsClient, error) {
+	key, err := parseP8Key(keyData)
 	if err != nil {
 		return nil, fmt.Errorf("apns: parse key: %w", err)
 	}

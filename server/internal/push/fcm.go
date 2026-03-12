@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -45,14 +44,9 @@ type FCMClient struct {
 	tokenExpiry time.Time
 }
 
-func NewFCMClient(serviceAccountFile string) (*FCMClient, error) {
-	data, err := os.ReadFile(serviceAccountFile)
-	if err != nil {
-		return nil, fmt.Errorf("fcm: read service account: %w", err)
-	}
-
+func NewFCMClient(serviceAccountJSON []byte) (*FCMClient, error) {
 	var sa serviceAccount
-	if err := json.Unmarshal(data, &sa); err != nil {
+	if err := json.Unmarshal(serviceAccountJSON, &sa); err != nil {
 		return nil, fmt.Errorf("fcm: parse service account: %w", err)
 	}
 

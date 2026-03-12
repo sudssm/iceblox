@@ -1,6 +1,8 @@
 package com.iceblox.app.ui
 
+import android.app.Activity
 import android.graphics.Bitmap
+import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +57,7 @@ import com.iceblox.app.SessionSummary
 import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.debug.DebugLog
+import com.iceblox.app.settings.UserSettings
 
 @Composable
 fun CameraScreen(
@@ -80,14 +84,27 @@ fun CameraScreen(
     val testStatus by viewModel.testStatus.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
+    val appContext = viewModel.getApplication<android.app.Application>()
+    var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(appContext)) }
 
     val freezeState by viewModel.previewFreezer.freezeState.collectAsState()
+
+    val activity = LocalContext.current as? Activity
+    DisposableEffect(activity) {
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> viewModel.startForegroundPipeline(isTestMode)
+                Lifecycle.Event.ON_START -> {
+                    userDebugEnabled = UserSettings.isUserDebugEnabled(appContext)
+                    viewModel.startForegroundPipeline(isTestMode)
+                }
 
                 Lifecycle.Event.ON_STOP -> {
                     if (!isTestMode) {
@@ -204,7 +221,7 @@ fun CameraScreen(
             )
         }
 
-        if (BuildConfig.DEBUG && debugMode && sessionSummary == null) {
+        if ((debugMode || userDebugEnabled) && sessionSummary == null) {
             DebugOverlay(
                 detections = debugDetections,
                 rawDetections = rawDetections,
@@ -212,7 +229,8 @@ fun CameraScreen(
                 fps = fps,
                 queueDepth = queueDepth,
                 isConnected = isConnected,
-                logEntries = logEntries
+                logEntries = logEntries,
+                showFeedAndLogs = debugMode
             )
         }
 

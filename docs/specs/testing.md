@@ -348,6 +348,8 @@ xcrun simctl privacy "$UDID" grant camera "$BUNDLE_ID"
 
 End-to-end tests validate the full pipeline: the Android and iOS apps detect a plate from injected images, hash it, post it to the Go server, and the server persists a sighting in PostgreSQL.
 
+**Important:** Always use the e2e scripts (`e2e/ios/run.sh`, `e2e/android/run.sh`) or the screenshot session script (`scripts/simulator/screenshot_session.sh`) to launch the iOS app for testing — never call `xcrun simctl launch` directly. The scripts set required `SIMCTL_CHILD_*` environment variables (e.g., `E2E_SKIP_NOTIFICATION_REQUEST=1`) that suppress system dialogs (notifications, location) which would otherwise block automation. See `e2e/ios/lib/app.sh:launch_app()` for the full set of env vars.
+
 ### Entry Point
 
 ```bash
@@ -412,10 +414,12 @@ For stop-summary verification, the iOS harness sets `E2E_USE_STOP_RECORDING_TRIG
 
 ### Timing
 
-- **Android**: The app batches plates every 30 seconds (`BATCH_INTERVAL_MS`). Since a single plate detection is well below `BATCH_SIZE` (65), the tests wait 35 seconds for the timer-based flush.
+- Both platforms flush within 1 second of any plate being queued (deadline flush). The 30-second batch timer is a fallback safety net.
 - **iOS**: The E2E harness overrides the batch interval to 1 second at launch, so each scenario waits 6 seconds for upload and DB persistence.
 
 ## Local Device Testing
+
+### Android
 
 `scripts/android-test.sh` supports testing on a physical Android device connected via USB or Wi-Fi ADB. It automates the full build-deploy-run cycle for local development.
 
@@ -434,6 +438,26 @@ scripts/android-test.sh --prod-server  # prod server (Railway)
 6. **(Local only)** Starts a Docker PostgreSQL container if needed, sets up `adb reverse tcp:8080`, and runs the Go server in the foreground
 
 A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates.
+
+### iOS
+
+`scripts/ios-test.sh` supports testing on a physical iOS device connected via USB. It automates the full build-deploy-run cycle for local development.
+
+```bash
+scripts/ios-test.sh               # local server (default)
+scripts/ios-test.sh --prod-server  # prod server (Railway)
+```
+
+**What it does:**
+
+1. **Detects** a USB-connected iOS device via `xcrun xctrace list devices`
+2. **Patches** `AppConfig.serverBaseURL` for the target (host machine's LAN IP for local, or the Railway production URL)
+3. **Builds** the app for device (`generic/platform=iOS`) with automatic provisioning
+4. **Reverts** the AppConfig patch after build
+5. **Installs and launches** the app on the device via `xcrun devicectl`
+6. **(Local only)** Starts a Docker PostgreSQL container if needed and runs the Go server in the foreground
+
+A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates. For local server mode, the script detects the Mac's LAN IP (via `ipconfig getifaddr`) and patches AppConfig to point at `http://<LAN_IP>:8080` since `localhost` is not reachable from a physical device.
 
 ## Future Enhancements
 

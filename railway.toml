@@ -1,7 +1,3 @@
-[build]
-rootDirectory = "."
-dockerfilePath = "server/Dockerfile"
-
 [deploy]
 healthcheckPath = "/healthz"
 healthcheckTimeout = 30

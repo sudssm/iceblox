@@ -125,16 +125,7 @@ if [ ! -f server/data/plates.txt ]; then
     make setup
     make extract
 fi
-FCM_SA="server/fcm-service-account.json"
-FCM_FLAG=""
-if [ -f "$FCM_SA" ]; then
-    FCM_FLAG="FCM_SERVICE_ACCOUNT=fcm-service-account.json"
-    echo "FCM service account found — push notifications enabled"
-else
-    echo "WARNING: $FCM_SA not found — push notifications disabled"
-fi
-
 echo ""
 echo "=== App launched! Starting Go server with $(wc -l < server/data/plates.txt | tr -d ' ') plates (Ctrl+C to stop) ==="
 echo ""
-make run-server DB_DSN="$DB_DSN" $FCM_FLAG
+make run-server DB_DSN="$DB_DSN"

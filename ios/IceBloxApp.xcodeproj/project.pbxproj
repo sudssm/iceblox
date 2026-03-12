@@ -30,8 +30,6 @@
 		A1B2C3D4E5F60001000033 /* DebugOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */; };
 		A1B2C3D4E5F60001000034 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */; };
 		A1B2C3D4E5F60001000035 /* plate_detector.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */; };
-		A1B2C3D4E5F60001000043 /* plate_ocr.onnx in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000043 /* plate_ocr.onnx */; };
-		A1B2C3D4E5F60001000044 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6000D000002 /* onnxruntime */; };
 		A1B2C3D4E5F60001000036 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000036 /* DebugLog.swift */; };
 		A1B2C3D4E5F60001000037 /* DebugLogPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */; };
 		A1B2C3D4E5F60001000038 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000038 /* SplashScreenView.swift */; };
@@ -39,6 +37,8 @@
 		A1B2C3D4E5F60001000040 /* AlertClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000040 /* AlertClient.swift */; };
 		A1B2C3D4E5F60001000041 /* AlertClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000041 /* AlertClientTests.swift */; };
 		A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */; };
+		A1B2C3D4E5F60001000043 /* plate_ocr.onnx in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000043 /* plate_ocr.onnx */; };
+		A1B2C3D4E5F60001000044 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6000D000002 /* onnxruntime */; };
 		A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000045 /* Pepper.swift */; };
 		A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */; };
 		A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */; };
@@ -69,8 +69,6 @@
 		A1B2C3D4E5F60002000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000004 /* IceBloxAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IceBloxAppTests.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60006000001 /* IceBloxApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IceBloxApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1B2C3D4E5F60006000002 /* IceBloxAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IceBloxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60002000010 /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000012 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
@@ -90,7 +88,6 @@
 		A1B2C3D4E5F60002000033 /* DebugOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugOverlayView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = plate_detector.mlpackage; sourceTree = "<group>"; };
-		A1B2C3D4E5F60002000043 /* plate_ocr.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = plate_ocr.onnx; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000036 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000037 /* DebugLogPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogPanel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000038 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
@@ -98,6 +95,7 @@
 		A1B2C3D4E5F60002000040 /* AlertClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClient.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000041 /* AlertClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertClientTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000043 /* plate_ocr.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = plate_ocr.onnx; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000045 /* Pepper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pepper.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpander.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookalikeExpanderTests.swift; sourceTree = "<group>"; };
@@ -111,6 +109,8 @@
 		A1B2C3D4E5F60002000081 /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000090 /* MapClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapClient.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000091 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60006000001 /* IceBloxApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IceBloxApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F60006000002 /* IceBloxAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IceBloxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,7 +132,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A1B2C3D4E5F60008000001 /* root */ = {
+		A1B2C3D4E5F60008000001 = {
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60008000002 /* IceBloxApp */,
@@ -271,12 +271,13 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		A1B2C3D4E5F60008000020 /* Settings */ = {
+		A1B2C3D4E5F60008000018 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D4E5F60002000081 /* UserSettings.swift */,
+				A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */,
+				A1B2C3D4E5F60002000043 /* plate_ocr.onnx */,
 			);
-			path = Settings;
+			path = Models;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F60008000019 /* Debug */ = {
@@ -287,13 +288,12 @@
 			path = Debug;
 			sourceTree = "<group>";
 		};
-		A1B2C3D4E5F60008000018 /* Models */ = {
+		A1B2C3D4E5F60008000020 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D4E5F60002000035 /* plate_detector.mlpackage */,
-				A1B2C3D4E5F60002000043 /* plate_ocr.onnx */,
+				A1B2C3D4E5F60002000081 /* UserSettings.swift */,
 			);
-			path = Models;
+			path = Settings;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -313,10 +313,10 @@
 			dependencies = (
 			);
 			name = IceBloxApp;
-			productName = IceBloxApp;
 			packageProductDependencies = (
 				A1B2C3D4E5F6000D000002 /* onnxruntime */,
 			);
+			productName = IceBloxApp;
 			productReference = A1B2C3D4E5F60006000001 /* IceBloxApp.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -364,11 +364,11 @@
 				en,
 				Base,
 			);
-			mainGroup = A1B2C3D4E5F60008000001 /* root */;
-			productRefGroup = A1B2C3D4E5F60008000004 /* Products */;
+			mainGroup = A1B2C3D4E5F60008000001;
 			packageReferences = (
 				A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
 			);
+			productRefGroup = A1B2C3D4E5F60008000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -390,6 +390,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A1B2C3D4E5F60009000004 /* Generate Pepper */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../.env",
+			);
+			name = "Generate Pepper";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/IceBloxApp/Config/Pepper.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "ENV_FILE=\"${SRCROOT}/../.env\"\nOUT_FILE=\"${SRCROOT}/IceBloxApp/Config/Pepper.swift\"\nif [ ! -f \"$ENV_FILE\" ]; then\n  echo \"error: .env file not found at $ENV_FILE\" >&2\n  exit 1\nfi\nPEPPER=$(grep '^PEPPER=' \"$ENV_FILE\" | head -1 | cut -d'=' -f2-)\nif [ -z \"$PEPPER\" ]; then\n  echo \"error: PEPPER not found in $ENV_FILE\" >&2\n  exit 1\nfi\ncat > \"$OUT_FILE\" << SWIFT\n// Auto-generated from .env — do not edit\nenum Pepper {\n    static let value = \"$PEPPER\"\n}\nSWIFT\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A1B2C3D4E5F60009000001 /* Sources */ = {
@@ -448,29 +471,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		A1B2C3D4E5F60009000004 /* Generate Pepper */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/../.env",
-			);
-			name = "Generate Pepper";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/IceBloxApp/Config/Pepper.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "ENV_FILE=\"${SRCROOT}/../.env\"\nOUT_FILE=\"${SRCROOT}/IceBloxApp/Config/Pepper.swift\"\nif [ ! -f \"$ENV_FILE\" ]; then\n  echo \"error: .env file not found at $ENV_FILE\" >&2\n  exit 1\nfi\nPEPPER=$(grep '^PEPPER=' \"$ENV_FILE\" | head -1 | cut -d'=' -f2-)\nif [ -z \"$PEPPER\" ]; then\n  echo \"error: PEPPER not found in $ENV_FILE\" >&2\n  exit 1\nfi\ncat > \"$OUT_FILE\" << SWIFT\n// Auto-generated from .env — do not edit\nenum Pepper {\n    static let value = \"$PEPPER\"\n}\nSWIFT\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		A1B2C3D4E5F6000B000001 /* PBXTargetDependency */ = {
@@ -607,14 +607,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Z9AXZ3RHT2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = IceBloxApp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "IceBlox needs camera access to detect license plates";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "IceBlox uses your location to tag plate detections with GPS coordinates";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "IceBlox needs camera access to detect license plates";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "IceBlox uses your location to tag plate detections with GPS coordinates";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -637,14 +638,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Z9AXZ3RHT2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = IceBloxApp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "IceBlox needs camera access to detect license plates";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "IceBlox uses your location to tag plate detections with GPS coordinates";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "IceBlox needs camera access to detect license plates";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "IceBlox uses your location to tag plate detections with GPS coordinates";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -666,7 +668,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Z9AXZ3RHT2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
@@ -685,7 +687,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Z9AXZ3RHT2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
@@ -701,15 +703,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1B2C3D4E5F6000A000003 /* Build configuration list for PBXProject "IceBloxApp" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1B2C3D4E5F6000C000001 /* Debug */,
-				A1B2C3D4E5F6000C000002 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A1B2C3D4E5F6000A000001 /* Build configuration list for PBXNativeTarget "IceBloxApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -724,6 +717,15 @@
 			buildConfigurations = (
 				A1B2C3D4E5F6000C000005 /* Debug */,
 				A1B2C3D4E5F6000C000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F6000A000003 /* Build configuration list for PBXProject "IceBloxApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F6000C000001 /* Debug */,
+				A1B2C3D4E5F6000C000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

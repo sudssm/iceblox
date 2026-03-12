@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -35,12 +36,6 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	port := fs.Int("port", 8080, "server listen port")
 	platesFile := fs.String("plates-file", "data/plates.txt", "path to plaintext plates file")
 	pepper := fs.String("pepper", "", "HMAC pepper for hashing plates")
-	apnsKeyFile := fs.String("apns-key-file", "", "path to APNs .p8 key file")
-	apnsKeyID := fs.String("apns-key-id", "", "APNs key ID")
-	apnsTeamID := fs.String("apns-team-id", "", "APNs team ID")
-	apnsBundleID := fs.String("apns-bundle-id", "", "APNs bundle ID")
-	apnsProduction := fs.Bool("apns-production", false, "use APNs production endpoint")
-	fcmServiceAccount := fs.String("fcm-service-account", "", "path to FCM service account JSON file")
 	dbDSN := fs.String("db-dsn", "postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable", "PostgreSQL connection string")
 	reportUploadDir := fs.String("report-upload-dir", "data/reports", "directory for report photo uploads")
 	migrateOnly := fs.Bool("migrate-only", false, "run database migrations and exit")
@@ -67,39 +62,21 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	if v := getenv("PLATES_FILE"); v != "" {
 		*platesFile = v
 	}
-	if v := getenv("APNS_KEY_FILE"); v != "" {
-		*apnsKeyFile = v
-	}
-	if v := getenv("APNS_KEY_ID"); v != "" {
-		*apnsKeyID = v
-	}
-	if v := getenv("APNS_TEAM_ID"); v != "" {
-		*apnsTeamID = v
-	}
-	if v := getenv("APNS_BUNDLE_ID"); v != "" {
-		*apnsBundleID = v
-	}
-	if v := getenv("APNS_PRODUCTION"); v != "" {
-		*apnsProduction = v == "true" || v == "1"
-	}
-	if v := getenv("FCM_SERVICE_ACCOUNT"); v != "" {
-		*fcmServiceAccount = v
+	// APNs: JSON config from env var
+	var apnsConfig *apnsConfigJSON
+	if v := getenv("APNS_CONFIG_JSON"); v != "" {
+		apnsConfig = &apnsConfigJSON{}
+		if err := json.Unmarshal([]byte(v), apnsConfig); err != nil {
+			return fmt.Errorf("invalid APNS_CONFIG_JSON: %w", err)
+		}
 	}
 	if v := getenv("REPORT_UPLOAD_DIR"); v != "" {
 		*reportUploadDir = v
 	}
-	if v := getenv("FCM_SERVICE_ACCOUNT_JSON"); v != "" && *fcmServiceAccount == "" {
-		f, err := os.CreateTemp("", "fcm-sa-*.json")
-		if err != nil {
-			return fmt.Errorf("failed to write FCM service account: %w", err)
-		}
-		defer os.Remove(f.Name())
-		if _, err := f.WriteString(v); err != nil {
-			f.Close()
-			return fmt.Errorf("failed to write FCM service account: %w", err)
-		}
-		f.Close()
-		*fcmServiceAccount = f.Name()
+	// FCM: inline service account JSON from env var
+	var fcmServiceAccountJSON []byte
+	if v := getenv("FCM_SERVICE_ACCOUNT_JSON"); v != "" {
+		fcmServiceAccountJSON = []byte(v)
 	}
 	if v := getenv("S3_BUCKET"); v != "" {
 		*s3Bucket = v
@@ -139,9 +116,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	defer subStore.Close()
 
 	var apnsClient *push.APNsClient
-	if *apnsKeyFile != "" {
+	if apnsConfig != nil {
 		var err error
-		apnsClient, err = push.NewAPNsClient(*apnsKeyFile, *apnsKeyID, *apnsTeamID, *apnsBundleID, *apnsProduction)
+		apnsClient, err = push.NewAPNsClient([]byte(apnsConfig.KeyP8), apnsConfig.KeyID, apnsConfig.TeamID, apnsConfig.BundleID, apnsConfig.Production)
 		if err != nil {
 			return fmt.Errorf("failed to create APNs client: %w", err)
 		}
@@ -149,9 +126,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 	}
 
 	var fcmClient *push.FCMClient
-	if *fcmServiceAccount != "" {
+	if len(fcmServiceAccountJSON) > 0 {
 		var err error
-		fcmClient, err = push.NewFCMClient(*fcmServiceAccount)
+		fcmClient, err = push.NewFCMClient(fcmServiceAccountJSON)
 		if err != nil {
 			return fmt.Errorf("failed to create FCM client: %w", err)
 		}
@@ -344,6 +321,14 @@ func (s *dbReportStore) CreateReport(ctx context.Context, report *handler.Report
 	}
 	report.ID = dbReport.ID
 	return nil
+}
+
+type apnsConfigJSON struct {
+	KeyP8      string `json:"key_p8"`
+	KeyID      string `json:"key_id"`
+	TeamID     string `json:"team_id"`
+	BundleID   string `json:"bundle_id"`
+	Production bool   `json:"production"`
 }
 
 func seedDatabase(ctx context.Context, database *db.DB, store *targets.Store) error {

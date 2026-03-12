@@ -195,6 +195,8 @@ After hashing, the app MUST immediately discard the plaintext plate text from me
 
 **Exception:** In debug builds only, the `DebugLog` ring buffer (REQ-M-19, DBG-2) MAY retain normalized plate text in memory for display in the debug overlay detection feed. This buffer is capped at 50 entries and exists only in the app process — it is never persisted to disk or transmitted. Release builds MUST NOT include this buffer.
 
+**Exception:** In user debug mode (REQ-M-18), the app MAY display normalized plate text and truncated hash on bounding boxes overlaid on the camera preview. This text is rendered on-screen only and is never persisted to disk, logged, or transmitted. The detection feed and log panel are not shown in user debug mode.
+
 ### Server Communication
 
 #### REQ-M-14: Batch Upload
@@ -203,7 +205,7 @@ The app MUST send hashed plates to the server via HTTPS POST using the batch API
 - Send a batch when the queue reaches 65 plates, OR
 - Send a batch every 30 seconds if the queue is non-empty, OR
 - Send a batch immediately when connectivity is restored after an offline period
-- **(Android)**: Additionally, send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
+- Send a batch within 1 second of any plate being queued (if below batch size). This deadline flush ensures plates reach the server promptly without waiting for the full 30-second timer.
 
 Whichever condition is met first triggers the send. When the queue contains more entries than the batch size, the app MUST send consecutive batches in a loop until the queue is drained or an error occurs.
 
@@ -301,7 +303,7 @@ The app MUST handle incoming push notifications:
 
 #### REQ-M-63: Notification Privacy
 
-Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. Tapping the notification MUST open the map view on both platforms.
+Push notification payloads MUST NOT contain plaintext plate text, hashes, or target identifiers. Notification content is limited to a generic alert message (e.g., "Potential ICE Activity Reported") and a sighting reference ID. Tapping a proximity alert notification MUST open the map view on both platforms. Tapping other local notifications (e.g., background-pause) MUST navigate to the contextually appropriate screen (e.g., returning to the camera view).
 
 ### Settings
 
@@ -311,10 +313,11 @@ The app MUST provide a Settings screen accessible from a gear icon on the splash
 
 **Settings screen contents:**
 - **Push Notifications toggle**: A toggle switch to enable or disable push notifications. Defaults to enabled. The toggle state MUST persist across app restarts using local storage (iOS: `UserDefaults`, Android: `SharedPreferences`).
+- **Debug Mode toggle**: A toggle switch to enable or disable user debug mode (REQ-M-18). Defaults to disabled. When enabled, shows detection bounding boxes on the camera preview. The toggle state MUST persist across app restarts. Includes a subtitle: "Shows detection bounding boxes on the camera preview".
 
 **Platform implementations:**
-- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist the toggle state via `UserDefaults`. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
-- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist the toggle state. The screen is navigated to from `MainActivity`.
+- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist toggle states via `UserDefaults`. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
+- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist toggle states. The screen is navigated to from `MainActivity`.
 
 When push notifications are disabled via the toggle, the app MUST skip requesting notification permission and skip FCM/APNs token registration on subsequent launches (see REQ-M-60).
 
@@ -357,23 +360,40 @@ When the app enters background, it MUST perform a final subscribe call to refres
 
 ### Debug Mode
 
+The app has two debug modes that share the same overlay UI but expose different levels of detail:
+
+1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG MODE]` label.
+2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG MODE]` label.
+
+The overlay is visible when either mode is active. When both are active, the full developer overlay is shown.
+
 #### REQ-M-18: Debug Mode Toggle
 
-The app MUST include a debug mode, toggled via a hidden gesture (e.g., triple-tap on the camera preview). Debug mode MUST NOT be accessible in production builds distributed via app stores.
+The app MUST include a developer debug mode, toggled via a hidden gesture (e.g., triple-tap on the camera preview). Developer debug mode MUST NOT be accessible in production builds distributed via app stores.
+
+The app MUST also include a user debug mode, toggled via a persistent setting in the Settings screen (REQ-M-70). User debug mode is available in all builds and shows only bounding boxes on the camera preview.
 
 #### REQ-M-19: Debug Mode Features
 
-When debug mode is active, the app MUST:
+When developer debug mode is active, the app MUST:
 - Display bounding boxes around detected plates on the camera preview
 - Display the recognized plate text above each bounding box
 - Display the HMAC hash below each bounding box (truncated to first 8 characters)
 - Display a frame rate counter (detection fps)
 - Display the current queue depth (pending uploads)
 - Display network connectivity status
+- Display the detection feed (DBG-2) and log panel (DBG-4)
+
+When user debug mode is active, the app MUST:
+- Display bounding boxes around detected plates on the camera preview (yellow for raw detections, green for OCR'd plates)
+- Display the recognized plate text and truncated hash on OCR'd plate boxes
+
+When user debug mode is active, the app MUST NOT display:
+- The detection feed, log panel, FPS/queue header, or `[DEBUG MODE]` label (these are developer-only)
 
 The app MAY:
-- Capture and store still images of detected plates to the app's sandboxed storage
-- Export debug logs
+- Capture and store still images of detected plates to the app's sandboxed storage (developer debug mode only)
+- Export debug logs (developer debug mode only)
 
 #### REQ-M-20: Debug Image Storage
 
@@ -432,10 +452,10 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 │                    (system status bar)                            │
 │  FPS: 28  │  Queue: 3                                            │
 │  ● Online │  Det: 5                        ┌────────────────┐    │
-│                                            │ AB12345 [SENT] │    │
-│        ┌─────────────┐                     │ XY98765 [SENT] │    │
-│        │  ABC 1234   │  ← plate text       │ TEST123 [QUED] │    │
-│        │ ┌─────────┐ │                     │                │    │
+│                                            │ Detection Feed │    │
+│        ┌─────────────┐                     │ AB12345 [SENT] │    │
+│        │  ABC 1234   │  ← plate text       │ XY98765 [SENT] │    │
+│        │ ┌─────────┐ │                     │ TEST123 [QUED] │    │
 │        │ │ (plate) │ │  ← green box        └────────────────┘    │
 │        │ └─────────┘ │                                           │
 │        │  a3f8b2c1   │  ← hash                                  │
@@ -473,7 +493,7 @@ If the device reaches thermal throttling state, the app MUST reduce frame proces
 
 #### REQ-M-40: No Plaintext Exfiltration
 
-Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted in debug builds only.
+Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted in debug builds only. The user debug mode exception in REQ-M-13 also applies — on-screen bounding box labels showing plate text and hash are permitted when the user explicitly enables debug mode via Settings.
 
 #### REQ-M-41: No Image Exfiltration
 
@@ -563,6 +583,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - Total plates detected this session
   - Total match count this session (from server match responses), labeled "Matches"
   - Pending plate count (plates queued but not yet uploaded), labeled "Pending" in amber/yellow, shown only when count > 0
+  - "No GPS" warning in orange (shown only when location permission is denied)
 - **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session
   - Tapping ends the current session and opens the session summary
@@ -595,9 +616,12 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 - `Pending sync` is shown only when uploads from the stopped session have not all been acknowledged yet
 - Dismissing the summary returns the user to the splash screen
 
-### Debug Overlay (Debug Mode Only)
+### Debug Overlay
+
+The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown:
 
 ```
+Developer debug mode (full overlay):
 ┌──────────────────────────────────────────────────────┐
 │  FPS: 28  │  Queue: 3  │  ● Online                  │
 │                                                      │
@@ -610,6 +634,19 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 │        └─────────────┘                               │
 │                                                      │
 │  [DEBUG MODE]                                        │
+└──────────────────────────────────────────────────────┘
+
+User debug mode (bounding boxes only):
+┌──────────────────────────────────────────────────────┐
+│                                                      │
+│        ┌─────────────┐                               │
+│        │  ABC 1234   │  ← recognized text            │
+│        │ ┌─────────┐ │                               │
+│        │ │ (plate) │ │  ← bounding box               │
+│        │ └─────────┘ │                               │
+│        │  a3f8b2c1   │  ← hash (truncated)           │
+│        └─────────────┘                               │
+│                                                      │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -699,7 +736,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project setup | REQ-M-3, REQ-M-4, C-5 | Auto-rotation support, Info.plist permissions (camera, location), min iOS 17 |
-| 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 1080p preset, rear camera, preview layer |
+| 2 | Camera capture | REQ-M-1, REQ-M-2 | AVCaptureSession with 4K preset (1080p fallback), multi-lens virtual device selection (triple → dual-wide → dual → wide-angle), baseline zoom to wide lens, preview layer |
 | 3 | UI shell | REQ-M-3, REQ-M-3a, REQ-M-3b, UI spec | Splash screen with Start Camera button → full-screen camera preview + stop control + status bar |
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped plate regions, normalization, validation |
@@ -719,7 +756,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
 | 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer on active, subscribe+stop on background (refresh TTL for post-close notifications) |
-| 22 | Settings | REQ-M-70 | SettingsView.swift: gear icon on splash, modal sheet, push notification toggle via UserSettings singleton |
+| 22 | Settings | REQ-M-70 | SettingsView.swift: gear icon on splash, modal sheet, push notification toggle + debug mode toggle via UserSettings singleton |
 
 ### Key Technical Notes
 
@@ -784,7 +821,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
 | 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer with the foreground/background capture lifecycle and subscribe on stop to refresh TTL |
-| 22 | Settings | REQ-M-70 | SettingsScreen.kt: gear icon on splash, full-screen composable, push notification toggle via UserSettings object |
+| 22 | Settings | REQ-M-70 | SettingsScreen.kt: gear icon on splash, full-screen composable, push notification toggle + debug mode toggle via UserSettings object |
 
 ### Key Technical Notes
 

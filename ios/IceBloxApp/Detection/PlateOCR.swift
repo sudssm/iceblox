@@ -48,13 +48,21 @@ enum PlateOCR {
     }()
 
     static func recognizeText(in pixelBuffer: CVPixelBuffer) -> OCROutput? {
-        guard let session else { return nil }
+        guard let session else {
+            DebugLog.shared.e("PlateOCR", "ONNX session is nil — model not loaded")
+            return nil
+        }
 
         let srcWidth = CVPixelBufferGetWidth(pixelBuffer)
         let srcHeight = CVPixelBufferGetHeight(pixelBuffer)
-        guard srcWidth > 0, srcHeight > 0 else { return nil }
+        guard srcWidth > 0, srcHeight > 0 else {
+            DebugLog.shared.w("PlateOCR", "Invalid crop dimensions: \(srcWidth)x\(srcHeight)")
+            return nil
+        }
+        DebugLog.shared.d("PlateOCR", "OCR input: \(srcWidth)x\(srcHeight)")
 
         guard let inputData = preprocessImage(pixelBuffer, srcWidth: srcWidth, srcHeight: srcHeight) else {
+            DebugLog.shared.w("PlateOCR", "Preprocessing failed")
             return nil
         }
 
@@ -74,9 +82,13 @@ enum PlateOCR {
                 runOptions: nil
             )
 
-            guard let outputTensor = outputs[outputNames[0]] else { return nil }
+            guard let outputTensor = outputs[outputNames[0]] else {
+                DebugLog.shared.w("PlateOCR", "No output tensor from ONNX")
+                return nil
+            }
             let outputData = try outputTensor.tensorData()
             let shapeInfo = try outputTensor.tensorTypeAndShapeInfo()
+            DebugLog.shared.d("PlateOCR", "ONNX output shape: \(shapeInfo.shape)")
 
             return fixedSlotDecode(data: outputData as Data, shape: shapeInfo.shape)
         } catch {
@@ -135,8 +147,10 @@ enum PlateOCR {
             numSlots = shape[0].intValue
             alphabetSize = shape[1].intValue
         } else {
+            DebugLog.shared.w("PlateOCR", "Unexpected output shape rank: \(shape.count)")
             return nil
         }
+        DebugLog.shared.d("PlateOCR", "Decode: numSlots=\(numSlots) alphabetSize=\(alphabetSize)")
 
         var decoded: [Character] = []
         var charConfidences: [Float] = []
@@ -179,10 +193,20 @@ enum PlateOCR {
             }
         }
 
-        guard !decoded.isEmpty else { return nil }
+        guard !decoded.isEmpty else {
+            DebugLog.shared.w("PlateOCR", "Decode produced no characters (all padding)")
+            return nil
+        }
 
         let avgConfidence = totalConfidence / Float(decoded.count)
-        guard avgConfidence >= AppConfig.ocrConfidenceThreshold else { return nil }
+        let text = String(decoded)
+        let conf = String(format: "%.3f", avgConfidence)
+        let thresh = "\(AppConfig.ocrConfidenceThreshold)"
+        DebugLog.shared.d("PlateOCR", "Decoded: (\(text.count) chars) avgConf=\(conf) threshold=\(thresh)")
+        guard avgConfidence >= AppConfig.ocrConfidenceThreshold else {
+            DebugLog.shared.w("PlateOCR", "REJECTED low confidence: (\(text.count) chars) \(conf) < \(thresh)")
+            return nil
+        }
 
         return OCROutput(text: String(decoded), charConfidences: charConfidences, slotCandidates: allSlotCandidates)
     }

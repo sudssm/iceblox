@@ -133,7 +133,7 @@ final class OfflineQueue {
 
     func clearAll() {
         queue.sync {
-            sqlite3_exec(db, "DELETE FROM queue", nil, nil, nil)
+            _ = sqlite3_exec(db, "DELETE FROM queue", nil, nil, nil)
         }
     }
 
