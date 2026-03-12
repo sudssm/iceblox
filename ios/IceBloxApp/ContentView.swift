@@ -65,6 +65,7 @@ struct ContentView: View {
     @State private var alertClient: AlertClient?
     @State private var debugMode = AppConfig.forceDebugMode
     @ObservedObject private var debugLog = DebugLog.shared
+    @ObservedObject private var userSettings = UserSettings.shared
     @State private var lastStatusUpdate = Date()
     @State private var sessionID = UUID().uuidString
     @State private var sessionStartedAt = Date()
@@ -214,8 +215,10 @@ struct ContentView: View {
                 frameProcessor?.debugMode = debugMode
             }
         }
+        #endif
         .overlay {
-            if debugMode, !showingSummary {
+            let userDebug = userSettings.userDebugEnabled
+            if (debugMode || userDebug), !showingSummary {
                 DebugOverlayView(
                     detections: frameProcessor?.currentDetections ?? [],
                     rawDetections: frameProcessor?.rawDetections ?? [],
@@ -223,13 +226,13 @@ struct ContentView: View {
                     fps: frameProcessor?.fps ?? 0,
                     queueDepth: offlineQueue.count,
                     isConnected: connectivityMonitor.isConnected,
-                    logEntries: debugLog.entries
+                    logEntries: debugLog.entries,
+                    showFeedAndLogs: debugMode
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
             }
         }
-        #endif
         .onReceive(statusTimer) { _ in
             lastStatusUpdate = Date()
             pendingSessionUploads = offlineQueue.count(sessionID: sessionID)

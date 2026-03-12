@@ -54,6 +54,7 @@ import com.iceblox.app.SessionSummary
 import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.debug.DebugLog
+import com.iceblox.app.settings.UserSettings
 
 @Composable
 fun CameraScreen(
@@ -80,6 +81,8 @@ fun CameraScreen(
     val testStatus by viewModel.testStatus.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
+    val appContext = viewModel.getApplication<android.app.Application>()
+    var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(appContext)) }
 
     val freezeState by viewModel.previewFreezer.freezeState.collectAsState()
 
@@ -87,7 +90,10 @@ fun CameraScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> viewModel.startForegroundPipeline(isTestMode)
+                Lifecycle.Event.ON_START -> {
+                    userDebugEnabled = UserSettings.isUserDebugEnabled(appContext)
+                    viewModel.startForegroundPipeline(isTestMode)
+                }
 
                 Lifecycle.Event.ON_STOP -> {
                     if (!isTestMode) {
@@ -204,7 +210,7 @@ fun CameraScreen(
             )
         }
 
-        if (BuildConfig.DEBUG && debugMode && sessionSummary == null) {
+        if ((debugMode || userDebugEnabled) && sessionSummary == null) {
             DebugOverlay(
                 detections = debugDetections,
                 rawDetections = rawDetections,
@@ -212,7 +218,8 @@ fun CameraScreen(
                 fps = fps,
                 queueDepth = queueDepth,
                 isConnected = isConnected,
-                logEntries = logEntries
+                logEntries = logEntries,
+                showFeedAndLogs = debugMode
             )
         }
 
