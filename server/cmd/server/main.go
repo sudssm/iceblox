@@ -114,7 +114,7 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 
 	redisURL := getenv("REDIS_URL")
 	if redisURL == "" {
-		return fmt.Errorf("REDIS_URL is required")
+		redisURL = "redis://localhost:6379"
 	}
 	subStore, err := subscribers.New(redisURL)
 	if err != nil {
