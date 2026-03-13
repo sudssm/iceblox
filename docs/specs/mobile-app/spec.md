@@ -214,7 +214,7 @@ Whichever condition is met first triggers the send. When the queue contains more
 The server response includes a `results` array with a per-plate `matched` boolean (see server spec REQ-S-4). The `results` array is positionally aligned with the `plates` array in the request. The app MUST:
 - Iterate over the `results` array and correlate each result with the corresponding queued entry by position
 - Increment the originating session target counter for each plate where `matched` is `true`
-- Display the updated match count in the status bar
+- Update the session's match count (displayed in the session summary per REQ-M-3c)
 - Update the corresponding debug feed entry by matching on hash prefix. Since each variant has its own feed entry (REQ-M-12a), each variant transitions independently: `matched=true` sets state to MATCHED, `matched=false` sets state to SENT. A match response MUST upgrade the feed entry regardless of its current state (QUEUED or SENT).
 - Fire `onPlateSent` callbacks for ALL entries in a successfully deleted batch, even if response body parsing fails (defaulting to `matched=false`). This prevents entries from getting stuck in the QUEUED state in the debug feed when the server returns a 200 but the response body is malformed or empty.
 - NOT alert the user or provide any visual/audio feedback on matches
@@ -566,7 +566,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  ● Online │ Last: 2s ago │ Plates: 47 │ Matches: 2  │
+│  ● Online                              Last: 2s ago  │
 │                                                      │
 │                  Camera Preview                      │
 │                  (full screen)                       │
@@ -577,12 +577,11 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 ```
 
 - **Status bar** (top, always visible):
-  - Connectivity indicator (● Online / ● Offline)
-  - Time since last plate detected ("Last: 2s ago", or "Last: --" if none)
-  - Total plates detected this session
-  - Total match count this session (from server match responses), labeled "Matches"
-  - Pending plate count (plates queued but not yet uploaded), labeled "Pending" in amber/yellow, shown only when count > 0
+  - Connectivity indicator (● Online / ● Offline) — both the dot and "Online"/"Offline" text are colored green/red
   - "No GPS" warning in orange (shown only when location permission is denied)
+  - Nearby sightings count in cyan (shown only when count > 0, iOS only for now)
+  - Time since last plate detected ("Last: 2s ago", or "Last: --" if none), right-aligned
+  - Session-scoped counts (plates, matches, pending) are intentionally omitted from the status bar to keep the dashboard UI minimal; these metrics are available in the session summary (REQ-M-3c)
 - **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session
   - Tapping ends the current session and opens the session summary
@@ -590,7 +589,6 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - Shown only in debug builds with debug mode active, when the offline queue is non-empty (`queueDepth > 0`)
   - Displays `"N uploads queued"` in amber/yellow monospace text on a semi-transparent black pill-shaped background
   - Includes a dismiss button (✕) that clears the entire offline queue
-  - In production, the status bar "Pending" count replaces this banner
 - Camera preview fills the entire screen
 - Minimal UI — this is a "set and forget" dashboard app
 

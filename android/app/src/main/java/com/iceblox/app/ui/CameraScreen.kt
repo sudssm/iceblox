@@ -66,13 +66,10 @@ fun CameraScreen(
     onSessionFinished: () -> Unit = {},
     viewModel: MainViewModel = viewModel()
 ) {
-    val plateCount by viewModel.plateCount.collectAsState()
-    val targetCount by viewModel.targetCount.collectAsState()
     val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
     val isConnected by viewModel.connectivityMonitor.isConnected.collectAsState()
     val hasGps by viewModel.locationProvider.hasPermission.collectAsState()
     val queueDepth by viewModel.queueDepth.collectAsState()
-    val pendingPlates by viewModel.pendingPlateCount.collectAsState()
     val fps by viewModel.frameAnalyzer.fps.collectAsState()
     val debugDetections by viewModel.frameAnalyzer.debugDetections.collectAsState()
     val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
@@ -237,9 +234,6 @@ fun CameraScreen(
         if (sessionSummary == null) {
             StatusBar(
                 isConnected = isConnected,
-                platesDetected = plateCount,
-                matchCount = targetCount,
-                pendingCount = pendingPlates,
                 lastDetectionTime = lastDetectionTime,
                 hasGps = hasGps,
                 modifier = Modifier
@@ -403,15 +397,7 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-fun StatusBar(
-    isConnected: Boolean,
-    platesDetected: Long,
-    matchCount: Int,
-    pendingCount: Int,
-    lastDetectionTime: Long,
-    hasGps: Boolean,
-    modifier: Modifier = Modifier
-) {
+fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, modifier: Modifier = Modifier) {
     val lastDetectedText = if (lastDetectionTime > 0) {
         val elapsed = (System.currentTimeMillis() - lastDetectionTime) / 1000
         if (elapsed < 60) "Last: ${elapsed}s ago" else "Last: ${elapsed / 60}m ago"
@@ -419,58 +405,30 @@ fun StatusBar(
         "Last: --"
     }
 
+    val statusColor = if (isConnected) Color.Green else Color.Red
+
     Row(
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.6f))
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 24.dp, vertical = 8.dp)
             .testTag("status_bar"),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val indicatorColor = if (isConnected) Color.Green else Color.Red
         Text(
             text = "\u25CF",
-            color = indicatorColor,
+            color = statusColor,
             fontSize = 12.sp,
             modifier = Modifier.testTag("status_indicator")
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = if (isConnected) "Online" else "Offline",
-            color = Color.White,
+            color = statusColor,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.testTag("status_text")
         )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = lastDetectedText,
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 12.sp
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = "Plates: $platesDetected",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 12.sp,
-            modifier = Modifier.testTag("plate_count")
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = "Matches: $matchCount",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 12.sp,
-            modifier = Modifier.testTag("match_count")
-        )
-        if (pendingCount > 0) {
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Pending: $pendingCount",
-                color = Color(0xFFFFB300),
-                fontSize = 12.sp,
-                modifier = Modifier.testTag("pending_count")
-            )
-        }
         if (!hasGps) {
             Spacer(modifier = Modifier.width(16.dp))
             Text(
@@ -481,5 +439,11 @@ fun StatusBar(
                 modifier = Modifier.testTag("gps_warning")
             )
         }
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = lastDetectedText,
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 12.sp
+        )
     }
 }
