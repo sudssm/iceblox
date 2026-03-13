@@ -1,96 +1,135 @@
 package subscribers
 
 import (
-	"sync"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 const defaultTTL = 1 * time.Hour
 
 // Subscriber holds a device's subscription to proximity alerts.
 type Subscriber struct {
-	Lat         float64
-	Lng         float64
-	RadiusMiles float64
-	ExpiresAt   time.Time
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	RadiusMiles float64 `json:"radius_miles"`
 }
 
-// Store is an in-memory subscriber store with automatic TTL cleanup.
+// Store is a Redis-backed subscriber store with native TTL expiry.
 type Store struct {
-	mu   sync.RWMutex
-	subs map[string]Subscriber
-	done chan struct{}
+	client *redis.Client
 }
 
-// New creates a new subscriber store and starts a background goroutine
-// that cleans expired entries every 5 minutes.
-func New() *Store {
-	s := &Store{
-		subs: make(map[string]Subscriber),
-		done: make(chan struct{}),
+// New creates a new Redis-backed subscriber store.
+func New(redisURL string) (*Store, error) {
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
-	go s.cleanup()
-	return s
+	client := redis.NewClient(opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := client.Ping(ctx).Err(); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("redis ping failed: %w", err)
+	}
+	return &Store{client: client}, nil
 }
 
-// Set adds or updates a subscriber with a 1-hour TTL from now.
+func subKey(deviceID string) string {
+	return "sub:" + deviceID
+}
+
+const activeSetKey = "sub:active"
+
+// Set adds or updates a subscriber with a 1-hour TTL.
 func (s *Store) Set(deviceID string, lat, lng, radiusMiles float64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.subs[deviceID] = Subscriber{
-		Lat:         lat,
-		Lng:         lng,
-		RadiusMiles: radiusMiles,
-		ExpiresAt:   time.Now().Add(defaultTTL),
+	sub := Subscriber{Lat: lat, Lng: lng, RadiusMiles: radiusMiles}
+	data, err := json.Marshal(sub)
+	if err != nil {
+		log.Printf("subscribers: marshal error for %s: %v", deviceID, err)
+		return
+	}
+	ctx := context.Background()
+	pipe := s.client.Pipeline()
+	pipe.Set(ctx, subKey(deviceID), data, defaultTTL)
+	pipe.SAdd(ctx, activeSetKey, deviceID)
+	if _, err := pipe.Exec(ctx); err != nil {
+		log.Printf("subscribers: redis SET error for %s: %v", deviceID, err)
 	}
 }
 
 // Get returns the subscriber for a device ID if it exists and has not expired.
 func (s *Store) Get(deviceID string) (Subscriber, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	sub, ok := s.subs[deviceID]
-	if !ok || time.Now().After(sub.ExpiresAt) {
+	ctx := context.Background()
+	data, err := s.client.Get(ctx, subKey(deviceID)).Bytes()
+	if err != nil {
+		return Subscriber{}, false
+	}
+	var sub Subscriber
+	if err := json.Unmarshal(data, &sub); err != nil {
+		log.Printf("subscribers: unmarshal error for %s: %v", deviceID, err)
 		return Subscriber{}, false
 	}
 	return sub, true
 }
 
-// All returns a copy of all active (non-expired) subscribers.
+// All returns all active (non-expired) subscribers.
 func (s *Store) All() map[string]Subscriber {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	now := time.Now()
+	ctx := context.Background()
+	ids, err := s.client.SMembers(ctx, activeSetKey).Result()
+	if err != nil {
+		log.Printf("subscribers: redis SMEMBERS error: %v", err)
+		return map[string]Subscriber{}
+	}
+	if len(ids) == 0 {
+		return map[string]Subscriber{}
+	}
+
+	keys := make([]string, len(ids))
+	for i, id := range ids {
+		keys[i] = subKey(id)
+	}
+	vals, err := s.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		log.Printf("subscribers: redis MGET error: %v", err)
+		return map[string]Subscriber{}
+	}
+
 	out := make(map[string]Subscriber)
-	for id, sub := range s.subs {
-		if now.Before(sub.ExpiresAt) {
-			out[id] = sub
+	var stale []interface{}
+	for i, val := range vals {
+		if val == nil {
+			stale = append(stale, ids[i])
+			continue
+		}
+		str, ok := val.(string)
+		if !ok {
+			stale = append(stale, ids[i])
+			continue
+		}
+		var sub Subscriber
+		if err := json.Unmarshal([]byte(str), &sub); err != nil {
+			log.Printf("subscribers: unmarshal error for %s: %v", ids[i], err)
+			stale = append(stale, ids[i])
+			continue
+		}
+		out[ids[i]] = sub
+	}
+
+	if len(stale) > 0 {
+		if err := s.client.SRem(ctx, activeSetKey, stale...).Err(); err != nil {
+			log.Printf("subscribers: redis SREM error: %v", err)
 		}
 	}
 	return out
 }
 
-// Close stops the background cleanup goroutine.
+// Close closes the Redis client connection.
 func (s *Store) Close() {
-	close(s.done)
-}
-
-func (s *Store) cleanup() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-s.done:
-			return
-		case <-ticker.C:
-			s.mu.Lock()
-			now := time.Now()
-			for id, sub := range s.subs {
-				if now.After(sub.ExpiresAt) {
-					delete(s.subs, id)
-				}
-			}
-			s.mu.Unlock()
-		}
-	}
+	s.client.Close()
 }
