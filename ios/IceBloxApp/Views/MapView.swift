@@ -6,9 +6,15 @@ struct MapView: View {
 
     #if APPSTORE_SCREENSHOTS
     private static let screenshotSightings: [MapSighting] = [
-        MapSighting(latitude: 34.0522, longitude: -118.2437, confidence: 0.85, seenAt: "2026-03-12T10:30:00Z", type: "detection", description: nil, photoUrl: nil),
-        MapSighting(latitude: 34.0195, longitude: -118.2910, confidence: 0.35, seenAt: "2026-03-12T09:15:00Z", type: "report", description: nil, photoUrl: nil),
-        MapSighting(latitude: 34.0725, longitude: -118.2615, confidence: 0.40, seenAt: "2026-03-11T14:45:00Z", type: "report", description: nil, photoUrl: nil),
+        MapSighting(
+            latitude: 34.0522, longitude: -118.2437, confidence: 0.85,
+            seenAt: "2026-03-12T10:30:00Z", type: "detection", description: nil, photoUrl: nil),
+        MapSighting(
+            latitude: 34.0195, longitude: -118.2910, confidence: 0.35,
+            seenAt: "2026-03-12T09:15:00Z", type: "report", description: nil, photoUrl: nil),
+        MapSighting(
+            latitude: 34.0725, longitude: -118.2615, confidence: 0.40,
+            seenAt: "2026-03-11T14:45:00Z", type: "report", description: nil, photoUrl: nil)
     ]
     @State private var sightings: [MapSighting] = screenshotSightings
     @State private var isLoading = false
