@@ -112,8 +112,16 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		return fmt.Errorf("failed to seed database: %w", err)
 	}
 
-	subStore := subscribers.New()
+	redisURL := getenv("REDIS_URL")
+	if redisURL == "" {
+		return fmt.Errorf("REDIS_URL is required")
+	}
+	subStore, err := subscribers.New(redisURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Redis: %w", err)
+	}
 	defer subStore.Close()
+	log.Println("Redis subscriber store connected")
 
 	var apnsClient *push.APNsClient
 	if apnsConfig != nil {
