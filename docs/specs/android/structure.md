@@ -58,7 +58,7 @@ android/
         │   │   ├── persistence/
         │   │   │   ├── OfflineQueueDao.kt  # Room DAO: insert, dequeue, delete, count
         │   │   │   ├── OfflineQueueDatabase.kt # Room database singleton
-        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id
+        │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id, confidence, is_primary
         │   │   ├── processing/
         │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
         │   │   │   ├── LookalikeExpander.kt # BFS expansion of confusable characters (REQ-M-12a)
@@ -99,7 +99,8 @@ android/
                 ├── NotificationHelperTest.kt # Notification channel and display tests
                 ├── LookalikeExpanderTest.kt # Lookalike character expansion tests (REQ-M-12a)
                 ├── DetectionFeedUpdateTest.kt # Concurrent StateFlow update tests for detection feed
-                └── ZoomControllerTest.kt  # Safe zoom ratio calculation and best candidate selection tests
+                ├── ZoomControllerTest.kt  # Safe zoom ratio calculation and best candidate selection tests
+                └── OfflineQueueMigrationTest.kt # Room migration tests for offline queue schema changes
 ```
 
 ## Architecture

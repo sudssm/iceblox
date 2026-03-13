@@ -13,8 +13,11 @@ final class OfflineQueue {
 
     var isEmpty: Bool { queue.sync { queryCount() } == 0 }
 
-    init() {
-        let path = Self.databasePath()
+    convenience init() {
+        self.init(databasePath: Self.databasePath())
+    }
+
+    init(databasePath path: String) {
         queue.sync {
             guard sqlite3_open(path, &db) == SQLITE_OK else { return }
             let sql = """
