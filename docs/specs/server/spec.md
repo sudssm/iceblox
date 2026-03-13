@@ -16,6 +16,7 @@ See [System Overview — Target Data Source](../overview.md#target-data-source) 
 - **Framework**: `net/http` (standard library)
 - **Database**: PostgreSQL (via GORM ORM with `pgx` driver)
 - **Target list source**: `data/plates.txt` — plaintext plate list extracted from StopICE data, seeded into the `plates` database table on startup
+- **Subscriber storage**: Redis (via `github.com/redis/go-redis/v9`) — subscriber locations with native TTL expiry
 - **Push notifications**: APNs (iOS) via HTTP/2 + ES256 JWT, FCM (Android) via HTTP v1 API + OAuth2 — Go stdlib only (`net/http`, `crypto/*`)
 
 ## API Versioning Policy
@@ -405,15 +406,21 @@ X-Device-ID: <device identifier>
 - `405 Method Not Allowed` — non-POST request to this endpoint.
 - `500 Internal Server Error` — database query failure. Body: `{"error": "description"}`.
 
-### REQ-S-14: In-Memory Subscriber Storage
+### REQ-S-14: Redis-Backed Subscriber Storage
 
-The server MUST store subscriber location data in an in-memory map keyed by device ID. Each entry contains:
-- **Fields**: `lat`, `lng`, `radius_miles`, `expires_at`
-- **TTL**: 1 hour from the time of subscription
+The server MUST store subscriber location data in Redis, keyed by device ID with a `sub:` prefix (e.g., `sub:device-1`). Each entry is a JSON object containing:
+- **Fields**: `lat`, `lng`, `radius_miles`
+- **TTL**: 1 hour, enforced via Redis native key expiry
 
-When a device re-subscribes, the existing entry MUST be overwritten, refreshing the TTL. A background goroutine MUST periodically clean up expired entries (every 5 minutes). The store MUST be concurrency-safe (protected by a read-write mutex).
+An active-device set (`sub:active`) tracks all device IDs with active subscriptions. When `All()` is called, stale entries (expired keys still in the set) are lazily cleaned from the active set.
 
-Note: An earlier version of this spec specified Redis for subscriber storage. The in-memory approach was chosen to avoid adding an external dependency for v1. The TTL and cleanup behavior is equivalent. Redis may be revisited if horizontal scaling requires shared state across multiple server instances.
+When a device re-subscribes, the existing entry MUST be overwritten and the TTL refreshed. Redis handles concurrency natively (no application-level mutex required).
+
+**Connection:** Configured via the `REDIS_URL` environment variable (required). The store connects on startup, pings Redis with a 5-second timeout, and returns an error if the connection fails.
+
+**Dependency:** `github.com/redis/go-redis/v9`
+
+Note: An earlier version of this spec used an in-memory map with `sync.RWMutex` and a background cleanup goroutine. Redis was adopted to allow subscriber state to survive server restarts and to support horizontal scaling across multiple server instances.
 
 ### REQ-S-15: Recent Sightings Query
 
@@ -565,7 +572,7 @@ After storing a report (REQ-S-20), the server MUST asynchronously submit it to t
 |---|---|
 | Language / framework | Go with `net/http` |
 | Target list source | StopICE plate tracker data (plaintext `plates.txt` extracted via Makefile) |
-| Alert delivery | Push notifications to registered devices on match, filtered by proximity (APNs for iOS, FCM for Android, in-memory store for subscriber locations) |
+| Alert delivery | Push notifications to registered devices on match, filtered by proximity (APNs for iOS, FCM for Android, Redis-backed store for subscriber locations) |
 | Match results to device | Yes — per-plate boolean in batch `results` array, no target details |
 | Storage | PostgreSQL — `plates` table for targets, `sightings` table for matched observations |
 | Monitoring app data source | REST API querying `sightings` table |
@@ -606,7 +613,7 @@ server/
 │   ├── geo/
 │   │   └── haversine.go         # Haversine distance, bounding box calculation
 │   ├── subscribers/
-│   │   └── store.go             # In-memory subscriber store (map with TTL cleanup)
+│   │   └── store.go             # Redis-backed subscriber store (native TTL expiry)
 │   ├── stopice/
 │   │   ├── client.go            # Async form submission to StopICE plate tracker (REQ-S-21)
 │   │   └── client_test.go       # StopICE client tests
@@ -641,7 +648,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | Step | Component | Spec Requirements | Description |
 |---|---|---|---|
 | 1 | Project scaffold | — | `go mod init`, directory structure, `main.go` with flag parsing |
-| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--report-upload-dir`, `--s3-bucket`, `--s3-region`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_CONFIG_JSON`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`, `S3_BUCKET`, `AWS_REGION`). Push credentials use single JSON env vars: `APNS_CONFIG_JSON` (fields: `key_p8`, `key_id`, `team_id`, `bundle_id`, `production`) and `FCM_SERVICE_ACCOUNT_JSON`. Subscriber storage is in-memory (no external config needed). |
+| 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--report-upload-dir`, `--s3-bucket`, `--s3-region`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_CONFIG_JSON`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`, `S3_BUCKET`, `AWS_REGION`, `REDIS_URL`). Push credentials use single JSON env vars: `APNS_CONFIG_JSON` (fields: `key_p8`, `key_id`, `team_id`, `bundle_id`, `production`) and `FCM_SERVICE_ACCOUNT_JSON`. Subscriber storage configured via `REDIS_URL` (required). |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
 | 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
@@ -655,7 +662,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 13 | FCM client | REQ-S-12 | HTTP v1 API client, RS256 JWT, OAuth2 token exchange, token caching |
 | 14 | Notifier | REQ-S-10 | Match → push dispatch to all devices, async goroutine, stale token cleanup |
 | 15 | Geo package | REQ-S-15 | Haversine distance calculation, bounding box utility (pure functions, no deps) |
-| 16 | Subscriber store | REQ-S-14 | In-memory subscriber location storage with 1-hour TTL and periodic cleanup |
+| 16 | Subscriber store | REQ-S-14 | Redis-backed subscriber location storage with 1-hour TTL via native key expiry |
 | 17 | Recent sightings query | REQ-S-15 | DB method with bounding-box SQL pre-filter, SightingResult struct, composite geo index |
 | 18 | Subscribe handler | REQ-S-13 | Parse request, store subscriber in memory, query+filter recent sightings, respond |
 | 19 | Proximity fan-out | REQ-S-16 | Enhance push dispatch with subscriber location filtering via haversine |
@@ -667,7 +674,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 
 ### Key Technical Notes
 
-- **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), `github.com/google/uuid` (UUID generation for report photo filenames), and `github.com/aws/aws-sdk-go-v2` (S3 photo upload + presigned URLs).
+- **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), `github.com/google/uuid` (UUID generation for report photo filenames), `github.com/aws/aws-sdk-go-v2` (S3 photo upload + presigned URLs), and `github.com/redis/go-redis/v9` (Redis-backed subscriber storage).
 - **Schema migrations**: GORM's `AutoMigrate` derives the schema from Go struct tags (types, indexes, constraints, foreign keys). It creates tables, adds missing columns, and creates missing indexes idempotently on each startup. A `make migrate` entrypoint runs migrations and exits for deploy-time execution (e.g., Railway predeploy).
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
 - **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
@@ -678,7 +685,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **APNs JWT**: ES256 (ECDSA P-256) signed with `.p8` key. Cache token for ~50 minutes. All signing uses Go stdlib (`crypto/ecdsa`, `crypto/sha256`, `encoding/pem`).
 - **FCM OAuth2**: RS256 JWT exchanged for access token at Google's token endpoint. Cache token until near expiry (~55 minutes). All signing uses Go stdlib (`crypto/rsa`, `crypto/sha256`).
 - **Async push dispatch**: Send notifications in a goroutine after recording the sighting. Push failures MUST NOT affect the plates endpoint response.
-- **Subscriber storage**: In-memory `map[string]Subscriber` protected by `sync.RWMutex`. Background goroutine cleans expired entries every 5 minutes. No external dependency (Redis was considered but deferred to avoid operational complexity in v1).
+- **Subscriber storage**: Redis-backed `Store` using `github.com/redis/go-redis/v9`. Each subscriber is stored as a JSON value under key `sub:{deviceID}` with a 1-hour TTL via Redis native key expiry. A `sub:active` set tracks all device IDs; stale entries are lazily cleaned from the set when `All()` is called and keys have expired.
 - **Haversine distance**: Pure Go implementation in `internal/geo/`. Used for both subscribe response filtering and proximity fan-out. Bounding-box pre-filter in SQL narrows candidates before precise haversine calculation.
 - **Proximity fan-out**: Enhances the existing push notification goroutine. After recording a sighting, query active subscribers from the in-memory store, compute haversine distance, and only notify devices within their requested radius.
 - **Recent sightings enrichment**: The subscribe query joins `sightings` with `plates` so nearby results can include plaintext target plates without exposing non-target plate text.
@@ -689,4 +696,4 @@ The server deploys to [Railway](https://railway.com) via Docker.
 
 - **Dockerfile** (`server/Dockerfile`): Multi-stage build that fetches plate data from StopICE at build time, compiles the Go binary, and produces a minimal Alpine image.
 - **Railway config** (`railway.toml`): Configures the build to use the Dockerfile, runs `make migrate` as the predeploy command, exposes `/healthz` for health checks, and uses an ON_FAILURE restart policy.
-- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, and `PLATES_FILE` at runtime. Push notification credentials use single JSON env vars: `APNS_CONFIG_JSON` (fields: `key_p8`, `key_id`, `team_id`, `bundle_id`, `production`) and `FCM_SERVICE_ACCOUNT_JSON` (raw Firebase service account JSON). Report photo storage is configured via `REPORT_UPLOAD_DIR` (default: `data/reports`). S3 photo storage is configured via `S3_BUCKET` and `AWS_REGION` (default: `us-east-1`); AWS credentials come from the default credential chain (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`). All env vars override their corresponding CLI flag defaults.
+- **Environment variables**: Railway sets `PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, and `REDIS_URL` at runtime. Push notification credentials use single JSON env vars: `APNS_CONFIG_JSON` (fields: `key_p8`, `key_id`, `team_id`, `bundle_id`, `production`) and `FCM_SERVICE_ACCOUNT_JSON` (raw Firebase service account JSON). Report photo storage is configured via `REPORT_UPLOAD_DIR` (default: `data/reports`). S3 photo storage is configured via `S3_BUCKET` and `AWS_REGION` (default: `us-east-1`); AWS credentials come from the default credential chain (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`). `REDIS_URL` is required for subscriber storage (e.g., `redis://localhost:6379`). All env vars override their corresponding CLI flag defaults.
