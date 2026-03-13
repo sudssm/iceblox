@@ -41,6 +41,9 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import com.iceblox.app.network.MapClient
 import com.iceblox.app.network.MapSighting
 import kotlinx.coroutines.FlowPreview
@@ -58,6 +61,14 @@ fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit
     var sightings by remember { mutableStateOf<List<MapSighting>>(loadCachedSightings(prefs)) }
     var isLoading by remember { mutableStateOf(true) }
     var isOffline by remember { mutableStateOf(false) }
+
+    val hasLocationPermission = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
 
     val initialLat = locationLat ?: 40.7128
     val initialLng = locationLng ?: -74.0060
@@ -136,7 +147,7 @@ fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = cameraPositionState,
-                    properties = MapProperties(isMyLocationEnabled = true)
+                    properties = MapProperties(isMyLocationEnabled = hasLocationPermission)
                 ) {
                     sightings.forEach { sighting ->
                         val hue = if (sighting.confidence >= 0.5) {

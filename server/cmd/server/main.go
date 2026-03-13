@@ -122,7 +122,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create APNs client: %w", err)
 		}
-		log.Println("APNs client initialized")
+		log.Println("iOS push notifications enabled (APNs)")
+	} else {
+		log.Println("iOS push notifications disabled (APNS_CONFIG_JSON not set)")
 	}
 
 	var fcmClient *push.FCMClient
@@ -132,7 +134,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create FCM client: %w", err)
 		}
-		log.Println("FCM client initialized")
+		log.Println("Android push notifications enabled (FCM)")
+	} else {
+		log.Println("Android push notifications disabled (FCM_SERVICE_ACCOUNT_JSON not set)")
 	}
 
 	var notifier handler.PushNotifier
@@ -140,7 +144,6 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		n := push.NewNotifier(apnsClient, fcmClient, database, subStore)
 		defer n.Close()
 		notifier = n
-		log.Println("push notifier initialized")
 	}
 
 	if err := os.MkdirAll(*reportUploadDir, 0o750); err != nil {

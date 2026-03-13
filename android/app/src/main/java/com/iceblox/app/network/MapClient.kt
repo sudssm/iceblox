@@ -60,7 +60,7 @@ class MapClient(private val client: OkHttpClient = OkHttpClient()) {
                     }
                     Result.success(sightings)
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 DebugLog.w(TAG, "fetchSightings error: ${e.message}")
                 Result.failure(e)
             }
