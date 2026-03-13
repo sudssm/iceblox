@@ -197,6 +197,10 @@ run-ios-device:
 ## unit-test: Run Go, Android, and iOS unit tests back to back
 unit-test: server-test android-unit-test ios-unit-test
 
+## android-release-bundle: Build a signed release AAB for Play Store upload
+android-release-bundle: .env
+	cd android && ./gradlew bundleRelease
+
 ## android-unit-test: Run Android unit tests (generates .env first)
 android-unit-test: .env
 	cd android && ./gradlew test

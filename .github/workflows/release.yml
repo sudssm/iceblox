@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-release:
+    name: Android Release AAB
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode release keystore
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          PEPPER=${{ secrets.PEPPER }}
+          ANDROID_MAPS_API_KEY=${{ secrets.ANDROID_MAPS_API_KEY }}
+          EOF
+
+      - name: Create signing config in local.properties
+        run: |
+          cat <<EOF > android/local.properties
+          RELEASE_STORE_FILE=../release.keystore
+          RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
+          EOF
+
+      - name: Run unit tests
+        run: make android-unit-test
+
+      - name: Build release AAB
+        run: make android-release-bundle
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
