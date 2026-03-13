@@ -130,6 +130,6 @@ func (s *Store) All() map[string]Subscriber {
 }
 
 // Close closes the Redis client connection.
-func (s *Store) Close() {
-	s.client.Close()
+func (s *Store) Close() error {
+	return s.client.Close()
 }

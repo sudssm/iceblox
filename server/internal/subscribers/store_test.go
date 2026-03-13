@@ -3,10 +3,9 @@
 package subscribers
 
 import (
+	"context"
 	"testing"
 	"time"
-
-	"context"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -20,11 +19,21 @@ func setupStore(t *testing.T) *Store {
 		t.Fatalf("failed to create store: %v", err)
 	}
 	t.Cleanup(func() {
-		opts, _ := redis.ParseURL(testRedisURL)
+		opts, err := redis.ParseURL(testRedisURL)
+		if err != nil {
+			t.Errorf("failed to parse test redis URL: %v", err)
+			return
+		}
 		c := redis.NewClient(opts)
-		c.FlushDB(context.Background())
-		c.Close()
-		s.Close()
+		if err := c.FlushDB(context.Background()).Err(); err != nil {
+			t.Errorf("failed to flush test redis DB: %v", err)
+		}
+		if err := c.Close(); err != nil {
+			t.Errorf("failed to close flush client: %v", err)
+		}
+		if err := s.Close(); err != nil {
+			t.Errorf("failed to close store: %v", err)
+		}
 	})
 	return s
 }
