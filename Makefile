@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device
+.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -101,6 +101,35 @@ IOS_SIMULATOR_UDID := C06D96F6-6AE3-4B73-874F-C8324A15B0B9
 IOS_BUNDLE_ID := com.iceblox.app
 IOS_SCHEME := IceBloxApp
 IOS_BUILD_DIR := ios/build
+
+IOS_ARCHIVE := $(IOS_BUILD_DIR)/IceBloxApp.xcarchive
+IOS_EXPORT_DIR := $(IOS_BUILD_DIR)/export
+IOS_EXPORT_OPTIONS := $(IOS_BUILD_DIR)/ExportOptions.plist
+APPLE_TEAM_ID ?= $(shell grep '^APPLE_TEAM_ID=' .env 2>/dev/null | cut -d= -f2)
+
+## package-ios: Archive and export a release .ipa for App Store upload
+package-ios:
+	@if [ -z "$(APPLE_TEAM_ID)" ]; then echo "ERROR: APPLE_TEAM_ID not set. Add APPLE_TEAM_ID=<your-team-id> to .env or pass it as an env var."; exit 1; fi
+	@mkdir -p $(IOS_BUILD_DIR)
+	@printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>method</key>\n\t<string>app-store-connect</string>\n\t<key>signingStyle</key>\n\t<string>automatic</string>\n\t<key>teamID</key>\n\t<string>$(APPLE_TEAM_ID)</string>\n\t<key>uploadSymbols</key>\n\t<true/>\n</dict>\n</plist>\n' > $(IOS_EXPORT_OPTIONS)
+	xcodebuild archive \
+		-project ios/IceBloxApp.xcodeproj \
+		-scheme $(IOS_SCHEME) \
+		-configuration Release \
+		-destination 'generic/platform=iOS' \
+		-archivePath $(IOS_ARCHIVE) \
+		-allowProvisioningUpdates \
+		DEVELOPMENT_TEAM=$(APPLE_TEAM_ID) \
+		-quiet
+	xcodebuild -exportArchive \
+		-archivePath $(IOS_ARCHIVE) \
+		-exportPath $(IOS_EXPORT_DIR) \
+		-exportOptionsPlist $(IOS_EXPORT_OPTIONS) \
+		-allowProvisioningUpdates \
+		-quiet
+	@echo ""
+	@echo "IPA ready at: $(IOS_EXPORT_DIR)/IceBloxApp.ipa"
+	@echo "Upload with: xcrun altool --upload-app -f $(IOS_EXPORT_DIR)/IceBloxApp.ipa -t ios --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>"
 
 ## run-android: Build, install, and launch the Android app on an emulator
 run-android: .env
