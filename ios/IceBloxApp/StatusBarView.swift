@@ -3,9 +3,6 @@ import SwiftUI
 struct StatusBarView: View {
     let isConnected: Bool
     let lastDetection: Date?
-    let plateCount: Int
-    let matchCount: Int
-    let pendingCount: Int
     let hasGPS: Bool
     var nearbySightings: Int = 0
 
@@ -17,17 +14,8 @@ struct StatusBarView: View {
                     .frame(width: 8, height: 8)
                     .accessibilityIdentifier("status_indicator")
                 Text(isConnected ? "Online" : "Offline")
+                    .foregroundStyle(isConnected ? .green : .red)
                     .accessibilityIdentifier("status_text")
-            }
-            Text("Last: \(lastDetectionText)")
-            Text("Plates: \(plateCount)")
-                .accessibilityIdentifier("plate_count")
-            Text("Matches: \(matchCount)")
-                .accessibilityIdentifier("match_count")
-            if pendingCount > 0 {
-                Text("Pending: \(pendingCount)")
-                    .foregroundStyle(.yellow)
-                    .accessibilityIdentifier("pending_count")
             }
             if nearbySightings > 0 {
                 Text("Nearby: \(nearbySightings)")
@@ -38,13 +26,14 @@ struct StatusBarView: View {
                     .foregroundStyle(Color(red: 1.0, green: 0.596, blue: 0.0))
                     .accessibilityIdentifier("gps_warning")
             }
+            Spacer()
+            Text("Last: \(lastDetectionText)")
         }
         .font(.system(.caption, design: .monospaced))
         .foregroundStyle(.white)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background(.black.opacity(0.6), ignoresSafeAreaEdges: .top)
+        .background(Color.black.opacity(0.6))
         .accessibilityIdentifier("status_bar")
     }
 

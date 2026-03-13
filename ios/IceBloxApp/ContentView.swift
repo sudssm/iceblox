@@ -87,6 +87,8 @@ struct ContentView: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
+                        .frame(maxWidth: UIScreen.main.bounds.width, maxHeight: UIScreen.main.bounds.height)
+                        .clipped()
                         .ignoresSafeArea()
                 }
                 #else
@@ -164,9 +166,6 @@ struct ContentView: View {
                     StatusBarView(
                         isConnected: connectivityMonitor.isConnected,
                         lastDetection: frameProcessor?.lastDetectionTime,
-                        plateCount: frameProcessor?.totalPlates ?? 0,
-                        matchCount: apiClient?.totalTargets ?? 0,
-                        pendingCount: pendingSessionPlates,
                         hasGPS: locationManager.hasPermission,
                         nearbySightings: alertClient?.nearbySightings ?? 0
                     )
