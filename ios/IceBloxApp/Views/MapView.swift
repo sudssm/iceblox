@@ -3,15 +3,29 @@ import SwiftUI
 
 struct MapView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var locationManager = LocationManager()
 
+    #if APPSTORE_SCREENSHOTS
+    private static let screenshotSightings: [MapSighting] = [
+        MapSighting(latitude: 34.0522, longitude: -118.2437, confidence: 0.85, seenAt: "2026-03-12T10:30:00Z", type: "detection", description: nil, photoUrl: nil),
+        MapSighting(latitude: 34.0195, longitude: -118.2910, confidence: 0.35, seenAt: "2026-03-12T09:15:00Z", type: "report", description: nil, photoUrl: nil),
+        MapSighting(latitude: 34.0725, longitude: -118.2615, confidence: 0.40, seenAt: "2026-03-11T14:45:00Z", type: "report", description: nil, photoUrl: nil),
+    ]
+    @State private var sightings: [MapSighting] = screenshotSightings
+    @State private var isLoading = false
+    @State private var isOffline = false
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 34.05, longitude: -118.27),
+        span: MKCoordinateSpan(latitudeDelta: 0.12, longitudeDelta: 0.12)
+    ))
+    #else
+    @StateObject private var locationManager = LocationManager()
     @State private var sightings: [MapSighting] = MapView.loadCachedSightings()
     @State private var isLoading = true
     @State private var isOffline = false
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var fetchTask: Task<Void, Never>?
-
     private let mapClient = MapClient()
+    #endif
 
     var body: some View {
         NavigationView {
@@ -37,6 +51,20 @@ struct MapView: View {
                     }
 
                     ZStack {
+                        #if APPSTORE_SCREENSHOTS
+                        Map(position: $cameraPosition) {
+                            ForEach(Array(sightings.enumerated()), id: \.offset) { _, sighting in
+                                Marker(
+                                    sighting.confidence >= 0.5 ? "ICE Activity Detected" : "Potential ICE Activity",
+                                    coordinate: CLLocationCoordinate2D(
+                                        latitude: sighting.latitude,
+                                        longitude: sighting.longitude
+                                    )
+                                )
+                                .tint(sighting.confidence >= 0.5 ? .red : .yellow)
+                            }
+                        }
+                        #else
                         Map(position: $cameraPosition) {
                             UserAnnotation()
                             ForEach(Array(sightings.enumerated()), id: \.offset) { _, sighting in
@@ -59,6 +87,7 @@ struct MapView: View {
                             let radiusMiles = span.latitudeDelta * 69.0 / 2
                             scheduleFetch(lat: center.latitude, lng: center.longitude, radius: radiusMiles)
                         }
+                        #endif
 
                         if isLoading {
                             ProgressView()
@@ -76,6 +105,45 @@ struct MapView: View {
                         .foregroundStyle(.white)
                 }
             }
+            #if APPSTORE_SCREENSHOTS
+            .overlay(alignment: .top) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "app.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(Color.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text("IceBlox")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Text("now")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text("ICE Activity Detected")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text("A vehicle matching known ICE plates was spotted near your location.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .padding(12)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
+                }
+            }
+            #endif
+            #if !APPSTORE_SCREENSHOTS
             .onAppear {
                 locationManager.requestPermission()
                 if let lat = locationManager.latitude, let lng = locationManager.longitude {
@@ -94,9 +162,11 @@ struct MapView: View {
                     ))
                 }
             }
+            #endif
         }
     }
 
+    #if !APPSTORE_SCREENSHOTS
     private func scheduleFetch(lat: Double, lng: Double, radius: Double) {
         fetchTask?.cancel()
         fetchTask = Task {
@@ -133,4 +203,5 @@ struct MapView: View {
         }
         return sightings
     }
+    #endif
 }

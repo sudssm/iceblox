@@ -4,29 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-APPCONFIG="$ROOT/ios/IceBloxApp/Config/AppConfig.swift"
 DB_DSN="postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable"
 PROD_SERVER_URL="https://iceblox.up.railway.app"
-DEFAULT_URL="http://localhost:8080"
 USE_PROD_SERVER=false
-LOCAL_IP=""
 
 if [[ "${1:-}" == "--prod-server" ]]; then
     USE_PROD_SERVER=true
 fi
-
-cleanup() {
-    echo ""
-    # Revert AppConfig if it was patched and not yet reverted
-    if [ "$USE_PROD_SERVER" = true ] && grep -q "$PROD_SERVER_URL" "$APPCONFIG" 2>/dev/null; then
-        sed -i '' "s|$PROD_SERVER_URL|$DEFAULT_URL|" "$APPCONFIG"
-        echo "Reverted AppConfig serverBaseURL"
-    elif [ -n "$LOCAL_IP" ] && grep -q "http://$LOCAL_IP:8080" "$APPCONFIG" 2>/dev/null; then
-        sed -i '' "s|http://$LOCAL_IP:8080|$DEFAULT_URL|" "$APPCONFIG"
-        echo "Reverted AppConfig serverBaseURL"
-    fi
-}
-trap cleanup EXIT
 
 # --- Step 1: Find connected iOS device ---
 echo "Looking for connected iOS devices..."
@@ -50,14 +34,14 @@ echo "Found device: $DEVICE_NAME ($DEVICE_UDID)"
 
 # --- Step 2: Build iOS app ---
 echo ""
+EXTRA_SWIFT_FLAGS=""
 if [ "$USE_PROD_SERVER" = true ]; then
-    echo "Patching AppConfig for prod server ($PROD_SERVER_URL)..."
-    sed -i '' "s|$DEFAULT_URL|$PROD_SERVER_URL|" "$APPCONFIG"
+    echo "Building with production server ($PROD_SERVER_URL)..."
+    EXTRA_SWIFT_FLAGS="-DPRODUCTION_SERVER"
 else
     LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)
     if [ -n "$LOCAL_IP" ]; then
-        echo "Patching AppConfig for local server (http://$LOCAL_IP:8080)..."
-        sed -i '' "s|$DEFAULT_URL|http://$LOCAL_IP:8080|" "$APPCONFIG"
+        echo "Building for local server (http://$LOCAL_IP:8080)..."
     else
         echo "WARNING: Could not detect local IP. The app will use localhost:8080 which won't work on device."
         echo "Ensure Mac and device are on the same network, or use --prod-server."
@@ -72,14 +56,8 @@ xcodebuild build \
     -destination "generic/platform=iOS" \
     -derivedDataPath ios/build \
     -allowProvisioningUpdates \
+    ${EXTRA_SWIFT_FLAGS:+OTHER_SWIFT_FLAGS="$EXTRA_SWIFT_FLAGS"} \
     -quiet
-
-echo "Reverting AppConfig..."
-if [ "$USE_PROD_SERVER" = true ]; then
-    sed -i '' "s|$PROD_SERVER_URL|$DEFAULT_URL|" "$APPCONFIG"
-elif [ -n "$LOCAL_IP" ]; then
-    sed -i '' "s|http://$LOCAL_IP:8080|$DEFAULT_URL|" "$APPCONFIG"
-fi
 
 # --- Step 3: Install on device ---
 APP_PATH=$(find ios/build -name "IceBloxApp.app" -path "*/Debug-iphoneos/*" 2>/dev/null | head -1)
@@ -93,14 +71,21 @@ echo "Installing on device..."
 xcrun devicectl device install app --device "$DEVICE_UDID" "$APP_PATH"
 
 # --- Step 4: Launch ---
+# For local testing, pass the local IP via env var so the app connects to the Mac's server.
+# For prod, the PRODUCTION_SERVER flag bakes in the Railway URL at compile time.
 echo ""
 echo "Launching app..."
-xcrun devicectl device process launch --device "$DEVICE_UDID" com.iceblox.app
-
 if [ "$USE_PROD_SERVER" = true ]; then
+    xcrun devicectl device process launch --device "$DEVICE_UDID" com.iceblox.app
     echo ""
     echo "=== App launched against prod server ($PROD_SERVER_URL) ==="
     exit 0
+else
+    if [ -n "${LOCAL_IP:-}" ]; then
+        xcrun devicectl device process launch --device "$DEVICE_UDID" -e '{"SERVER_BASE_URL":"http://'"$LOCAL_IP"':8080"}' com.iceblox.app
+    else
+        xcrun devicectl device process launch --device "$DEVICE_UDID" com.iceblox.app
+    fi
 fi
 
 # --- Step 5 (local only): Start PostgreSQL if needed ---

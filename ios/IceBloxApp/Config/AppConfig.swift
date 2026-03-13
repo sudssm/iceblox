@@ -2,7 +2,12 @@ import Foundation
 
 enum AppConfig {
     static let serverBaseURL: URL = {
-        let rawURL = stringEnv("E2E_SERVER_BASE_URL") ?? stringEnv("SERVER_BASE_URL") ?? "http://localhost:8080"
+        #if PRODUCTION_SERVER
+        let defaultURL = "https://iceblox.up.railway.app"
+        #else
+        let defaultURL = "http://localhost:8080"
+        #endif
+        let rawURL = stringEnv("E2E_SERVER_BASE_URL") ?? stringEnv("SERVER_BASE_URL") ?? defaultURL
         return URL(string: rawURL)!
     }()
     static let platesEndpoint = "/api/v1/plates"
@@ -12,6 +17,7 @@ enum AppConfig {
     static let forceDebugMode = boolEnv("E2E_FORCE_DEBUG_MODE", defaultValue: false)
     static let requestLocationPermission = boolEnv("E2E_REQUEST_LOCATION_PERMISSION", defaultValue: true)
     static let autoShowReport = boolEnv("E2E_AUTO_SHOW_REPORT", defaultValue: false)
+    static let autoShowMap = boolEnv("E2E_AUTO_SHOW_MAP", defaultValue: false)
     static let autoShowSettings = boolEnv("E2E_AUTO_SHOW_SETTINGS", defaultValue: false)
     static let useSplashTrigger = boolEnv("E2E_USE_SPLASH_TRIGGER", defaultValue: false)
     static let useStopRecordingTrigger = boolEnv("E2E_USE_STOP_RECORDING_TRIGGER", defaultValue: false)
