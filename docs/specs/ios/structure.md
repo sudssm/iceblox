@@ -55,7 +55,7 @@ ios/
 │   ├── Location/
 │   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning
 │   ├── Config/
-│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL, zoom retry constants
+│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL (compile-time flag), zoom retry constants
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
 │   ├── Settings/
 │   │   └── UserSettings.swift         # ObservableObject singleton: push notification + user debug mode toggles persisted via UserDefaults
@@ -133,7 +133,9 @@ The root `Makefile` provides two targets for App Store distribution:
 
 - Requires `APPLE_TEAM_ID` (set in `.env` or as an env var)
 - Generates an `ExportOptions.plist` with `app-store-connect` method and automatic signing
-- Runs `xcodebuild archive` followed by `xcodebuild -exportArchive`
+- Passes `OTHER_SWIFT_FLAGS="-DPRODUCTION_SERVER"` to bake in the production server URL at compile time
+- After archiving, patches embedded framework `Info.plist` `MinimumOSVersion` values to match the app's (fixes Apple error 90208)
+- Runs `xcodebuild archive`, patches frameworks, then `xcodebuild -exportArchive`
 - Output: `ios/build/export/IceBloxApp.ipa`
 
 **`make publish-ios`** — Upload the `.ipa` to App Store Connect via `xcrun altool`.
@@ -152,7 +154,7 @@ All credentials are read from the root `.env` file or environment variables — 
 | **Simulator camera** | iOS Simulator has no rear camera — `AVCaptureSession` errors with code `-12782`. `SimulatorCamera.swift` provides a timer-driven frame generator (gated by `#if targetEnvironment(simulator)`) that feeds a bundled or placeholder image through the pipeline at ~10 FPS. For runtime E2E injection, the app can start on the splash screen, transition into camera mode, then pick up files copied into `Library/Application Support/test_images/` inside the app container while it is already running. Optional same-basename `.txt` sidecars (for example `target.jpg` + `target.txt`) can inject a deterministic plate string through the post-detection pipeline for simulator-only E2E. A second E2E-only trigger file can stop the active session, and the app writes a plain-text session summary artifact back into `Application Support/` so the shell harness can validate stop-summary behavior without XCUITest. |
 | **Thread safety for @Published** | `@Published` properties must be updated on the main thread. Use `NSLock` for thread-safe buffer mutation, then dispatch to main for the `@Published` assignment. Check `Thread.isMainThread` to avoid redundant dispatches. |
 | **Debug gating** | Use `#if DEBUG` to gate developer-only debug code (logging to console, triple-tap debug toggle). The debug overlay bounding boxes are available in all builds via the user debug mode setting (REQ-M-18). The detection feed, log panel, and FPS header are gated behind developer debug mode. |
-| **Server URL** | `AppConfig.swift` hardcodes `http://localhost:8080`. Works on Simulator (shared network namespace) but physical devices need the host machine's LAN IP. |
+| **Server URL** | `AppConfig.swift` uses a compile-time `PRODUCTION_SERVER` flag to select the default server URL. When built with `-DPRODUCTION_SERVER` (as `make package-ios` does), the default is the Railway production URL. Otherwise, the default is `http://localhost:8080`. Environment variables `E2E_SERVER_BASE_URL` and `SERVER_BASE_URL` can override the default at runtime. This avoids source-file patching during builds. |
 
 ## Dependencies
 
