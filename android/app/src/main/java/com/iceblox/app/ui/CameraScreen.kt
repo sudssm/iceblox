@@ -66,13 +66,10 @@ fun CameraScreen(
     onSessionFinished: () -> Unit = {},
     viewModel: MainViewModel = viewModel()
 ) {
-    val plateCount by viewModel.plateCount.collectAsState()
-    val targetCount by viewModel.targetCount.collectAsState()
     val lastDetectionTime by viewModel.lastDetectionTime.collectAsState()
     val isConnected by viewModel.connectivityMonitor.isConnected.collectAsState()
     val hasGps by viewModel.locationProvider.hasPermission.collectAsState()
     val queueDepth by viewModel.queueDepth.collectAsState()
-    val pendingPlates by viewModel.pendingPlateCount.collectAsState()
     val fps by viewModel.frameAnalyzer.fps.collectAsState()
     val debugDetections by viewModel.frameAnalyzer.debugDetections.collectAsState()
     val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
