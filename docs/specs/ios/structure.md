@@ -69,7 +69,8 @@ ios/
     ├── AlertClientTests.swift         # AlertClient GPS truncation, request/response tests
     ├── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
     ├── LookalikeExpanderTests.swift   # Lookalike character expansion tests (REQ-M-12a)
-    └── ZoomControllerTests.swift      # Zoom eligibility, safe zoom ratio, best candidate selection tests
+    ├── ZoomControllerTests.swift      # Zoom eligibility, safe zoom ratio, best candidate selection tests
+    └── OfflineQueueTests.swift        # Schema validation and migration tests for offline queue
 ```
 
 ## Architecture

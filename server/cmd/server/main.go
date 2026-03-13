@@ -112,8 +112,16 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		return fmt.Errorf("failed to seed database: %w", err)
 	}
 
-	subStore := subscribers.New()
+	redisURL := getenv("REDIS_URL")
+	if redisURL == "" {
+		return fmt.Errorf("REDIS_URL is required")
+	}
+	subStore, err := subscribers.New(redisURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Redis: %w", err)
+	}
 	defer subStore.Close()
+	log.Println("Redis subscriber store connected")
 
 	var apnsClient *push.APNsClient
 	if apnsConfig != nil {
@@ -122,7 +130,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create APNs client: %w", err)
 		}
-		log.Println("APNs client initialized")
+		log.Println("iOS push notifications enabled (APNs)")
+	} else {
+		log.Println("iOS push notifications disabled (APNS_CONFIG_JSON not set)")
 	}
 
 	var fcmClient *push.FCMClient
@@ -132,7 +142,9 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create FCM client: %w", err)
 		}
-		log.Println("FCM client initialized")
+		log.Println("Android push notifications enabled (FCM)")
+	} else {
+		log.Println("Android push notifications disabled (FCM_SERVICE_ACCOUNT_JSON not set)")
 	}
 
 	var notifier handler.PushNotifier
@@ -140,7 +152,6 @@ func run(ctx context.Context, args []string, getenv func(string) string) error {
 		n := push.NewNotifier(apnsClient, fcmClient, database, subStore)
 		defer n.Close()
 		notifier = n
-		log.Println("push notifier initialized")
 	}
 
 	if err := os.MkdirAll(*reportUploadDir, 0o750); err != nil {

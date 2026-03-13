@@ -54,7 +54,7 @@ migrate:
 	fi
 
 ## run-server: Build and run the Go server (reads push config from .env)
-run-server: .env
+run-server: .env setup extract
 	@set -a && . $(CURDIR)/.env && set +a && cd server && go run ./cmd/server/... --db-dsn "$(DB_DSN)"
 
 ## run-test-server: Run server with test plates (known plates for E2E testing)

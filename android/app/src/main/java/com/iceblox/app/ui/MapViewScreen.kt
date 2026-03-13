@@ -1,7 +1,9 @@
 package com.iceblox.app.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -58,6 +61,14 @@ fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit
     var sightings by remember { mutableStateOf<List<MapSighting>>(loadCachedSightings(prefs)) }
     var isLoading by remember { mutableStateOf(true) }
     var isOffline by remember { mutableStateOf(false) }
+
+    val hasLocationPermission = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
 
     val initialLat = locationLat ?: 40.7128
     val initialLng = locationLng ?: -74.0060
@@ -136,7 +147,7 @@ fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = cameraPositionState,
-                    properties = MapProperties(isMyLocationEnabled = true)
+                    properties = MapProperties(isMyLocationEnabled = hasLocationPermission)
                 ) {
                     sightings.forEach { sighting ->
                         val hue = if (sighting.confidence >= 0.5) {

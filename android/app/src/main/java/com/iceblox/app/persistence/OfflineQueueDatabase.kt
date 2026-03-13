@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [OfflineQueueEntry::class], version = 4, exportSchema = false)
+@Database(entities = [OfflineQueueEntry::class], version = 5, exportSchema = false)
 abstract class OfflineQueueDatabase : RoomDatabase() {
     abstract fun queueDao(): OfflineQueueDao
 
@@ -42,13 +42,40 @@ abstract class OfflineQueueDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE offline_queue_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        plate_hash TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        latitude REAL,
+                        longitude REAL,
+                        session_id TEXT NOT NULL DEFAULT '',
+                        confidence REAL NOT NULL DEFAULT 0,
+                        is_primary INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    """
+                    INSERT INTO offline_queue_new (id, plate_hash, timestamp, latitude, longitude, session_id, confidence, is_primary)
+                    SELECT id, plate_hash, timestamp, latitude, longitude, session_id, confidence, is_primary FROM offline_queue
+                    """.trimIndent()
+                )
+                database.execSQL("DROP TABLE offline_queue")
+                database.execSQL("ALTER TABLE offline_queue_new RENAME TO offline_queue")
+            }
+        }
+
         fun getInstance(context: Context): OfflineQueueDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext,
                 OfflineQueueDatabase::class.java,
                 "offline_queue.db"
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
                 .also { INSTANCE = it }
         }
