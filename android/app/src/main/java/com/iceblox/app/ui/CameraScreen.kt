@@ -397,12 +397,7 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-fun StatusBar(
-    isConnected: Boolean,
-    lastDetectionTime: Long,
-    hasGps: Boolean,
-    modifier: Modifier = Modifier
-) {
+fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, modifier: Modifier = Modifier) {
     val lastDetectedText = if (lastDetectionTime > 0) {
         val elapsed = (System.currentTimeMillis() - lastDetectionTime) / 1000
         if (elapsed < 60) "Last: ${elapsed}s ago" else "Last: ${elapsed / 60}m ago"
