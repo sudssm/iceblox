@@ -40,7 +40,7 @@ jobs:
       - name: Create signing config in local.properties
         run: |
           cat <<EOF > android/local.properties
-          RELEASE_STORE_FILE=release.keystore
+          RELEASE_STORE_FILE=../release.keystore
           RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
