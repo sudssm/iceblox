@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios
+.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios publish-ios
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -106,6 +106,10 @@ IOS_ARCHIVE := $(IOS_BUILD_DIR)/IceBloxApp.xcarchive
 IOS_EXPORT_DIR := $(IOS_BUILD_DIR)/export
 IOS_EXPORT_OPTIONS := $(IOS_BUILD_DIR)/ExportOptions.plist
 APPLE_TEAM_ID ?= $(shell grep '^APPLE_TEAM_ID=' .env 2>/dev/null | cut -d= -f2)
+APP_STORE_KEY_ID ?= $(shell grep '^APP_STORE_KEY_ID=' .env 2>/dev/null | cut -d= -f2)
+APP_STORE_ISSUER_ID ?= $(shell grep '^APP_STORE_ISSUER_ID=' .env 2>/dev/null | cut -d= -f2)
+APP_STORE_KEY_P8 ?= $(shell grep '^APP_STORE_KEY_P8=' .env 2>/dev/null | cut -d'"' -f2)
+ALTOOL_KEY_DIR := ~/.appstoreconnect/private_keys
 
 ## package-ios: Archive and export a release .ipa for App Store upload
 package-ios:
@@ -129,7 +133,21 @@ package-ios:
 		-quiet
 	@echo ""
 	@echo "IPA ready at: $(IOS_EXPORT_DIR)/IceBloxApp.ipa"
-	@echo "Upload with: xcrun altool --upload-app -f $(IOS_EXPORT_DIR)/IceBloxApp.ipa -t ios --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>"
+	@echo "Upload with: make publish-ios"
+
+## publish-ios: Upload the .ipa to App Store Connect via altool
+publish-ios:
+	@if [ -z "$(APP_STORE_KEY_ID)" ]; then echo "ERROR: APP_STORE_KEY_ID not set. Add APP_STORE_KEY_ID=<your-key-id> to .env or pass it as an env var."; exit 1; fi
+	@if [ -z "$(APP_STORE_ISSUER_ID)" ]; then echo "ERROR: APP_STORE_ISSUER_ID not set. Add APP_STORE_ISSUER_ID=<your-issuer-id> to .env or pass it as an env var."; exit 1; fi
+	@if [ -z "$(APP_STORE_KEY_P8)" ]; then echo "ERROR: APP_STORE_KEY_P8 not set. Add APP_STORE_KEY_P8=\"<pem-contents>\" to .env or pass it as an env var."; exit 1; fi
+	@if [ ! -f "$(IOS_EXPORT_DIR)/IceBloxApp.ipa" ]; then echo "ERROR: IPA not found at $(IOS_EXPORT_DIR)/IceBloxApp.ipa. Run 'make package-ios' first."; exit 1; fi
+	@mkdir -p $(ALTOOL_KEY_DIR)
+	@printf '%b\n' "$(APP_STORE_KEY_P8)" > $(ALTOOL_KEY_DIR)/AuthKey_$(APP_STORE_KEY_ID).p8
+	xcrun altool --upload-app \
+		-f $(IOS_EXPORT_DIR)/IceBloxApp.ipa \
+		-t ios \
+		--apiKey $(APP_STORE_KEY_ID) \
+		--apiIssuer $(APP_STORE_ISSUER_ID)
 
 ## run-android: Build, install, and launch the Android app on an emulator
 run-android: .env
