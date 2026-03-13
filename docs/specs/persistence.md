@@ -27,7 +27,7 @@ Both Android and iOS clients use a local SQLite database (`offline_queue`) to pe
 
 ### Removing a column
 
-1. **Android (Room):** Add a migration with `ALTER TABLE offline_queue DROP COLUMN <col>` (requires SQLite 3.35.0+, available on API 30+). Bump the version. Remove the field from `OfflineQueueEntry`.
+1. **Android (Room):** Use the table-recreation pattern (create new table without the column, copy data, drop old table, rename new table) inside a migration. `ALTER TABLE ... DROP COLUMN` requires SQLite 3.35.0+ which is only available on API 34+, so avoid it for backward compatibility. Bump the version. Remove the field from `OfflineQueueEntry`.
 2. **iOS (SQLite3):** The `CREATE TABLE IF NOT EXISTS` in `init()` defines the canonical schema. Old databases with extra columns are harmless — SQLite ignores columns not referenced in queries. No migration needed unless the extra column causes issues.
 3. **Important:** Never remove a column from the Room entity without adding a migration. Room validates the schema on startup and will crash with `IllegalStateException: Migration didn't properly handle` if the database has columns not defined in the entity.
 
