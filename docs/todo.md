@@ -25,7 +25,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
 - [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 - [ ] **App Store Connect listing** — Screenshots, description, privacy policy URL, category, age rating
-- [ ] **TestFlight build** — Archive and upload for beta testing
+- [x] **TestFlight build** — Archive and upload for beta testing (`make package-ios` + `make publish-ios`)
 
 ---
 
@@ -73,4 +73,4 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 ## Productionizing
 
-- [ ] **Redis subscriber store** — Replace the in-memory `subscribers.Store` with Redis-backed storage so subscriber state survives server restarts and scales across multiple instances.
+- [x] **Redis subscriber store** — Replace the in-memory `subscribers.Store` with Redis-backed storage so subscriber state survives server restarts and scales across multiple instances. (PR #106)

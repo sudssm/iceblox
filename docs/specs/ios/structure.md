@@ -125,6 +125,25 @@ Prerequisites for App Store submission:
 6. **TestFlight** — Upload archive for beta testing before submission
 7. **ML Model** — Bundle `plate_detector.mlmodel` (not committed to repo; see model training docs)
 
+### Makefile Targets
+
+The root `Makefile` provides two targets for App Store distribution:
+
+**`make package-ios`** — Archive and export a release `.ipa` for App Store upload.
+
+- Requires `APPLE_TEAM_ID` (set in `.env` or as an env var)
+- Generates an `ExportOptions.plist` with `app-store-connect` method and automatic signing
+- Runs `xcodebuild archive` followed by `xcodebuild -exportArchive`
+- Output: `ios/build/export/IceBloxApp.ipa`
+
+**`make publish-ios`** — Upload the `.ipa` to App Store Connect via `xcrun altool`.
+
+- Requires `APP_STORE_KEY_ID`, `APP_STORE_ISSUER_ID`, and `APP_STORE_KEY_P8` (set in `.env` or as env vars)
+- Writes the `.p8` key to `~/.appstoreconnect/private_keys/` for `altool` authentication
+- Requires a prior `make package-ios` run (checks for the `.ipa` file)
+
+All credentials are read from the root `.env` file or environment variables — none are committed to the repository.
+
 ## Build Learnings
 
 | Topic | Detail |
