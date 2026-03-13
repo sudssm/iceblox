@@ -6,6 +6,13 @@ A privacy-focused license plate detection system for community watch against ICE
 
 The system is designed so that neither party learns what it shouldn't: the app never sees the target plates, and the server never sees non-target plates in plaintext.
 
+<p align="center">
+  <img src="docs/screenshots/iphone_splash.png" width="180" alt="Home screen" />
+  <img src="docs/screenshots/iphone_camera.png" width="180" alt="Dashcam view" />
+  <img src="docs/screenshots/iphone_map.png" width="180" alt="Map view" />
+  <img src="docs/screenshots/iphone_report.png" width="180" alt="Report form" />
+</p>
+
 ## How It Works
 
 1. The mobile app captures camera frames and detects license plates on-device

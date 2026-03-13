@@ -111,6 +111,9 @@ struct SplashScreenView: View {
             if AppConfig.autoShowSettings {
                 showSettingsSheet = true
             }
+            if AppConfig.autoShowMap {
+                showMapSheet = true
+            }
             guard AppConfig.useSplashTrigger else { return }
 
             e2eTriggerTask?.cancel()

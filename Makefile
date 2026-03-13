@@ -124,7 +124,16 @@ package-ios:
 		-archivePath $(IOS_ARCHIVE) \
 		-allowProvisioningUpdates \
 		DEVELOPMENT_TEAM=$(APPLE_TEAM_ID) \
+		OTHER_SWIFT_FLAGS="-DPRODUCTION_SERVER" \
 		-quiet
+	@echo "Patching embedded framework MinimumOSVersion..."
+	@APP_MINOS=$$(plutil -extract MinimumOSVersion raw $(IOS_ARCHIVE)/Products/Applications/IceBloxApp.app/Info.plist); \
+	for fw in $(IOS_ARCHIVE)/Products/Applications/IceBloxApp.app/Frameworks/*.framework; do \
+		if [ -f "$$fw/Info.plist" ]; then \
+			plutil -replace MinimumOSVersion -string "$$APP_MINOS" "$$fw/Info.plist"; \
+			echo "  Set $$(basename $$fw) MinimumOSVersion to $$APP_MINOS"; \
+		fi; \
+	done
 	xcodebuild -exportArchive \
 		-archivePath $(IOS_ARCHIVE) \
 		-exportPath $(IOS_EXPORT_DIR) \
