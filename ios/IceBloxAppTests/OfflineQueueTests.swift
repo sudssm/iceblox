@@ -74,7 +74,11 @@ final class OfflineQueueTests: XCTestCase {
             )
             """
         sqlite3_exec(db, createSQL, nil, nil, nil)
-        sqlite3_exec(db, "INSERT INTO queue (plate_hash, timestamp, latitude, longitude, session_id) VALUES ('hash1', 1000.0, 40.7, -74.0, 'sess1')", nil, nil, nil)
+        let insertSQL = """
+            INSERT INTO queue (plate_hash, timestamp, latitude, longitude, session_id) \
+            VALUES ('hash1', 1000.0, 40.7, -74.0, 'sess1')
+            """
+        sqlite3_exec(db, insertSQL, nil, nil, nil)
         sqlite3_close(db)
 
         let queue = OfflineQueue(databasePath: path)

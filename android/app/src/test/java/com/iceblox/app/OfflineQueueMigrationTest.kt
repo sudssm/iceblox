@@ -1,6 +1,7 @@
 package com.iceblox.app
 
 import android.database.sqlite.SQLiteDatabase
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -9,7 +10,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 class OfflineQueueMigrationTest {
@@ -139,8 +139,14 @@ class OfflineQueueMigrationTest {
 
         val dbColumns = getColumnNames(db)
         val entityColumns = setOf(
-            "id", "plate_hash", "timestamp", "latitude", "longitude",
-            "session_id", "confidence", "is_primary"
+            "id",
+            "plate_hash",
+            "timestamp",
+            "latitude",
+            "longitude",
+            "session_id",
+            "confidence",
+            "is_primary"
         )
 
         assertEquals(entityColumns, dbColumns)
