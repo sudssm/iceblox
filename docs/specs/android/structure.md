@@ -174,10 +174,26 @@ The keystore file (`release.keystore`) is gitignored. Store it and its credentia
 
 Release builds enable R8 minification and resource shrinking. ProGuard rules for third-party libraries (CameraX, Compose, ONNX Runtime, OkHttp, Room) are maintained in `app/proguard-rules.pro`.
 
+### CI Release
+
+A GitHub Actions workflow (`.github/workflows/release.yml`) automates the release AAB build. It triggers on version tags (`v*`) and `workflow_dispatch`.
+
+**Steps:**
+1. Set up JDK 17 (Temurin), Android SDK, and Gradle
+2. Decode the release keystore from `RELEASE_KEYSTORE_BASE64` secret
+3. Create `.env` (pepper, maps API key) and `local.properties` (signing credentials) from secrets
+4. Run unit tests (`make android-unit-test`)
+5. Build release AAB (`make android-release-bundle`)
+6. Upload the AAB as a build artifact
+
+**Required GitHub Secrets:** `RELEASE_KEYSTORE_BASE64`, `PEPPER`, `ANDROID_MAPS_API_KEY`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
+
+The `make android-release-bundle` target runs `./gradlew bundleRelease` from the `android/` directory.
+
 ### Play Store
 
 - **Target SDK**: 35 (current Play Store minimum)
-- **Upload format**: Android App Bundle (`.aab`) via `./gradlew bundleRelease`
+- **Upload format**: Android App Bundle (`.aab`) via `./gradlew bundleRelease` or `make android-release-bundle`
 - **App icon**: 512x512 PNG for Play Store listing (separate from adaptive icon)
 - **Required listing assets**: feature graphic (1024x500), 2+ phone screenshots, privacy policy URL
 - **Content rating**: IARC questionnaire in Play Console
