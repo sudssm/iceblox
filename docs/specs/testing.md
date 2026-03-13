@@ -292,6 +292,7 @@ iOS Simulator coordinate mapping is unreliable on multi-monitor setups. The `ios
 - **Environment variables** (via `SIMCTL_CHILD_*` prefix): Set flags that the app reads in `AppConfig.swift` to skip dialogs, auto-navigate to screens, or enable test modes. Examples:
   - `SIMCTL_CHILD_E2E_AUTO_SHOW_REPORT=1` — opens the report sheet without tapping
   - `SIMCTL_CHILD_E2E_AUTO_SHOW_SETTINGS=1` — opens the settings sheet without tapping
+  - `SIMCTL_CHILD_E2E_AUTO_SHOW_MAP=1` — opens the map sheet without tapping
   - `SIMCTL_CHILD_E2E_USE_SPLASH_TRIGGER=1` — enables file-based splash-to-camera transition
   - `SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1` — suppresses notification permission dialog
   - `SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0` — skips location permission prompt
@@ -451,13 +452,11 @@ scripts/ios-test.sh --prod-server  # prod server (Railway)
 **What it does:**
 
 1. **Detects** a USB-connected iOS device via `xcrun xctrace list devices`
-2. **Patches** `AppConfig.serverBaseURL` for the target (host machine's LAN IP for local, or the Railway production URL)
-3. **Builds** the app for device (`generic/platform=iOS`) with automatic provisioning
-4. **Reverts** the AppConfig patch after build
-5. **Installs and launches** the app on the device via `xcrun devicectl`
-6. **(Local only)** Starts a Docker PostgreSQL container if needed and runs the Go server in the foreground
+2. **Builds** the app for device (`generic/platform=iOS`) with automatic provisioning. When `--prod-server` is used, passes `OTHER_SWIFT_FLAGS="-DPRODUCTION_SERVER"` to bake in the production URL at compile time.
+3. **Installs and launches** the app on the device via `xcrun devicectl`. For local server mode, passes `SERVER_BASE_URL=http://<LAN_IP>:8080` as a runtime environment variable via `xcrun devicectl device process launch -e`.
+4. **(Local only)** Starts a Docker PostgreSQL container if needed and runs the Go server in the foreground
 
-A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates. For local server mode, the script detects the Mac's LAN IP (via `ipconfig getifaddr`) and patches AppConfig to point at `http://<LAN_IP>:8080` since `localhost` is not reachable from a physical device.
+No source-file patching or cleanup handlers are needed — the server URL is selected via compile-time flags (prod) or runtime environment variables (local).
 
 ## Future Enhancements
 
