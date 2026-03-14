@@ -103,11 +103,7 @@ object LookalikeExpander {
         val results = mutableListOf<Triple<String, Int, Float>>()
         val seen = mutableSetOf<List<Int>>()
 
-        data class Entry(
-            val indices: IntArray,
-            val lastModified: Int,
-            val confidence: Float
-        )
+        data class Entry(val indices: IntArray, val lastModified: Int, val confidence: Float)
 
         val queue = PriorityQueue<Entry>(compareByDescending { it.confidence })
 

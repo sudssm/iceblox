@@ -2,12 +2,12 @@ package com.iceblox.app
 
 import com.iceblox.app.detection.SlotCandidate
 import com.iceblox.app.processing.LookalikeExpander
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 class LookalikeExpanderTest {
 
