@@ -16,7 +16,10 @@ private struct SessionSummaryCard: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Plates seen: \(platesSeen)")
-                Text("ICE vehicles: \(iceVehicles)")
+                if iceVehicles > 0 {
+                    Text("ICE Vehicles Scanned: \(iceVehicles)")
+                        .foregroundStyle(.orange)
+                }
                 Text("Duration: \(durationText)")
                 if pendingUploads > 0 {
                     Text("Pending sync: \(pendingUploads) uploads")
