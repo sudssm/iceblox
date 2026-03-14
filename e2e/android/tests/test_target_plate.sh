@@ -68,7 +68,7 @@ run_test_target_plate() {
         local plates_seen
         plates_seen="$(printf '%s\n' "$ui_texts" | sed -n 's/^Plates seen: //p' | head -1)"
         local ice_vehicles
-        ice_vehicles="$(printf '%s\n' "$ui_texts" | sed -n 's/^ICE vehicles: //p' | head -1)"
+        ice_vehicles="$(printf '%s\n' "$ui_texts" | sed -n 's/^ICE Vehicles Scanned: //p' | head -1)"
         local duration_text
         duration_text="$(printf '%s\n' "$ui_texts" | sed -n 's/^Duration: //p' | head -1)"
 
