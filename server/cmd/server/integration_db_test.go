@@ -49,12 +49,12 @@ func TestRun_MigrateOnly_DoesNotRequirePepperOrPlates(t *testing.T) {
 		SELECT COUNT(*)
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
-		  AND table_name IN ('plates', 'sightings', 'device_tokens', 'sent_pushes')
+		  AND table_name IN ('plates', 'sightings', 'device_tokens', 'sent_pushes', 'reports', 'sessions')
 	`).Scan(&count); err != nil {
 		t.Fatalf("query tables: %v", err)
 	}
-	if count != 4 {
-		t.Fatalf("expected 4 migrated tables, got %d", count)
+	if count != 6 {
+		t.Fatalf("expected 6 migrated tables, got %d", count)
 	}
 }
 
@@ -78,6 +78,7 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 	}
 
 	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sessions")
 	pool.ExecContext(ctx, "DELETE FROM sightings")
 	pool.ExecContext(ctx, "DELETE FROM plates")
 
@@ -104,7 +105,7 @@ func TestEndToEnd_WithDatabase(t *testing.T) {
 	store.SetPlateIDs(mapping)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, nil))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, nil, nil))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
@@ -459,6 +460,179 @@ func TestSentPush_CascadeDelete(t *testing.T) {
 	if countAfter != 0 {
 		t.Errorf("expected 0 sent_pushes after cascade delete, got %d", countAfter)
 	}
+}
+
+func TestEndToEnd_SessionTracking(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+
+	pepper := []byte("e2e-session-pepper")
+	ctx := context.Background()
+
+	database, err := db.Connect(dsn)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sessions")
+	pool.ExecContext(ctx, "DELETE FROM sightings")
+	pool.ExecContext(ctx, "DELETE FROM plates")
+
+	dir := t.TempDir()
+	platesPath := filepath.Join(dir, "plates.txt")
+	os.WriteFile(platesPath, []byte("SESS001\n"), 0644)
+
+	store, err := targets.New(platesPath, pepper)
+	if err != nil {
+		t.Fatalf("targets.New: %v", err)
+	}
+	records := store.Records()
+	dbRecords := make([]db.PlateRecord, len(records))
+	for i, r := range records {
+		dbRecords[i] = db.PlateRecord{Plate: r.Plate, Hash: r.Hash}
+	}
+	mapping, err := database.UpsertPlates(ctx, dbRecords)
+	if err != nil {
+		t.Fatalf("UpsertPlates: %v", err)
+	}
+	store.SetPlateIDs(mapping)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(database, store, nil, database))
+	mux.HandleFunc("/api/v1/sessions/end", handler.EndSessionHandler(database))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	sessionID := "e2e-sess-001"
+
+	t.Run("upload with session_id creates session", func(t *testing.T) {
+		hash := e2eHMAC("SESS001", pepper)
+		body, _ := json.Marshal(map[string]interface{}{
+			"session_id": sessionID,
+			"plates": []map[string]interface{}{
+				{"plate_hash": hash, "latitude": 40.0, "longitude": -74.0},
+			},
+		})
+
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/plates", strings.NewReader(string(body)))
+		req.Header.Set("X-Device-ID", "e2e-sess-device")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("POST: %v", err)
+		}
+		resp.Body.Close()
+
+		var vehicles, plates int
+		pool.QueryRowContext(ctx,
+			"SELECT vehicles, plates FROM sessions WHERE session_id = $1", sessionID).
+			Scan(&vehicles, &plates)
+		if vehicles != 1 {
+			t.Errorf("expected vehicles=1, got %d", vehicles)
+		}
+		if plates != 1 {
+			t.Errorf("expected plates=1, got %d", plates)
+		}
+	})
+
+	t.Run("second upload increments session counters", func(t *testing.T) {
+		hash := e2eHMAC("SESS001", pepper)
+		body, _ := json.Marshal(map[string]interface{}{
+			"session_id": sessionID,
+			"plates": []map[string]interface{}{
+				{"plate_hash": hash, "latitude": 41.0, "longitude": -74.0},
+			},
+		})
+
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/plates", strings.NewReader(string(body)))
+		req.Header.Set("X-Device-ID", "e2e-sess-device")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("POST: %v", err)
+		}
+		resp.Body.Close()
+
+		var vehicles, plates int
+		pool.QueryRowContext(ctx,
+			"SELECT vehicles, plates FROM sessions WHERE session_id = $1", sessionID).
+			Scan(&vehicles, &plates)
+		if vehicles != 2 {
+			t.Errorf("expected vehicles=2, got %d", vehicles)
+		}
+		if plates != 2 {
+			t.Errorf("expected plates=2, got %d", plates)
+		}
+	})
+
+	t.Run("end session sets ended_at and confidence stats", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]interface{}{
+			"session_id":                 sessionID,
+			"max_detection_confidence":   0.95,
+			"total_detection_confidence": 1.8,
+			"max_ocr_confidence":         0.88,
+			"total_ocr_confidence":       1.6,
+		})
+		resp, err := http.Post(srv.URL+"/api/v1/sessions/end", "application/json", strings.NewReader(string(body)))
+		if err != nil {
+			t.Fatalf("POST sessions/end: %v", err)
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		var endedAt *time.Time
+		var maxDet, totalDet, maxOCR, totalOCR float64
+		pool.QueryRowContext(ctx,
+			"SELECT ended_at, max_detection_confidence, total_detection_confidence, max_ocr_confidence, total_ocr_confidence FROM sessions WHERE session_id = $1", sessionID).
+			Scan(&endedAt, &maxDet, &totalDet, &maxOCR, &totalOCR)
+		if endedAt == nil {
+			t.Fatal("expected ended_at to be set after ending session")
+		}
+		if maxDet != 0.95 {
+			t.Errorf("max_detection_confidence: got %f, want 0.95", maxDet)
+		}
+		if totalDet != 1.8 {
+			t.Errorf("total_detection_confidence: got %f, want 1.8", totalDet)
+		}
+		if maxOCR != 0.88 {
+			t.Errorf("max_ocr_confidence: got %f, want 0.88", maxOCR)
+		}
+		if totalOCR != 1.6 {
+			t.Errorf("total_ocr_confidence: got %f, want 1.6", totalOCR)
+		}
+	})
+
+	t.Run("upload without session_id creates no session", func(t *testing.T) {
+		var countBefore int
+		pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&countBefore)
+
+		hash := e2eHMAC("SESS001", pepper)
+		body, _ := json.Marshal(map[string]interface{}{
+			"plates": []map[string]interface{}{
+				{"plate_hash": hash, "latitude": 42.0, "longitude": -74.0},
+			},
+		})
+		resp, err := http.Post(srv.URL+"/api/v1/plates", "application/json", strings.NewReader(string(body)))
+		if err != nil {
+			t.Fatalf("POST: %v", err)
+		}
+		resp.Body.Close()
+
+		var countAfter int
+		pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&countAfter)
+		if countAfter != countBefore {
+			t.Errorf("expected no new sessions, got %d new", countAfter-countBefore)
+		}
+	})
 }
 
 func e2eHMAC(plate string, pepper []byte) string {

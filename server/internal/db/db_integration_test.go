@@ -27,6 +27,7 @@ func testDB(t *testing.T) *DB {
 	}
 
 	pool := database.Pool()
+	pool.ExecContext(ctx, "DELETE FROM sessions")
 	pool.ExecContext(ctx, "DELETE FROM sightings")
 	pool.ExecContext(ctx, "DELETE FROM device_tokens")
 	pool.ExecContext(ctx, "DELETE FROM plates")
@@ -234,5 +235,89 @@ func TestLoadPlateIDs_ReturnsAllPlates(t *testing.T) {
 		if _, ok := mapping[p.Hash]; !ok {
 			t.Errorf("hash %s not found in LoadPlateIDs result", p.Hash)
 		}
+	}
+}
+
+func TestUpsertSession_CreatesAndIncrements(t *testing.T) {
+	database := testDB(t)
+	ctx := context.Background()
+
+	if err := database.UpsertSession(ctx, "sess-1", "device-a", 3); err != nil {
+		t.Fatalf("first UpsertSession: %v", err)
+	}
+
+	pool := database.Pool()
+	var vehicles, plates int
+	var deviceID string
+	pool.QueryRowContext(ctx,
+		"SELECT device_id, vehicles, plates FROM sessions WHERE session_id = $1", "sess-1").
+		Scan(&deviceID, &vehicles, &plates)
+
+	if deviceID != "device-a" {
+		t.Errorf("device_id: got %q, want %q", deviceID, "device-a")
+	}
+	if vehicles != 1 {
+		t.Errorf("vehicles: got %d, want 1", vehicles)
+	}
+	if plates != 3 {
+		t.Errorf("plates: got %d, want 3", plates)
+	}
+
+	if err := database.UpsertSession(ctx, "sess-1", "device-a", 5); err != nil {
+		t.Fatalf("second UpsertSession: %v", err)
+	}
+
+	pool.QueryRowContext(ctx,
+		"SELECT vehicles, plates FROM sessions WHERE session_id = $1", "sess-1").
+		Scan(&vehicles, &plates)
+
+	if vehicles != 2 {
+		t.Errorf("vehicles after second upsert: got %d, want 2", vehicles)
+	}
+	if plates != 8 {
+		t.Errorf("plates after second upsert: got %d, want 8", plates)
+	}
+}
+
+func TestEndSession_SetsEndedAt(t *testing.T) {
+	database := testDB(t)
+	ctx := context.Background()
+
+	database.UpsertSession(ctx, "sess-end", "device-b", 1)
+
+	if err := database.EndSession(ctx, "sess-end", 0.95, 42.5, 0.88, 35.2); err != nil {
+		t.Fatalf("EndSession: %v", err)
+	}
+
+	pool := database.Pool()
+	var endedAt *time.Time
+	var maxDet, totalDet, maxOCR, totalOCR float64
+	pool.QueryRowContext(ctx,
+		"SELECT ended_at, max_detection_confidence, total_detection_confidence, max_ocr_confidence, total_ocr_confidence FROM sessions WHERE session_id = $1", "sess-end").
+		Scan(&endedAt, &maxDet, &totalDet, &maxOCR, &totalOCR)
+
+	if endedAt == nil {
+		t.Fatal("expected ended_at to be set")
+	}
+	if maxDet != 0.95 {
+		t.Errorf("max_detection_confidence: got %f, want 0.95", maxDet)
+	}
+	if totalDet != 42.5 {
+		t.Errorf("total_detection_confidence: got %f, want 42.5", totalDet)
+	}
+	if maxOCR != 0.88 {
+		t.Errorf("max_ocr_confidence: got %f, want 0.88", maxOCR)
+	}
+	if totalOCR != 35.2 {
+		t.Errorf("total_ocr_confidence: got %f, want 35.2", totalOCR)
+	}
+}
+
+func TestEndSession_NoOpForMissingSession(t *testing.T) {
+	database := testDB(t)
+	ctx := context.Background()
+
+	if err := database.EndSession(ctx, "nonexistent-session", 0, 0, 0, 0); err != nil {
+		t.Fatalf("EndSession for missing session should not error: %v", err)
 	}
 }

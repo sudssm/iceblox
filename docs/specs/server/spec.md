@@ -68,6 +68,7 @@ Content-Type: application/json
 X-Device-ID: <device identifier>
 
 {
+  "session_id": "string (UUID, optional — see REQ-S-25)",
   "plates": [
     {
       "plate_hash": "string (64-char hex, HMAC-SHA256)",
@@ -255,6 +256,23 @@ CREATE TABLE reports (
     stop_ice_status TEXT NOT NULL DEFAULT 'pending',
     stop_ice_error  TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+**Table: `sessions`** — scanning session tracking
+```sql
+CREATE TABLE sessions (
+    id                         SERIAL PRIMARY KEY,
+    session_id                 TEXT NOT NULL UNIQUE,                -- client-generated UUID
+    device_id                  TEXT NOT NULL,                       -- device identifier
+    started_at                 TIMESTAMPTZ NOT NULL,                -- first upload in session
+    ended_at                   TIMESTAMPTZ,                         -- NULL until session ends
+    vehicles                   INTEGER NOT NULL DEFAULT 0,          -- number of upload batches
+    plates                     INTEGER NOT NULL DEFAULT 0,          -- total plates across batches
+    max_detection_confidence   DOUBLE PRECISION NOT NULL DEFAULT 0, -- highest plate detection confidence
+    total_detection_confidence DOUBLE PRECISION NOT NULL DEFAULT 0, -- sum of detection confidences
+    max_ocr_confidence         DOUBLE PRECISION NOT NULL DEFAULT 0, -- highest OCR confidence
+    total_ocr_confidence       DOUBLE PRECISION NOT NULL DEFAULT 0  -- sum of OCR confidences
 );
 ```
 
@@ -547,6 +565,60 @@ After storing a report (REQ-S-20), the server MUST asynchronously submit it to t
 - On failure (HTTP error or network error), update `stop_ice_status` to `"failed"` and store the error message in `stop_ice_error`.
 - HTTP client timeout: 30 seconds.
 
+### REQ-S-25: Session Tracking
+
+The server MUST track scanning sessions reported by mobile clients. Sessions are created client-side with a random UUID and sent with plate uploads. The server aggregates per-session statistics (vehicle count, plate count) for observability.
+
+**Session upsert (via plates endpoint):**
+
+When `POST /api/v1/plates` includes an optional `session_id` field in the request body, the server MUST upsert a session record:
+- If no session exists for this `session_id`, create one with `started_at = NOW()`, `vehicles = 1`, `plates = <plate count in batch>`.
+- If a session already exists, atomically increment `vehicles` by 1 and `plates` by the number of plates in the batch.
+- The `device_id` is taken from the `X-Device-ID` header (same as sightings).
+- Session upsert errors MUST be logged but MUST NOT fail the plates request.
+- If `session_id` is empty or omitted, no session tracking occurs.
+
+**End session endpoint:**
+
+```
+POST /api/v1/sessions/end
+Content-Type: application/json
+
+{
+  "session_id": "string (UUID, required)",
+  "max_detection_confidence": number (float, optional, default 0),
+  "total_detection_confidence": number (float, optional, default 0),
+  "max_ocr_confidence": number (float, optional, default 0),
+  "total_ocr_confidence": number (float, optional, default 0)
+}
+```
+
+The confidence fields allow computing per-session statistics:
+- `max_detection_confidence`: Highest plate detection model confidence seen during the session.
+- `total_detection_confidence`: Sum of all plate detection confidences (divide by `plates` for average).
+- `max_ocr_confidence`: Highest OCR model confidence seen during the session.
+- `total_ocr_confidence`: Sum of all OCR confidences (divide by `plates` for average).
+
+**Field validation:**
+- `session_id`: Required. Non-empty string. Returns `400 Bad Request` if empty.
+- All confidence fields are optional and default to 0 if omitted.
+
+**Behavior:**
+- Sets `ended_at = NOW()` for the session where `session_id` matches and `ended_at IS NULL`.
+- Best-effort: if no matching session exists (0 rows affected), returns success anyway.
+- Database errors are logged but the endpoint always returns `200 OK`.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok"
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — invalid JSON or empty `session_id`.
+- `405 Method Not Allowed` — non-POST request.
+
 ## Out of Scope (v1)
 
 - Admin dashboard
@@ -626,6 +698,7 @@ server/
 │       ├── devices.go           # POST /api/v1/devices handler
 │       ├── reports.go           # POST /api/v1/reports handler (REQ-S-20)
 │       ├── reports_test.go      # Reports handler tests
+│       ├── sessions.go          # POST /api/v1/sessions/end handler (REQ-S-25)
 │       ├── map_sightings.go     # GET /api/v1/map-sightings handler (REQ-S-22)
 │       ├── map_sightings_test.go # Map sightings handler tests
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
@@ -671,6 +744,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 22 | StopICE client | REQ-S-21 | Async form submission to StopICE plate tracker with status callback |
 | 23 | Map sightings endpoint | REQ-S-22 | GET `/api/v1/map-sightings?lat=X&lng=Y&radius=Z`, returns sightings + reports within bounding box from last 2h, deduped by plate, with confidence 1.0 |
 | 24 | Report photo serving | REQ-S-23 | S3 upload for report photos (`reports/{uuid}.jpg`), presigned GET URLs (60min TTL) in map sightings response, fallback to local disk if S3 not configured |
+| 25 | Session tracking | REQ-S-25 | `sessions` table, upsert on plate upload, `POST /api/v1/sessions/end` endpoint, best-effort non-blocking |
 
 ### Key Technical Notes
 

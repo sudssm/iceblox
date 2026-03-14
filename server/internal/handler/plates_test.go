@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -91,7 +92,7 @@ func batchBody(plates ...string) string {
 func TestPlatesHandler_ValidRequest(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -128,7 +129,7 @@ func TestPlatesHandler_MatchedTarget(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
 	notifier := &mockNotifier{}
-	h := PlatesHandler(recorder, targets, notifier)
+	h := PlatesHandler(recorder, targets, notifier, nil)
 
 	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"timestamp":"2026-03-08T14:30:00Z"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -181,7 +182,7 @@ func TestPlatesHandler_MatchedTarget(t *testing.T) {
 func TestPlatesHandler_MatchedTarget_DefaultTimestamp(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 1}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -204,7 +205,7 @@ func TestPlatesHandler_MatchedTarget_DefaultTimestamp(t *testing.T) {
 func TestPlatesHandler_MethodNotAllowed(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/plates", nil)
 	w := httptest.NewRecorder()
@@ -218,7 +219,7 @@ func TestPlatesHandler_MethodNotAllowed(t *testing.T) {
 func TestPlatesHandler_InvalidJSON(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader("not json"))
 	w := httptest.NewRecorder()
@@ -232,7 +233,7 @@ func TestPlatesHandler_InvalidJSON(t *testing.T) {
 func TestPlatesHandler_EmptyPlatesArray(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(`{"plates":[]}`))
 	w := httptest.NewRecorder()
@@ -257,7 +258,7 @@ func TestPlatesHandler_InvalidHash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets, nil)
+			h := PlatesHandler(recorder, targets, nil, nil)
 
 			body := batchBody(`{"plate_hash":"` + tt.hash + `","latitude":31.0,"longitude":-106.0}`)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -287,7 +288,7 @@ func TestPlatesHandler_InvalidCoordinates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets, nil)
+			h := PlatesHandler(recorder, targets, nil, nil)
 
 			plate, _ := json.Marshal(PlateRequest{
 				PlateHash: validHash,
@@ -321,7 +322,7 @@ func TestPlatesHandler_BoundaryCoordinates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets, nil)
+			h := PlatesHandler(recorder, targets, nil, nil)
 
 			plate, _ := json.Marshal(PlateRequest{
 				PlateHash: validHash,
@@ -343,7 +344,7 @@ func TestPlatesHandler_BoundaryCoordinates(t *testing.T) {
 func TestPlatesHandler_SubstitutionsStored(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"substitutions":3}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -367,7 +368,7 @@ func TestPlatesHandler_SubstitutionsStored(t *testing.T) {
 func TestPlatesHandler_SubstitutionsDefaultZero(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -391,7 +392,7 @@ func TestPlatesHandler_SubstitutionsDefaultZero(t *testing.T) {
 func TestPlatesHandler_ConfidenceStored(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
-	h := PlatesHandler(recorder, targets, nil)
+	h := PlatesHandler(recorder, targets, nil, nil)
 
 	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.7619,"longitude":-106.485,"confidence":0.85}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -425,7 +426,7 @@ func TestPlatesHandler_ConfidenceOutOfRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := &mockRecorder{}
 			targets := &mockTargets{hashes: map[string]int64{}}
-			h := PlatesHandler(recorder, targets, nil)
+			h := PlatesHandler(recorder, targets, nil, nil)
 
 			body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.0,"longitude":-106.0,"confidence":` + tt.conf + `}`)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
@@ -444,7 +445,7 @@ func TestPlatesHandler_MultiplePlates(t *testing.T) {
 	recorder := &mockRecorder{}
 	targets := &mockTargets{hashes: map[string]int64{validHash: 42}}
 	notifier := &mockNotifier{}
-	h := PlatesHandler(recorder, targets, notifier)
+	h := PlatesHandler(recorder, targets, notifier, nil)
 
 	body := batchBody(
 		`{"plate_hash":"`+validHash+`","latitude":31.0,"longitude":-106.0}`,
@@ -479,5 +480,114 @@ func TestPlatesHandler_MultiplePlates(t *testing.T) {
 	}
 	if notifier.calls != 1 {
 		t.Errorf("expected 1 notifier call, got %d", notifier.calls)
+	}
+}
+
+type mockSessionTracker struct {
+	mu        sync.Mutex
+	calls     int
+	sessionID string
+	deviceID  string
+	plates    int
+	err       error
+}
+
+func (m *mockSessionTracker) UpsertSession(_ context.Context, sessionID, deviceID string, plateCount int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls++
+	m.sessionID = sessionID
+	m.deviceID = deviceID
+	m.plates = plateCount
+	return m.err
+}
+
+func TestPlatesHandler_SessionIDTriggersUpsert(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	sessions := &mockSessionTracker{}
+	h := PlatesHandler(recorder, targets, nil, sessions)
+
+	body := `{"session_id":"sess-abc-123","plates":[{"plate_hash":"` + validHash + `","latitude":31.0,"longitude":-106.0}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	req.Header.Set("X-Device-ID", "dev-1")
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if sessions.calls != 1 {
+		t.Fatalf("expected 1 session upsert call, got %d", sessions.calls)
+	}
+	if sessions.sessionID != "sess-abc-123" {
+		t.Errorf("expected session_id sess-abc-123, got %s", sessions.sessionID)
+	}
+	if sessions.deviceID != "dev-1" {
+		t.Errorf("expected device_id dev-1, got %s", sessions.deviceID)
+	}
+	if sessions.plates != 1 {
+		t.Errorf("expected plate count 1, got %d", sessions.plates)
+	}
+}
+
+func TestPlatesHandler_NoSessionIDSkipsUpsert(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	sessions := &mockSessionTracker{}
+	h := PlatesHandler(recorder, targets, nil, sessions)
+
+	body := batchBody(`{"plate_hash":"` + validHash + `","latitude":31.0,"longitude":-106.0}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if sessions.calls != 0 {
+		t.Fatalf("expected 0 session upsert calls for empty session_id, got %d", sessions.calls)
+	}
+}
+
+func TestPlatesHandler_SessionUpsertErrorIsNonFatal(t *testing.T) {
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	sessions := &mockSessionTracker{err: fmt.Errorf("db error")}
+	h := PlatesHandler(recorder, targets, nil, sessions)
+
+	body := `{"session_id":"sess-err","plates":[{"plate_hash":"` + validHash + `","latitude":31.0,"longitude":-106.0}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 even with session error, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestPlatesHandler_SessionPlateCountPassedCorrectly(t *testing.T) {
+	hash2 := "b4f9c3d2e5f60819293a4b5c6d7e8f0a1b2c3d4e5f6071829304a5b6c7d8e9f0"
+	recorder := &mockRecorder{}
+	targets := &mockTargets{hashes: map[string]int64{}}
+	sessions := &mockSessionTracker{}
+	h := PlatesHandler(recorder, targets, nil, sessions)
+
+	body := `{"session_id":"sess-multi","plates":[` +
+		`{"plate_hash":"` + validHash + `","latitude":31.0,"longitude":-106.0},` +
+		`{"plate_hash":"` + hash2 + `","latitude":32.0,"longitude":-107.0}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/plates", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if sessions.plates != 2 {
+		t.Errorf("expected plate count 2, got %d", sessions.plates)
 	}
 }

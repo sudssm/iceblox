@@ -53,6 +53,20 @@ type SentPush struct {
 	SentAt        time.Time   `gorm:"type:timestamptz;not null;index:idx_sent_pushes_sent_at"`
 }
 
+type Session struct {
+	ID                       int64      `gorm:"primaryKey;autoIncrement"`
+	SessionID                string     `gorm:"type:text;not null;uniqueIndex"`
+	DeviceID                 string     `gorm:"type:text;not null"`
+	StartedAt                time.Time  `gorm:"type:timestamptz;not null"`
+	EndedAt                  *time.Time `gorm:"type:timestamptz"`
+	Vehicles                 int        `gorm:"not null;default:0"`
+	Plates                   int        `gorm:"not null;default:0"`
+	MaxDetectionConfidence   float64    `gorm:"type:double precision;not null;default:0"`
+	TotalDetectionConfidence float64    `gorm:"type:double precision;not null;default:0"`
+	MaxOCRConfidence         float64    `gorm:"type:double precision;not null;default:0"`
+	TotalOCRConfidence       float64    `gorm:"type:double precision;not null;default:0"`
+}
+
 type Report struct {
 	ID            int64     `gorm:"primaryKey;autoIncrement"`
 	Description   string    `gorm:"type:text;not null"`
@@ -110,7 +124,7 @@ func Connect(dsn string) (*DB, error) {
 }
 
 func (d *DB) Migrate(_ context.Context) error {
-	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{}, &Report{})
+	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{}, &Report{}, &Session{})
 }
 
 func (d *DB) UpsertPlates(ctx context.Context, plates []PlateRecord) (map[string]int64, error) {
@@ -250,6 +264,38 @@ func (d *DB) TouchDeviceToken(ctx context.Context, hardwareID string) error {
 		return fmt.Errorf("touch device token: %w", err)
 	}
 	return nil
+}
+
+func (d *DB) UpsertSession(ctx context.Context, sessionID, deviceID string, plateCount int) error {
+	s := Session{
+		SessionID: sessionID,
+		DeviceID:  deviceID,
+		StartedAt: time.Now(),
+		Vehicles:  1,
+		Plates:    plateCount,
+	}
+	return d.gorm.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "session_id"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"vehicles": gorm.Expr("sessions.vehicles + 1"),
+				"plates":   gorm.Expr("sessions.plates + ?", plateCount),
+			}),
+		}).
+		Create(&s).Error
+}
+
+func (d *DB) EndSession(ctx context.Context, sessionID string, maxDetConf, totalDetConf, maxOCRConf, totalOCRConf float64) error {
+	return d.gorm.WithContext(ctx).
+		Model(&Session{}).
+		Where("session_id = ? AND ended_at IS NULL", sessionID).
+		Updates(map[string]interface{}{
+			"ended_at":                   time.Now(),
+			"max_detection_confidence":   maxDetConf,
+			"total_detection_confidence": totalDetConf,
+			"max_ocr_confidence":         maxOCRConf,
+			"total_ocr_confidence":       totalOCRConf,
+		}).Error
 }
 
 func (d *DB) CreateReport(ctx context.Context, report *Report) error {

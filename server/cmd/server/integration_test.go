@@ -91,7 +91,7 @@ func TestEndToEnd_PlatesFileToAPIMatch(t *testing.T) {
 	recorder := &testRecorder{}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(recorder, store, nil))
+	mux.HandleFunc("/api/v1/plates", handler.PlatesHandler(recorder, store, nil, nil))
 	mux.HandleFunc("/healthz", handler.HealthHandler(store))
 
 	srv := httptest.NewServer(mux)
