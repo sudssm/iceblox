@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios publish-ios
+.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios publish-ios android-release-bundle publish-android
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -209,6 +209,14 @@ unit-test: server-test android-unit-test ios-unit-test
 ## android-release-bundle: Build a signed release AAB for Play Store upload
 android-release-bundle: .env
 	cd android && ./gradlew bundleRelease
+
+## publish-android: Build a signed release AAB for Play Store upload
+publish-android: android-release-bundle
+	@AAB=$$(find android/app/build/outputs/bundle/release -name '*.aab' 2>/dev/null | head -1); \
+	if [ -z "$$AAB" ]; then echo "ERROR: No AAB found"; exit 1; fi; \
+	echo ""; \
+	echo "Release AAB ready at: $$AAB"; \
+	echo "Upload to Google Play Console to publish."
 
 ## android-unit-test: Run Android unit tests (generates .env first)
 android-unit-test: .env

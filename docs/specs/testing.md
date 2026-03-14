@@ -432,13 +432,11 @@ scripts/android-test.sh --prod-server  # prod server (Railway)
 **What it does:**
 
 1. **Connects** to a USB-attached device or prompts for a Wi-Fi ADB address
-2. **Patches** `AppConfig.SERVER_BASE_URL` for the target (localhost via `adb reverse`, or the Railway production URL)
-3. **Builds and installs** the debug APK
-4. **Reverts** the AppConfig patch after build
-5. **Launches** the app on the device
-6. **(Local only)** Starts a Docker PostgreSQL container if needed, sets up `adb reverse tcp:8080`, and runs the Go server in the foreground
+2. **Builds and installs** the debug APK with the appropriate server URL via Gradle property (`-PSERVER_URL=http://localhost:8080` for local, or `-PSERVER_URL=https://iceblox.up.railway.app` for prod)
+3. **Launches** the app on the device
+4. **(Local only)** Starts a Docker PostgreSQL container if needed, sets up `adb reverse tcp:8080`, and runs the Go server in the foreground
 
-A `trap EXIT` handler reverts the AppConfig URL on script exit regardless of how it terminates.
+No source-file patching or cleanup handlers are needed — the server URL is selected via a Gradle property at build time, similar to the iOS compile-time flag approach.
 
 ### iOS
 

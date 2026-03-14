@@ -34,6 +34,8 @@ android {
         val pepper = envProperties.getProperty("PEPPER")
             ?: error("PEPPER not found in ../.env")
         buildConfigField("String", "PEPPER", "\"$pepper\"")
+        val serverUrl = project.findProperty("SERVER_URL") as String? ?: "http://10.0.2.2:8080"
+        buildConfigField("String", "SERVER_BASE_URL", "\"$serverUrl\"")
 
         val mapsApiKey = envProperties.getProperty("ANDROID_MAPS_API_KEY") ?: ""
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
@@ -59,6 +61,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "SERVER_BASE_URL", "\"https://iceblox.up.railway.app\"")
             val releaseConfig = signingConfigs.findByName("release")
             if (releaseConfig?.storeFile != null) {
                 signingConfig = releaseConfig
