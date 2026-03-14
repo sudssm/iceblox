@@ -190,6 +190,8 @@ A GitHub Actions workflow (`.github/workflows/release.yml`) automates the releas
 
 The `make android-release-bundle` target runs `./gradlew bundleRelease` from the `android/` directory.
 
+**`make publish-android`** — Build a signed release AAB and print the path for manual upload to Google Play Console. Depends on `android-release-bundle`.
+
 ### Play Store
 
 - **Target SDK**: 35 (current Play Store minimum)
@@ -210,6 +212,7 @@ The `make android-release-bundle` target runs `./gradlew bundleRelease` from the
 | **Debug gating** | Developer debug mode (triple-tap toggle) is gated behind `BuildConfig.DEBUG` — stripped from release builds by ProGuard/R8. The debug overlay bounding boxes are available in all builds via the user debug mode setting (REQ-M-18). The detection feed, log panel, and FPS header are gated behind developer debug mode (`showFeedAndLogs`). |
 | **TFLite output tensor format** | YOLOv8 TFLite outputs `[1, 5, 8400]` for single-class (not `[1, 8400, 5]`). NMS must be implemented manually — unlike Core ML which bakes NMS into the export. |
 | **keytool location** | System `keytool` may not be in PATH. Use Android Studio's bundled JDK: `/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool`. |
+| **Server URL** | `build.gradle.kts` uses a Gradle project property `SERVER_URL` to set the default server URL at build time via `BuildConfig.SERVER_BASE_URL`. Debug builds default to `http://10.0.2.2:8080` (emulator localhost) when no property is provided. Release builds hardcode `https://iceblox.up.railway.app` regardless of the property. Pass `-PSERVER_URL=<url>` to override for debug builds (e.g., `./gradlew assembleDebug -PSERVER_URL=http://localhost:8080` for physical device testing). `AppConfig.kt` reads the value from `BuildConfig` at runtime. This avoids source-file patching during builds. |
 
 ## Dependencies
 
