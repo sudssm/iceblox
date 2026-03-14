@@ -141,7 +141,10 @@ class PlateOCR(context: Context) {
 
                     val candidates = mutableListOf<SlotCandidate>()
                     for (c in scores.indices) {
-                        if (c < ALPHABET.length && ALPHABET[c] != PAD_CHAR && scores[c] >= AppConfig.OCR_CANDIDATE_THRESHOLD) {
+                        if (c < ALPHABET.length &&
+                            ALPHABET[c] != PAD_CHAR &&
+                            scores[c] >= AppConfig.OCR_CANDIDATE_THRESHOLD
+                        ) {
                             candidates.add(SlotCandidate(ALPHABET[c], scores[c]))
                         }
                     }
