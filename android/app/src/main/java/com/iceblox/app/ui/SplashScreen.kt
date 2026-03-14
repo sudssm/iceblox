@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -65,9 +66,11 @@ fun SplashScreen(
                 fontWeight = FontWeight.Bold
             )
 
+            val buttonWidth = 260.dp
+
             Button(
                 onClick = onStartCamera,
-                modifier = Modifier.padding(top = 32.dp),
+                modifier = Modifier.padding(top = 32.dp).widthIn(min = buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
@@ -78,13 +81,13 @@ fun SplashScreen(
                     text = "Start Camera",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
 
             Button(
                 onClick = onViewMap,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 16.dp).widthIn(min = buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
@@ -95,13 +98,13 @@ fun SplashScreen(
                     text = "View Map",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
 
             Button(
                 onClick = onReportICE,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 16.dp).widthIn(min = buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Red,
@@ -112,7 +115,7 @@ fun SplashScreen(
                     text = "Report ICE Activity",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
         }
