@@ -65,7 +65,6 @@ struct SplashScreenView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
-
         }
         .onAppear {
             if offlineQueue.count > 0 {

@@ -117,6 +117,5 @@ fun SplashScreen(
                 )
             }
         }
-
     }
 }
