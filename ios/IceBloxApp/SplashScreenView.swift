@@ -67,7 +67,7 @@ struct SplashScreenView: View {
             }
         }
         .onAppear {
-            if offlineQueue.count > 0 {
+            if !offlineQueue.isEmpty {
                 let client = APIClient(offlineQueue: offlineQueue, currentSessionID: "")
                 client.startBatchTimer()
                 drainClient = client
