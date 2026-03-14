@@ -249,9 +249,11 @@ func TestUpsertSession_CreatesAndIncrements(t *testing.T) {
 	pool := database.Pool()
 	var vehicles, plates int
 	var deviceID string
-	pool.QueryRowContext(ctx,
+	if err := pool.QueryRowContext(ctx,
 		"SELECT device_id, vehicles, plates FROM sessions WHERE session_id = $1", "sess-1").
-		Scan(&deviceID, &vehicles, &plates)
+		Scan(&deviceID, &vehicles, &plates); err != nil {
+		t.Fatalf("query session after first upsert: %v", err)
+	}
 
 	if deviceID != "device-a" {
 		t.Errorf("device_id: got %q, want %q", deviceID, "device-a")
@@ -267,9 +269,11 @@ func TestUpsertSession_CreatesAndIncrements(t *testing.T) {
 		t.Fatalf("second UpsertSession: %v", err)
 	}
 
-	pool.QueryRowContext(ctx,
+	if err := pool.QueryRowContext(ctx,
 		"SELECT vehicles, plates FROM sessions WHERE session_id = $1", "sess-1").
-		Scan(&vehicles, &plates)
+		Scan(&vehicles, &plates); err != nil {
+		t.Fatalf("query session after second upsert: %v", err)
+	}
 
 	if vehicles != 2 {
 		t.Errorf("vehicles after second upsert: got %d, want 2", vehicles)
@@ -292,9 +296,11 @@ func TestEndSession_SetsEndedAt(t *testing.T) {
 	pool := database.Pool()
 	var endedAt *time.Time
 	var maxDet, totalDet, maxOCR, totalOCR float64
-	pool.QueryRowContext(ctx,
+	if err := pool.QueryRowContext(ctx,
 		"SELECT ended_at, max_detection_confidence, total_detection_confidence, max_ocr_confidence, total_ocr_confidence FROM sessions WHERE session_id = $1", "sess-end").
-		Scan(&endedAt, &maxDet, &totalDet, &maxOCR, &totalOCR)
+		Scan(&endedAt, &maxDet, &totalDet, &maxOCR, &totalOCR); err != nil {
+		t.Fatalf("query session after end: %v", err)
+	}
 
 	if endedAt == nil {
 		t.Fatal("expected ended_at to be set")

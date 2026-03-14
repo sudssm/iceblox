@@ -531,9 +531,11 @@ func TestEndToEnd_SessionTracking(t *testing.T) {
 		resp.Body.Close()
 
 		var vehicles, plates int
-		pool.QueryRowContext(ctx,
+		if err := pool.QueryRowContext(ctx,
 			"SELECT vehicles, plates FROM sessions WHERE session_id = $1", sessionID).
-			Scan(&vehicles, &plates)
+			Scan(&vehicles, &plates); err != nil {
+			t.Fatalf("query session: %v", err)
+		}
 		if vehicles != 1 {
 			t.Errorf("expected vehicles=1, got %d", vehicles)
 		}
@@ -560,9 +562,11 @@ func TestEndToEnd_SessionTracking(t *testing.T) {
 		resp.Body.Close()
 
 		var vehicles, plates int
-		pool.QueryRowContext(ctx,
+		if err := pool.QueryRowContext(ctx,
 			"SELECT vehicles, plates FROM sessions WHERE session_id = $1", sessionID).
-			Scan(&vehicles, &plates)
+			Scan(&vehicles, &plates); err != nil {
+			t.Fatalf("query session: %v", err)
+		}
 		if vehicles != 2 {
 			t.Errorf("expected vehicles=2, got %d", vehicles)
 		}
@@ -591,9 +595,11 @@ func TestEndToEnd_SessionTracking(t *testing.T) {
 
 		var endedAt *time.Time
 		var maxDet, totalDet, maxOCR, totalOCR float64
-		pool.QueryRowContext(ctx,
+		if err := pool.QueryRowContext(ctx,
 			"SELECT ended_at, max_detection_confidence, total_detection_confidence, max_ocr_confidence, total_ocr_confidence FROM sessions WHERE session_id = $1", sessionID).
-			Scan(&endedAt, &maxDet, &totalDet, &maxOCR, &totalOCR)
+			Scan(&endedAt, &maxDet, &totalDet, &maxOCR, &totalOCR); err != nil {
+			t.Fatalf("query session: %v", err)
+		}
 		if endedAt == nil {
 			t.Fatal("expected ended_at to be set after ending session")
 		}
@@ -613,7 +619,9 @@ func TestEndToEnd_SessionTracking(t *testing.T) {
 
 	t.Run("upload without session_id creates no session", func(t *testing.T) {
 		var countBefore int
-		pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&countBefore)
+		if err := pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&countBefore); err != nil {
+			t.Fatalf("query session count: %v", err)
+		}
 
 		hash := e2eHMAC("SESS001", pepper)
 		body, _ := json.Marshal(map[string]interface{}{
@@ -628,7 +636,9 @@ func TestEndToEnd_SessionTracking(t *testing.T) {
 		resp.Body.Close()
 
 		var countAfter int
-		pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&countAfter)
+		if err := pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&countAfter); err != nil {
+			t.Fatalf("query session count: %v", err)
+		}
 		if countAfter != countBefore {
 			t.Errorf("expected no new sessions, got %d new", countAfter-countBefore)
 		}
