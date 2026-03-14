@@ -330,11 +330,13 @@ fun SessionSummaryOverlay(summary: SessionSummary, onDone: () -> Unit, modifier:
                     color = Color.White,
                     fontFamily = FontFamily.Monospace
                 )
-                Text(
-                    "ICE vehicles: ${summary.iceVehicles}",
-                    color = Color.White,
-                    fontFamily = FontFamily.Monospace
-                )
+                if (summary.iceVehicles > 0) {
+                    Text(
+                        "ICE Vehicles Scanned: ${summary.iceVehicles}",
+                        color = Color(0xFFFF9800),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
                 Text(
                     "Duration: ${formatSessionDuration(summary.durationMs)}",
                     color = Color.White,

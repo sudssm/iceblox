@@ -6,6 +6,8 @@ A privacy-focused license plate detection system for community watch against ICE
 
 The system is designed so that neither party learns what it shouldn't: the app never sees the target plates, and the server never sees non-target plates in plaintext.
 
+> This app was built entirely using AI tools, following a spec-driven development philosophy. For more information, please see [Development Philosophy](docs/development-philosophy.md).
+
 <p align="center">
   <img src="docs/screenshots/iphone_splash.png" width="180" alt="Home screen" />
   <img src="docs/screenshots/iphone_camera.png" width="180" alt="Dashcam view" />
