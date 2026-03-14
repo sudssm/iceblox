@@ -31,8 +31,6 @@ fun SplashScreen(
     onReportICE: () -> Unit = {},
     onViewMap: () -> Unit = {},
     onSettings: () -> Unit = {},
-    queueDepth: Int = 0,
-    onClearQueue: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -120,14 +118,5 @@ fun SplashScreen(
             }
         }
 
-        if (queueDepth > 0) {
-            UploadQueueBanner(
-                count = queueDepth,
-                onClear = onClearQueue,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
-            )
-        }
     }
 }

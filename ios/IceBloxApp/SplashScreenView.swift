@@ -7,10 +7,7 @@ struct SplashScreenView: View {
     @State private var showSettingsSheet = false
     @State private var e2eTriggerTask: Task<Void, Never>?
     @State private var offlineQueue = OfflineQueue()
-    @State private var queueCount = 0
     @State private var drainClient: APIClient?
-
-    let queueTimer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack {
@@ -69,38 +66,9 @@ struct SplashScreenView: View {
                 }
             }
 
-            if queueCount > 0 {
-                VStack {
-                    Spacer()
-                    HStack(spacing: 8) {
-                        Text("\(queueCount) uploads queued")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.yellow)
-                        Button {
-                            drainClient?.stopBatchTimer()
-                            drainClient = nil
-                            offlineQueue.clearAll()
-                            queueCount = 0
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.white.opacity(0.7))
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.black.opacity(0.75))
-                    .clipShape(Capsule())
-                    .padding(.bottom, 48)
-                }
-            }
-        }
-        .onReceive(queueTimer) { _ in
-            queueCount = offlineQueue.count
         }
         .onAppear {
-            queueCount = offlineQueue.count
-            if queueCount > 0 {
+            if offlineQueue.count > 0 {
                 let client = APIClient(offlineQueue: offlineQueue, currentSessionID: "")
                 client.startBatchTimer()
                 drainClient = client
