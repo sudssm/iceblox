@@ -170,8 +170,6 @@ class MainActivity : ComponentActivity() {
                 } else if (showSettings) {
                     SettingsScreen(onBack = { showSettings = false })
                 } else {
-                    val splashViewModel: MainViewModel = viewModel()
-                    val splashQueueDepth by splashViewModel.queueDepth.collectAsState()
                     SplashScreen(
                         onStartCamera = {
                             if (hasCameraPermission) {
@@ -185,9 +183,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onReportICE = { showReport = true },
                         onViewMap = { showMap = true },
-                        onSettings = { showSettings = true },
-                        queueDepth = splashQueueDepth,
-                        onClearQueue = { splashViewModel.clearUploadQueue() }
+                        onSettings = { showSettings = true }
                     )
                 }
             }

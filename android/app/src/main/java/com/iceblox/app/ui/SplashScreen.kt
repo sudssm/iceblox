@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -31,8 +31,6 @@ fun SplashScreen(
     onReportICE: () -> Unit = {},
     onViewMap: () -> Unit = {},
     onSettings: () -> Unit = {},
-    queueDepth: Int = 0,
-    onClearQueue: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -118,16 +116,6 @@ fun SplashScreen(
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
-        }
-
-        if (queueDepth > 0) {
-            UploadQueueBanner(
-                count = queueDepth,
-                onClear = onClearQueue,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
-            )
         }
     }
 }
