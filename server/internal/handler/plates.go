@@ -21,7 +21,8 @@ type PlateRequest struct {
 }
 
 type BatchPlateRequest struct {
-	Plates []PlateRequest `json:"plates"`
+	SessionID string         `json:"session_id,omitempty"`
+	Plates    []PlateRequest `json:"plates"`
 }
 
 type PlateResult struct {
@@ -42,7 +43,11 @@ type PushNotifier interface {
 	NotifyAsync(sightingID int64, plateID int64, lat, lng float64)
 }
 
-func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier PushNotifier) http.HandlerFunc {
+type SessionTracker interface {
+	UpsertSession(ctx context.Context, sessionID, deviceID string, plateCount int) error
+}
+
+func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier PushNotifier, sessions SessionTracker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -74,6 +79,12 @@ func PlatesHandler(recorder SightingRecorder, targets TargetChecker, notifier Pu
 		}
 
 		log.Printf("POST /api/v1/plates count=%d device=%s", len(batch.Plates), hardwareID) //nolint:gosec // hardwareID sanitized above
+
+		if sessions != nil && batch.SessionID != "" {
+			if err := sessions.UpsertSession(r.Context(), batch.SessionID, hardwareID, len(batch.Plates)); err != nil {
+				log.Printf("failed to upsert session: %v", err)
+			}
+		}
 
 		results := make([]PlateResult, len(batch.Plates))
 		for i, req := range batch.Plates {
