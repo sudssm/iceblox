@@ -44,6 +44,7 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
 import com.iceblox.app.network.MapClient
 import com.iceblox.app.network.MapSighting
 import kotlinx.coroutines.FlowPreview
@@ -51,15 +52,29 @@ import kotlinx.coroutines.flow.debounce
 import org.json.JSONArray
 import org.json.JSONObject
 
+private val screenshotSightings = listOf(
+    MapSighting(34.0522, -118.2437, 0.85, "2026-03-12T10:30:00Z", "detection", null, null),
+    MapSighting(34.0195, -118.2910, 0.70, "2026-03-12T09:15:00Z", "report", null, null),
+    MapSighting(34.0725, -118.2615, 0.65, "2026-03-11T14:45:00Z", "report", null, null)
+)
+
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
-fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun MapViewScreen(
+    locationLat: Double?,
+    locationLng: Double?,
+    onBack: () -> Unit,
+    isScreenshotMode: Boolean = false,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val mapClient = remember { MapClient() }
     val prefs = remember { context.getSharedPreferences("map_cache", Context.MODE_PRIVATE) }
 
-    var sightings by remember { mutableStateOf<List<MapSighting>>(loadCachedSightings(prefs)) }
-    var isLoading by remember { mutableStateOf(true) }
+    var sightings by remember {
+        mutableStateOf(if (isScreenshotMode) screenshotSightings else loadCachedSightings(prefs))
+    }
+    var isLoading by remember { mutableStateOf(!isScreenshotMode) }
     var isOffline by remember { mutableStateOf(false) }
 
     val hasLocationPermission = ContextCompat.checkSelfPermission(
@@ -70,29 +85,31 @@ fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit
         Manifest.permission.ACCESS_COARSE_LOCATION
     ) == PackageManager.PERMISSION_GRANTED
 
-    val initialLat = locationLat ?: 40.7128
-    val initialLng = locationLng ?: -74.0060
+    val initialLat = if (isScreenshotMode) 34.0480 else (locationLat ?: 40.7128)
+    val initialLng = if (isScreenshotMode) -118.2670 else (locationLng ?: -74.0060)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(initialLat, initialLng), 12f)
     }
 
-    LaunchedEffect(cameraPositionState) {
-        snapshotFlow { cameraPositionState.position }
-            .debounce(500)
-            .collect { position ->
-                val target = position.target
-                val visibleRadius = estimateVisibleRadius(cameraPositionState.position.zoom)
-                isLoading = true
-                val result = mapClient.fetchSightings(target.latitude, target.longitude, visibleRadius)
-                result.onSuccess { data ->
-                    sightings = data
-                    isOffline = false
-                    saveCachedSightings(prefs, data)
-                }.onFailure {
-                    isOffline = true
+    if (!isScreenshotMode) {
+        LaunchedEffect(cameraPositionState) {
+            snapshotFlow { cameraPositionState.position }
+                .debounce(500)
+                .collect { position ->
+                    val target = position.target
+                    val visibleRadius = estimateVisibleRadius(cameraPositionState.position.zoom)
+                    isLoading = true
+                    val result = mapClient.fetchSightings(target.latitude, target.longitude, visibleRadius)
+                    result.onSuccess { data ->
+                        sightings = data
+                        isOffline = false
+                        saveCachedSightings(prefs, data)
+                    }.onFailure {
+                        isOffline = true
+                    }
+                    isLoading = false
                 }
-                isLoading = false
-            }
+        }
     }
 
     Scaffold(
@@ -149,28 +166,39 @@ fun MapViewScreen(locationLat: Double?, locationLng: Double?, onBack: () -> Unit
                     cameraPositionState = cameraPositionState,
                     properties = MapProperties(isMyLocationEnabled = hasLocationPermission)
                 ) {
-                    sightings.forEach { sighting ->
+                    sightings.forEachIndexed { index, sighting ->
                         val hue = if (sighting.confidence >= 0.5) {
                             BitmapDescriptorFactory.HUE_RED
                         } else {
                             BitmapDescriptorFactory.HUE_YELLOW
                         }
                         val title = if (sighting.confidence >= 0.5) {
-                            "Likely ICE activity"
+                            "ICE Activity Reported"
                         } else {
-                            "Potential ICE activity"
+                            "Potential ICE Activity"
                         }
-                        val snippet = buildString {
-                            append(formatTimeAgo(sighting.seenAt))
-                            if (sighting.type == "report") {
-                                append(" • User submitted report")
-                                sighting.description?.let { append("\n$it") }
+                        val snippet = if (isScreenshotMode) {
+                            ""
+                        } else {
+                            buildString {
+                                append(formatTimeAgo(sighting.seenAt))
+                                if (sighting.type == "report") {
+                                    append(" • User submitted report")
+                                    sighting.description?.let { append("\n$it") }
+                                }
+                            }
+                        }
+                        val markerState = rememberMarkerState(
+                            key = "marker_$index",
+                            position = LatLng(sighting.latitude, sighting.longitude)
+                        )
+                        if (isScreenshotMode && index == 0) {
+                            LaunchedEffect(Unit) {
+                                markerState.showInfoWindow()
                             }
                         }
                         Marker(
-                            state = MarkerState(
-                                position = LatLng(sighting.latitude, sighting.longitude)
-                            ),
+                            state = markerState,
                             title = title,
                             snippet = snippet,
                             icon = BitmapDescriptorFactory.defaultMarker(hue)

@@ -63,6 +63,7 @@ import com.iceblox.app.settings.UserSettings
 fun CameraScreen(
     modifier: Modifier = Modifier,
     isTestMode: Boolean = false,
+    isScreenshotMode: Boolean = false,
     onSessionFinished: () -> Unit = {},
     viewModel: MainViewModel = viewModel()
 ) {
@@ -203,7 +204,7 @@ fun CameraScreen(
             }
         }
 
-        if (isTestMode) {
+        if (isTestMode && !isScreenshotMode) {
             Text(
                 text = "TEST MODE $testStatus",
                 color = Color.Yellow,

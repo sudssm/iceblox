@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
     private var showMap by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var isTestMode = false
+    private var isScreenshotMode = false
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -86,8 +87,12 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra("SHOW_MAP", false)) {
             showMap = true
         }
+        if (intent.getBooleanExtra("SHOW_REPORT", false)) {
+            showReport = true
+        }
 
         isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
+        isScreenshotMode = intent.getBooleanExtra("SCREENSHOT_MODE", false)
         if (isTestMode) {
             DebugLog.d("MainActivity", "TEST MODE enabled via intent extra")
         }
@@ -114,6 +119,7 @@ class MainActivity : ComponentActivity() {
                     if (hasCameraPermission || isTestMode) {
                         CameraScreen(
                             isTestMode = isTestMode,
+                            isScreenshotMode = isScreenshotMode,
                             onSessionFinished = { showCamera = false }
                         )
                     } else {
@@ -139,7 +145,8 @@ class MainActivity : ComponentActivity() {
                     MapViewScreen(
                         locationLat = mapLocation?.latitude,
                         locationLng = mapLocation?.longitude,
-                        onBack = { showMap = false }
+                        onBack = { showMap = false },
+                        isScreenshotMode = isScreenshotMode
                     )
                 } else if (showReport) {
                     LaunchedEffect(hasLocationPermission) {

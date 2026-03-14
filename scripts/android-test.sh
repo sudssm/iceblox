@@ -8,27 +8,12 @@ export JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Con
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 export PATH="$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH"
 
-APPCONFIG="$ROOT/android/app/src/main/java/com/iceblox/app/config/AppConfig.kt"
 DB_DSN="postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable"
 USE_PROD_SERVER=false
 
 if [[ "${1:-}" == "--prod-server" ]]; then
     USE_PROD_SERVER=true
 fi
-
-cleanup() {
-    echo ""
-    # Revert AppConfig to emulator default
-    if grep -q 'http://localhost:8080' "$APPCONFIG" 2>/dev/null; then
-        sed -i '' 's|http://localhost:8080|http://10.0.2.2:8080|' "$APPCONFIG"
-        echo "Reverted AppConfig SERVER_BASE_URL"
-    fi
-    if grep -q 'https://iceblox.up.railway.app' "$APPCONFIG" 2>/dev/null; then
-        sed -i '' 's|https://iceblox.up.railway.app|http://10.0.2.2:8080|' "$APPCONFIG"
-        echo "Reverted AppConfig SERVER_BASE_URL"
-    fi
-}
-trap cleanup EXIT
 
 # --- Step 1: Connect to device ---
 USB_DEVICE=$(adb devices | grep -v emulator | grep -E 'device$' | head -1 | awk '{print $1}' || true)
@@ -56,23 +41,15 @@ echo "Connected to device: $DEVICE"
 # --- Step 2: Build and install Android app ---
 echo ""
 if [ "$USE_PROD_SERVER" = true ]; then
-    echo "Patching AppConfig for prod server (https://iceblox.up.railway.app)..."
-    sed -i '' 's|http://10.0.2.2:8080|https://iceblox.up.railway.app|' "$APPCONFIG"
+    echo "Building debug APK with prod server (https://iceblox.up.railway.app)..."
+    GRADLE_SERVER_FLAG="-PSERVER_URL=https://iceblox.up.railway.app"
 else
-    echo "Patching AppConfig for physical device (localhost via adb reverse)..."
-    sed -i '' 's|http://10.0.2.2:8080|http://localhost:8080|' "$APPCONFIG"
+    echo "Building debug APK for physical device (localhost via adb reverse)..."
+    GRADLE_SERVER_FLAG="-PSERVER_URL=http://localhost:8080"
 fi
 
-echo "Building debug APK..."
 cd "$ROOT/android"
-./gradlew assembleDebug
-
-echo "Reverting AppConfig..."
-if [ "$USE_PROD_SERVER" = true ]; then
-    sed -i '' 's|https://iceblox.up.railway.app|http://10.0.2.2:8080|' "$APPCONFIG"
-else
-    sed -i '' 's|http://localhost:8080|http://10.0.2.2:8080|' "$APPCONFIG"
-fi
+./gradlew assembleDebug $GRADLE_SERVER_FLAG
 
 echo ""
 echo "Installing APK..."

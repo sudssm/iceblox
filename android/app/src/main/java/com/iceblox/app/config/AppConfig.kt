@@ -1,7 +1,9 @@
 package com.iceblox.app.config
 
+import com.iceblox.app.BuildConfig
+
 object AppConfig {
-    const val SERVER_BASE_URL = "http://10.0.2.2:8080"
+    val SERVER_BASE_URL: String = BuildConfig.SERVER_BASE_URL
     const val PLATES_ENDPOINT = "/api/v1/plates"
     const val DEVICES_ENDPOINT = "/api/v1/devices"
     const val REPORTS_ENDPOINT = "/api/v1/reports"
