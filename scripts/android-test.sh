@@ -49,7 +49,7 @@ else
 fi
 
 cd "$ROOT/android"
-./gradlew assembleDebug $GRADLE_SERVER_FLAG
+./gradlew assembleDebug "$GRADLE_SERVER_FLAG"
 
 echo ""
 echo "Installing APK..."
