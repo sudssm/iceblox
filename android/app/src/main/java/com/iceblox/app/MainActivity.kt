@@ -197,18 +197,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        if (!isTestMode) {
-            BackgroundCaptureService.stop(this)
-        }
+    override fun onResume() {
+        super.onResume()
+        BackgroundCaptureService.stop(this)
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onPause() {
+        super.onPause()
         if (
             !isChangingConfigurations &&
-            !isTestMode &&
             showCamera &&
             hasCameraPermission
         ) {
