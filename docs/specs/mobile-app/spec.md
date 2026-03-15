@@ -27,7 +27,7 @@ The app MUST use a resolution sufficient for plate detection at distances of 3â€
 
 #### REQ-M-3: Splash Screen and Camera Start
 
-When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, a "Report ICE Activity" button (REQ-M-60), and a Settings gear icon (REQ-M-70). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). Tapping the Settings icon MUST open the Settings screen (REQ-M-70). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
+When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, a "Settings" button (REQ-M-70), and a "Report ICE Activity" button (REQ-M-60). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). Tapping the "Settings" button MUST open the Settings screen (REQ-M-70). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
 #### REQ-M-3a: Recording Session Lifecycle
 
