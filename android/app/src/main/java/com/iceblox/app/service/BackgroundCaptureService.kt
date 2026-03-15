@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -26,6 +27,7 @@ class BackgroundCaptureService : LifecycleService() {
 
     private var analysisExecutor: ExecutorService? = null
     private var captureBound = false
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -57,6 +59,12 @@ class BackgroundCaptureService : LifecycleService() {
         }
         repository.setBackgroundActive(true)
 
+        if (wakeLock == null) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "IceBlox:BackgroundCapture")
+            wakeLock?.acquire(60 * 60 * 1000L) // 60-min safety timeout
+        }
+
         if (!captureBound) {
             val executor = analysisExecutor ?: Executors.newSingleThreadExecutor().also {
                 analysisExecutor = it
@@ -76,6 +84,7 @@ class BackgroundCaptureService : LifecycleService() {
             CameraCaptureBinder.unbindAll(this)
             captureBound = false
         }
+        releaseWakeLock()
         repository.setBackgroundActive(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -86,10 +95,18 @@ class BackgroundCaptureService : LifecycleService() {
             CameraCaptureBinder.unbindAll(this)
             captureBound = false
         }
+        releaseWakeLock()
         repository.setBackgroundActive(false)
         analysisExecutor?.shutdown()
         analysisExecutor = null
         super.onDestroy()
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        wakeLock = null
     }
 
     private fun buildNotification() = NotificationCompat.Builder(

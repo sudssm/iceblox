@@ -47,7 +47,9 @@ While a recording session is active, the camera view MUST display a persistent "
 - Visibility: rendered above the camera preview and not hidden by debug UI
 - Interaction: one tap ends the active session
 
-When tapped, the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
+Pressing the system back button or gesture during an active recording session MUST behave identically to tapping the Stop Recording button.
+
+When tapped (or back pressed), the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
 
 #### REQ-M-3c: Session Summary
 
@@ -82,7 +84,7 @@ The app MUST support all device orientations (portrait, portrait upside-down, la
 The app MUST prevent the device screen from dimming or locking while the app is in the foreground. This is required for unattended dashboard-mounted operation.
 
 - **iOS**: Set `UIApplication.shared.isIdleTimerDisabled = true`
-- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window
+- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window. The foreground service MUST hold a `PARTIAL_WAKE_LOCK` as defense-in-depth to keep the CPU running during background capture when the screen is off.
 
 ### License Plate Detection
 
@@ -524,10 +526,14 @@ On restart after a crash, the app MUST:
 
 Background behavior is platform-specific:
 
-- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground.
+- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground. When foregrounded again, the app MUST automatically restart the AVCaptureSession and resume plate detection within 1 second, preserving the active recording session (counters, session ID). The camera manager MUST observe `AVCaptureSession.wasInterruptedNotification` and `.interruptionEndedNotification` to recover from system interruptions (e.g., phone calls, Siri). If a runtime error resets media services, the session MUST be torn down and reconfigured. The idle timer (`isIdleTimerDisabled`) MUST be re-asserted on every foreground resume.
 - **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
+
+#### REQ-M-51a: Camera Recovery
+
+If the camera is interrupted for any reason (sleep, resource contention, thermal), the app MUST attempt to rebind the camera automatically when conditions allow, preserving the active session.
 
 ### ICE Vehicle Reporting
 
@@ -747,7 +753,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 13 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, matches count, pending count |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
-| 16 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |
+| 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground, auto-rebind camera on recovery |
 | 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
@@ -812,7 +818,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 13 | Status bar | UI spec | Wire ViewModel state to Compose UI |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
-| 16 | Background/crash | REQ-M-50, REQ-M-51 | Start camera foreground service on background, keep analysis/upload running, and reattach preview on foreground |
+| 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Start camera foreground service on background, keep analysis/upload running, reattach preview on foreground, auto-rebind camera on recovery |
 | 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
