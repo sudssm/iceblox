@@ -462,11 +462,6 @@ fun SessionSummaryOverlay(summary: SessionSummary, onDone: () -> Unit, modifier:
                         color = Color(0xFFFFB300),
                         fontFamily = FontFamily.Monospace
                     )
-                    Text(
-                        "ICE vehicles reflects confirmed matches received so far.",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 12.sp
-                    )
                 }
             }
             Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
