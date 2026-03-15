@@ -236,8 +236,8 @@ class CaptureRepository(private val application: Application) {
             if (deduplicationCache.isDuplicate(plate.normalizedText)) continue
 
             val variants = LookalikeExpander.expand(plate.normalizedText, plate.charConfidences, plate.slotCandidates)
-            val variantHashes = variants.map { (variantText, substitutions, _) ->
-                if (substitutions == 0) PlateHasher.hash(variantText) else PlateHasher.hash(variantText)
+            val variantHashes = variants.map { (variantText, _, _) ->
+                PlateHasher.hash(variantText)
             }
 
             if (deduplicationCache.allHashesSeen(variantHashes)) continue

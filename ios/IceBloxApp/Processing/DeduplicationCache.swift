@@ -20,7 +20,7 @@ final class DeduplicationCache {
         lock.lock()
         defer { lock.unlock() }
 
-        return hashes.allSatisfy { seenHashes.contains($0) }
+        return !hashes.isEmpty && hashes.allSatisfy { seenHashes.contains($0) }
     }
 
     func addHashes(_ hashes: [String]) {

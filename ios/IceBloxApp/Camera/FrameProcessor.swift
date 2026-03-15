@@ -415,7 +415,6 @@ final class FrameProcessor: ObservableObject {
             totalOCRConfidence += variantConfidence
         }
 
-
         DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(primaryHash.prefix(8))) variants=\(variants.count)")
 
         for (index, (variantText, substitutions, variantConfidence)) in variants.enumerated() {

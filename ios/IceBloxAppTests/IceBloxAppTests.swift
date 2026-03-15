@@ -102,7 +102,7 @@ final class IceBloxAppTests: XCTestCase {
 
     func testHashDedupEmptyHashList() {
         let cache = DeduplicationCache()
-        XCTAssertTrue(cache.areAllHashesSeen([]))
+        XCTAssertFalse(cache.areAllHashesSeen([]))
     }
 
     func testHashDedupResetClearsBothSets() {
