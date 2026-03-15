@@ -229,7 +229,7 @@ final class CameraManager: NSObject, ObservableObject {
         NotificationCenter.default.addObserver(
             forName: .AVCaptureSessionInterruptionEnded,
             object: session,
-            queue: nil
+            queue: .main
         ) { [weak self] _ in
             DebugLog.shared.d("CameraManager", "Session interruption ended")
             guard let self, self.shouldBeRunning else { return }
@@ -239,7 +239,7 @@ final class CameraManager: NSObject, ObservableObject {
         NotificationCenter.default.addObserver(
             forName: .AVCaptureSessionRuntimeError,
             object: session,
-            queue: nil
+            queue: .main
         ) { [weak self] notification in
             guard let error = notification.userInfo?[AVCaptureSessionErrorKey] as? AVError else { return }
             DebugLog.shared.e("CameraManager", "Session runtime error: \(error.localizedDescription)")
