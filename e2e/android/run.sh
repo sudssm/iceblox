@@ -23,6 +23,7 @@ source "$SCRIPT_DIR/tests/test_report_submission.sh"
 source "$SCRIPT_DIR/tests/test_zoom_retry_init.sh"
 source "$SCRIPT_DIR/tests/test_settings.sh"
 source "$SCRIPT_DIR/tests/test_map_sightings.sh"
+source "$SCRIPT_DIR/tests/test_session_dedup.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -71,6 +72,8 @@ run_test_background_capture
 run_test_batch_upload
 run_test_match_debug_label
 run_test_queued_clears
+run_test_session_dedup_stable
+run_test_session_dedup_cross_session
 run_test_device_registration
 run_test_report_api
 run_test_report_validation

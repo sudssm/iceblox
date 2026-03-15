@@ -379,10 +379,17 @@ final class FrameProcessor: ObservableObject {
         let variants = LookalikeExpander.expand(normalizedText, charConfidences: charConfidences, slotCandidates: slotCandidates)
         let primaryHash = PlateHasher.hash(normalizedPlate: variants[0].0)
 
+        let allHashes = variants.map { (variantText, substitutions, _) in
+            substitutions == 0 ? primaryHash : PlateHasher.hash(normalizedPlate: variantText)
+        }
+
+        if dedupCache.areAllHashesSeen(allHashes) { return nil }
+        dedupCache.addHashes(allHashes)
+
         DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(primaryHash.prefix(8))) variants=\(variants.count)")
 
-        for (variantText, substitutions, variantConfidence) in variants {
-            let hash = substitutions == 0 ? primaryHash : PlateHasher.hash(normalizedPlate: variantText)
+        for (index, (variantText, substitutions, variantConfidence)) in variants.enumerated() {
+            let hash = allHashes[index]
             let prefix = String(hash.prefix(8))
             let isPrimary = substitutions == 0
 

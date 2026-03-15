@@ -5,7 +5,6 @@ import com.iceblox.app.detection.DetectedPlate
 import com.iceblox.app.detection.PlateDetector
 import com.iceblox.app.network.RetryManager
 import com.iceblox.app.persistence.OfflineQueueEntry
-import com.iceblox.app.processing.DeduplicationCache
 import com.iceblox.app.processing.PlateHasher
 import com.iceblox.app.processing.PlateNormalizer
 import com.iceblox.app.ui.formatSessionDuration
@@ -141,27 +140,6 @@ class PlateHasherTest {
     }
 }
 
-class DeduplicationCacheTest {
-    @Test
-    fun firstOccurrenceNotDuplicate() {
-        val cache = DeduplicationCache()
-        assertFalse(cache.isDuplicate("ABC1234"))
-    }
-
-    @Test
-    fun secondOccurrenceIsDuplicate() {
-        val cache = DeduplicationCache()
-        cache.isDuplicate("ABC1234")
-        assertTrue(cache.isDuplicate("ABC1234"))
-    }
-
-    @Test
-    fun differentPlatesNotDuplicate() {
-        val cache = DeduplicationCache()
-        cache.isDuplicate("ABC1234")
-        assertFalse(cache.isDuplicate("XYZ9876"))
-    }
-}
 
 class RetryManagerTest {
     @Test

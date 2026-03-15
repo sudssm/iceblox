@@ -17,8 +17,7 @@ object AppConfig {
 
     const val DETECTION_CONFIDENCE_THRESHOLD = 0.5f
     const val OCR_CONFIDENCE_THRESHOLD = 0.6f
-    const val DEDUPLICATION_WINDOW_MS = 60_000L
-    const val MIN_PLATE_LENGTH = 2
+const val MIN_PLATE_LENGTH = 2
     const val MAX_PLATE_LENGTH = 8
 
     const val BATCH_SIZE = 65

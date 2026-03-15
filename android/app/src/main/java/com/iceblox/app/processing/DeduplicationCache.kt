@@ -1,25 +1,27 @@
 package com.iceblox.app.processing
 
-import com.iceblox.app.config.AppConfig
-
 class DeduplicationCache {
-    private val seen = mutableMapOf<String, Long>()
+    private val seenTexts = mutableSetOf<String>()
+    private val seenHashes = mutableSetOf<String>()
 
     @Synchronized
     fun isDuplicate(normalizedPlate: String): Boolean {
-        val now = System.currentTimeMillis()
-        seen.entries.removeAll { now - it.value > AppConfig.DEDUPLICATION_WINDOW_MS }
+        return !seenTexts.add(normalizedPlate)
+    }
 
-        val lastSeen = seen[normalizedPlate]
-        if (lastSeen != null && now - lastSeen <= AppConfig.DEDUPLICATION_WINDOW_MS) {
-            return true
-        }
-        seen[normalizedPlate] = now
-        return false
+    @Synchronized
+    fun allHashesSeen(hashes: List<String>): Boolean {
+        return hashes.isNotEmpty() && seenHashes.containsAll(hashes)
+    }
+
+    @Synchronized
+    fun recordHashes(hashes: List<String>) {
+        seenHashes.addAll(hashes)
     }
 
     @Synchronized
     fun reset() {
-        seen.clear()
+        seenTexts.clear()
+        seenHashes.clear()
     }
 }

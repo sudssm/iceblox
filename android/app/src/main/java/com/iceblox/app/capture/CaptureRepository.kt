@@ -184,13 +184,21 @@ class CaptureRepository(private val application: Application) {
             if (deduplicationCache.isDuplicate(plate.normalizedText)) continue
 
             val variants = LookalikeExpander.expand(plate.normalizedText, plate.charConfidences, plate.slotCandidates)
-            val primaryHash = PlateHasher.hash(variants[0].first)
+            val variantHashes = variants.map { (variantText, substitutions, _) ->
+                if (substitutions == 0) PlateHasher.hash(variantText) else PlateHasher.hash(variantText)
+            }
+
+            if (deduplicationCache.allHashesSeen(variantHashes)) continue
+            deduplicationCache.recordHashes(variantHashes)
+
+            val primaryHash = variantHashes[0]
             val loc = locationProvider.currentLocation.value
             val now = System.currentTimeMillis()
 
             scope.launch(Dispatchers.IO) {
-                for ((variantText, substitutions, confidence) in variants) {
-                    val hash = if (substitutions == 0) primaryHash else PlateHasher.hash(variantText)
+                for (i in variants.indices) {
+                    val (_, substitutions, confidence) = variants[i]
+                    val hash = variantHashes[i]
                     val isPrimary = substitutions == 0
                     queueDao.insert(
                         OfflineQueueEntry(
@@ -213,8 +221,9 @@ class CaptureRepository(private val application: Application) {
             _plateCount.update { it + 1 }
             _lastDetectionTime.value = now
 
-            for ((variantText, substitutions, _) in variants) {
-                val hash = if (substitutions == 0) primaryHash else PlateHasher.hash(variantText)
+            for (i in variants.indices) {
+                val (variantText, substitutions, _) = variants[i]
+                val hash = variantHashes[i]
                 val prefix = hash.take(8)
                 val isPrimary = substitutions == 0
                 addFeedEntry(

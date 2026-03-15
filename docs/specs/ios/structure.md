@@ -40,7 +40,7 @@ ios/
 │   ├── Processing/
 │   │   ├── PlateNormalizer.swift      # Uppercase, strip, validate length
 │   │   ├── PlateHasher.swift          # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
-│   │   ├── DeduplicationCache.swift   # Time-windowed set of recently seen plates
+│   │   ├── DeduplicationCache.swift   # Session-scoped text + hash dedup
 │   │   └── LookalikeExpander.swift   # BFS expansion of confusable characters (REQ-M-12a)
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
