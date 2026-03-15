@@ -329,15 +329,15 @@ Push notification payloads MUST NOT contain plaintext plate text, hashes, or tar
 
 #### REQ-M-70: Settings Screen
 
-The app MUST provide a Settings screen accessible from a gear icon on the splash screen. The gear icon MUST be positioned in the top-right corner of the splash screen with a semi-transparent white tint (70% opacity).
+The app MUST provide a Settings screen accessible from a "Settings" button on the splash screen. The button MUST be positioned above the "Report ICE Activity" button, styled as a white button with black text matching the other splash screen buttons.
 
 **Settings screen contents:**
 - **Push Notifications toggle**: A toggle switch to enable or disable push notifications. Defaults to enabled. The toggle state MUST persist across app restarts using local storage (iOS: `UserDefaults`, Android: `SharedPreferences`).
 - **Debug Mode toggle**: A toggle switch to enable or disable user debug mode (REQ-M-18). Defaults to disabled. When enabled, shows detection bounding boxes on the camera preview. The toggle state MUST persist across app restarts. Includes a subtitle: "Shows detection bounding boxes on the camera preview".
 
 **Platform implementations:**
-- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist toggle states via `UserDefaults`. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
-- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist toggle states. The screen is navigated to from `MainActivity`.
+- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist toggle states via `UserDefaults`. The "Settings" button is in the center VStack alongside the other splash screen buttons. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
+- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist toggle states. The "Settings" button is in the center Column alongside the other splash screen buttons. The screen is navigated to from `MainActivity`.
 
 When push notifications are disabled via the toggle, the app MUST skip requesting notification permission and skip FCM/APNs token registration on subsequent launches (see REQ-M-60).
 
@@ -779,7 +779,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
 | 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer on active, subscribe+stop on background (refresh TTL for post-close notifications) |
-| 22 | Settings | REQ-M-70 | SettingsView.swift: gear icon on splash, modal sheet, push notification toggle + debug mode toggle via UserSettings singleton |
+| 22 | Settings | REQ-M-70 | SettingsView.swift: Settings button on splash, modal sheet, push notification toggle + debug mode toggle via UserSettings singleton |
 
 ### Key Technical Notes
 
@@ -844,7 +844,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
 | 21 | Alert lifecycle | REQ-M-64, REQ-M-68 | Start timer with the foreground/background capture lifecycle and subscribe on stop to refresh TTL |
-| 22 | Settings | REQ-M-70 | SettingsScreen.kt: gear icon on splash, full-screen composable, push notification toggle + debug mode toggle via UserSettings object |
+| 22 | Settings | REQ-M-70 | SettingsScreen.kt: Settings button on splash, full-screen composable, push notification toggle + debug mode toggle via UserSettings object |
 
 ### Key Technical Notes
 
