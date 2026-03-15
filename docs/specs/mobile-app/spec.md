@@ -363,8 +363,8 @@ When the app enters background, it MUST perform a final subscribe call to refres
 
 The app has two debug modes that share the same overlay UI but expose different levels of detail:
 
-1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG MODE]` label.
-2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG MODE]` label.
+1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG]` toggle button. The `[DEBUG]` button allows minimizing the overlay (hides feed, logs, and header) while keeping bounding boxes visible.
+2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG]` toggle button.
 
 The overlay is visible when either mode is active. When both are active, the full developer overlay is shown.
 
@@ -384,13 +384,14 @@ When developer debug mode is active, the app MUST:
 - Display the current queue depth (pending uploads)
 - Display network connectivity status
 - Display the detection feed (DBG-2) and log panel (DBG-4)
+- Display a `[DEBUG]` toggle button (bottom-left) that minimizes or expands the overlay. When minimized, the feed, logs, and FPS/queue header are hidden but bounding boxes remain visible. The button shows `+` when minimized and `−` when expanded.
 
 When user debug mode is active, the app MUST:
 - Display bounding boxes around detected plates on the camera preview (yellow for raw detections, green for OCR'd plates)
 - Display the recognized plate text and truncated hash on OCR'd plate boxes
 
 When user debug mode is active, the app MUST NOT display:
-- The detection feed, log panel, FPS/queue header, or `[DEBUG MODE]` label (these are developer-only)
+- The detection feed, log panel, FPS/queue header, or `[DEBUG]` toggle button (these are developer-only)
 
 The app MAY:
 - Capture and store still images of detected plates to the app's sandboxed storage (developer debug mode only)
@@ -468,7 +469,7 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 │  │  12:34:56 D/Pipeline: Detected 3 plates                 │    │
 │  │  12:34:57 D/Upload: Batch sent (3 plates)               │    │
 │  └──────────────────────────────────────────────────────────┘    │
-│  [DEBUG MODE]                                                    │
+│  [DEBUG] −                     ← toggle (click to minimize)      │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -621,10 +622,10 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 
 ### Debug Overlay
 
-The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown:
+The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown with a `[DEBUG]` toggle button that can minimize it (hiding feed, logs, and header while keeping bounding boxes):
 
 ```
-Developer debug mode (full overlay):
+Developer debug mode (full overlay, expanded):
 ┌──────────────────────────────────────────────────────┐
 │  FPS: 28  │  Queue: 3  │  ● Online                  │
 │                                                      │
@@ -636,7 +637,7 @@ Developer debug mode (full overlay):
 │        │  a3f8b2c1   │  ← hash (truncated)           │
 │        └─────────────┘                               │
 │                                                      │
-│  [DEBUG MODE]                                        │
+│  [DEBUG] −                ← click to minimize        │
 └──────────────────────────────────────────────────────┘
 
 User debug mode (bounding boxes only):
