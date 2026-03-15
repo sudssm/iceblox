@@ -1,14 +1,14 @@
 package com.iceblox.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.graphics.Bitmap
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.iceblox.app.camera.TestFrameFeeder
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.iceblox.app.capture.CaptureRepository
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog

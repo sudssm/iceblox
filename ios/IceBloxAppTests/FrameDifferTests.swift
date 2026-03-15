@@ -52,16 +52,16 @@ final class FrameDifferTests: XCTestCase {
 
     func testMeanAbsoluteDifferenceWithIdenticalArrays() {
         let differ = FrameDiffer()
-        let a: [UInt8] = [100, 150, 200]
-        let b: [UInt8] = [100, 150, 200]
-        XCTAssertEqual(differ.meanAbsoluteDifference(a: a, b: b), 0.0, accuracy: 0.001)
+        let lhs: [UInt8] = [100, 150, 200]
+        let rhs: [UInt8] = [100, 150, 200]
+        XCTAssertEqual(differ.meanAbsoluteDifference(lhs: lhs, rhs: rhs), 0.0, accuracy: 0.001)
     }
 
     func testMeanAbsoluteDifferenceWithDifferentArrays() {
         let differ = FrameDiffer()
-        let a: [UInt8] = [0, 0, 0]
-        let b: [UInt8] = [30, 60, 90]
-        XCTAssertEqual(differ.meanAbsoluteDifference(a: a, b: b), 60.0, accuracy: 0.001)
+        let lhs: [UInt8] = [0, 0, 0]
+        let rhs: [UInt8] = [30, 60, 90]
+        XCTAssertEqual(differ.meanAbsoluteDifference(lhs: lhs, rhs: rhs), 60.0, accuracy: 0.001)
     }
 
     // MARK: - Helpers

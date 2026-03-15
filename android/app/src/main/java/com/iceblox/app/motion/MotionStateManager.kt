@@ -25,13 +25,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 enum class MotionState {
-    UNKNOWN, MOVING, STATIONARY
+    UNKNOWN,
+    MOVING,
+    STATIONARY
 }
 
-class MotionStateManager(
-    private val context: Context,
-    private val scope: CoroutineScope
-) {
+class MotionStateManager(private val context: Context, private val scope: CoroutineScope) {
     private val _motionState = MutableStateFlow(MotionState.UNKNOWN)
     val motionState: StateFlow<MotionState> = _motionState
 
@@ -65,15 +64,13 @@ class MotionStateManager(
         )
     }
 
-    fun hasPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACTIVITY_RECOGNITION
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
+    fun hasPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
     }
 
     fun startMonitoring() {
@@ -181,6 +178,7 @@ class MotionStateManager(
                     stationaryStartTime = System.currentTimeMillis()
                 }
             }
+
             activityType == DetectedActivity.STILL &&
                 transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT -> {
                 _motionState.value = MotionState.MOVING
@@ -189,6 +187,7 @@ class MotionStateManager(
                     _isMotionPaused.value = false
                 }
             }
+
             activityType in listOf(
                 DetectedActivity.IN_VEHICLE,
                 DetectedActivity.WALKING,

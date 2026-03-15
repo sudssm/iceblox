@@ -1,7 +1,8 @@
 package com.iceblox.app
 
 import com.iceblox.app.camera.BrightnessManager
-import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -49,7 +50,7 @@ class BrightnessManagerTest {
     @Test
     fun temporarilyRestoreWithNullActivityIsNoOp() {
         val manager = BrightnessManager()
-        manager.temporarilyRestore(null, TestScope())
+        manager.temporarilyRestore(null, CoroutineScope(Dispatchers.Unconfined))
         assertFalse(manager.isDimmed)
     }
 

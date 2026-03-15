@@ -17,7 +17,7 @@ final class FrameDiffer {
             return true
         }
 
-        let diff = meanAbsoluteDifference(a: previous, b: current)
+        let diff = meanAbsoluteDifference(lhs: previous, rhs: current)
         previousThumbnail = current
 
         if diff >= AppConfig.frameDiffThreshold {
@@ -64,22 +64,22 @@ final class FrameDiffer {
         var grayscale = [UInt8](repeating: 0, count: Self.pixelCount)
         for i in 0..<Self.pixelCount {
             let offset = i * 4
-            let b = Float(scaledData[offset])
-            let g = Float(scaledData[offset + 1])
-            let r = Float(scaledData[offset + 2])
-            let lum = 0.299 * r + 0.587 * g + 0.114 * b
+            let blue = Float(scaledData[offset])
+            let green = Float(scaledData[offset + 1])
+            let red = Float(scaledData[offset + 2])
+            let lum = 0.299 * red + 0.587 * green + 0.114 * blue
             grayscale[i] = UInt8(min(255, max(0, lum)))
         }
 
         return grayscale
     }
 
-    func meanAbsoluteDifference(a: [UInt8], b: [UInt8]) -> Float {
-        guard a.count == b.count, !a.isEmpty else { return 0 }
+    func meanAbsoluteDifference(lhs: [UInt8], rhs: [UInt8]) -> Float {
+        guard lhs.count == rhs.count, !lhs.isEmpty else { return 0 }
         var sum: Int = 0
-        for i in 0..<a.count {
-            sum += abs(Int(a[i]) - Int(b[i]))
+        for i in 0..<lhs.count {
+            sum += abs(Int(lhs[i]) - Int(rhs[i]))
         }
-        return Float(sum) / Float(a.count)
+        return Float(sum) / Float(lhs.count)
     }
 }

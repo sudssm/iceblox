@@ -38,11 +38,7 @@ class BrightnessManager {
         isDimmed = false
     }
 
-    fun temporarilyRestore(
-        activity: Activity?,
-        scope: CoroutineScope?,
-        seconds: Long = 5L
-    ) {
+    fun temporarilyRestore(activity: Activity?, scope: CoroutineScope?, seconds: Long = 5L) {
         val window = activity?.window ?: return
         val activeScope = scope ?: return
         val saved = savedBrightness ?: return
