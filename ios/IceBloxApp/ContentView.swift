@@ -76,6 +76,7 @@ struct ContentView: View {
     @State private var pendingSessionUploads = 0
     @State private var pendingSessionPlates = 0
     @State private var showingSummary = false
+    @State private var debugMinimized = false
     @State private var e2eStopTask: Task<Void, Never>?
 
     let statusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -157,10 +158,30 @@ struct ContentView: View {
                     queueDepth: offlineQueue.count,
                     isConnected: connectivityMonitor.isConnected,
                     logEntries: debugLog.entries,
-                    showFeedAndLogs: debugMode
+                    showFeedAndLogs: debugMode && !debugMinimized
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
+            }
+            if debugMode, !showingSummary, cameraManager.permissionGranted {
+                Button {
+                    debugMinimized.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("[DEBUG]")
+                            .font(.system(.caption, design: .monospaced))
+                        Text(debugMinimized ? "+" : "\u{2212}")
+                            .font(.system(.body, design: .monospaced).weight(.bold))
+                    }
+                    .foregroundStyle(.yellow)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 16)
+                .padding(.bottom, 186)
             }
             #endif
 
