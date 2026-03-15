@@ -24,9 +24,6 @@ private struct SessionSummaryCard: View {
                 if pendingUploads > 0 {
                     Text("Pending sync: \(pendingUploads) uploads")
                         .foregroundStyle(.yellow)
-                    Text("ICE vehicles reflects confirmed matches received so far.")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.75))
                 }
             }
             .font(.system(.body, design: .monospaced))
