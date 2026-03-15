@@ -22,10 +22,10 @@ struct SplashScreenView: View {
                     Text("Start Camera")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                         .frame(minWidth: 260)
                         .padding(.vertical, 14)
-                        .background(.white)
+                        .background(.green)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 

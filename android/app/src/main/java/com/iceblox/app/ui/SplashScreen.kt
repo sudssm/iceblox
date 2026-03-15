@@ -53,8 +53,8 @@ fun SplashScreen(
                 modifier = Modifier.padding(top = 32.dp).widthIn(min = buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
+                    containerColor = Color(0xFF4CAF50),
+                    contentColor = Color.White
                 )
             ) {
                 Text(
