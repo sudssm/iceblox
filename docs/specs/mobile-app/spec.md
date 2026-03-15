@@ -751,7 +751,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 13 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, matches count, pending count |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
-| 16 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |
+| 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground, auto-rebind camera on recovery |
 | 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
@@ -816,7 +816,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 13 | Status bar | UI spec | Wire ViewModel state to Compose UI |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
-| 16 | Background/crash | REQ-M-50, REQ-M-51 | Start camera foreground service on background, keep analysis/upload running, and reattach preview on foreground |
+| 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Start camera foreground service on background, keep analysis/upload running, reattach preview on foreground, auto-rebind camera on recovery |
 | 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
