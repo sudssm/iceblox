@@ -60,10 +60,10 @@ final class FrameProcessor: ObservableObject {
     @Published var zoomRetryFrozen = false
     @Published var frozenPreviewImage: UIImage?
 
-    var maxDetectionConfidence: Float = 0
-    var totalDetectionConfidence: Float = 0
-    var maxOCRConfidence: Float = 0
-    var totalOCRConfidence: Float = 0
+    private(set) var maxDetectionConfidence: Float = 0
+    private(set) var totalDetectionConfidence: Float = 0
+    private(set) var maxOCRConfidence: Float = 0
+    private(set) var totalOCRConfidence: Float = 0
 
     var isAcceptingDetections = true
     var zoomController: ZoomController?

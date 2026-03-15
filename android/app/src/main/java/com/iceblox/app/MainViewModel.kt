@@ -139,10 +139,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startNewSession() {
-        activeSessionId = java.util.UUID.randomUUID().toString()
+        val sessionId = java.util.UUID.randomUUID().toString()
+        activeSessionId = sessionId
         sessionStartedAt = System.currentTimeMillis()
-        repository.resetSessionState(activeSessionId!!)
-        repository.apiClient.startSession(activeSessionId!!)
+        repository.resetSessionState(sessionId)
+        repository.apiClient.startSession(sessionId)
         _sessionSummary.value = null
     }
 }
