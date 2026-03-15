@@ -219,6 +219,33 @@ if [ "$DEBUG_MODE" = true ]; then
     take_screenshot "04_debug_overlay"
 fi
 
+# ── iOS: Screenshot additional screens via auto-show env vars ──
+
+if [ "$PLATFORM" = "ios" ]; then
+    ios_auto_show_screenshot() {
+        local env_var="$1"
+        local step_name="$2"
+
+        xcrun simctl terminate "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null 2>&1 || true
+        sleep 1
+        env \
+            SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1 \
+            SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0 \
+            "SIMCTL_CHILD_${env_var}=1" \
+            xcrun simctl launch "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null
+        sleep 3
+        echo "=== Screenshot: $step_name ==="
+        take_screenshot "$step_name"
+    }
+
+    ios_auto_show_screenshot "E2E_AUTO_SHOW_SETTINGS" "05_settings"
+    ios_auto_show_screenshot "E2E_AUTO_SHOW_MAP" "06_map"
+    ios_auto_show_screenshot "E2E_AUTO_SHOW_REPORT" "07_report"
+
+    # Return to splash for a clean final state
+    xcrun simctl terminate "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null 2>&1 || true
+fi
+
 echo ""
 echo "=== Screenshot session complete ==="
 echo "Screenshots saved in: $OUTPUT_DIR"
