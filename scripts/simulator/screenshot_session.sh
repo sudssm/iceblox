@@ -222,15 +222,17 @@ fi
 # ── iOS: Screenshot additional screens via auto-show env vars ──
 
 if [ "$PLATFORM" = "ios" ]; then
-    BASE_ENV="SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1 SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0"
-
     ios_auto_show_screenshot() {
         local env_var="$1"
         local step_name="$2"
 
         xcrun simctl terminate "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null 2>&1 || true
         sleep 1
-        env $BASE_ENV "SIMCTL_CHILD_${env_var}=1" xcrun simctl launch "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null
+        env \
+            SIMCTL_CHILD_E2E_SKIP_NOTIFICATION_REQUEST=1 \
+            SIMCTL_CHILD_E2E_REQUEST_LOCATION_PERMISSION=0 \
+            "SIMCTL_CHILD_${env_var}=1" \
+            xcrun simctl launch "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" >/dev/null
         sleep 3
         echo "=== Screenshot: $step_name ==="
         take_screenshot "$step_name"
