@@ -228,6 +228,25 @@ When the user taps "Stop Recording", the app MUST trigger an immediate upload at
 - Normal retry behavior from REQ-M-17 and REQ-M-17a MUST still apply
 - The session summary MAY be shown before all uploads complete, but it MUST indicate when match totals are still provisional
 
+#### REQ-M-14c: Session Lifecycle API Calls
+
+The app MUST notify the server at session boundaries:
+
+- **Session start**: When a new scanning session begins, the app MUST call `POST /api/v1/sessions/start` with `session_id` (the client-generated UUID) and `device_id`. This creates a zero-count session record for observability of sessions that detect no plates.
+- **Session end**: When the user stops scanning, the app MUST call `POST /api/v1/sessions/end` with `session_id` and accumulated confidence statistics (see REQ-M-14d).
+- Both calls are fire-and-forget: failures MUST be logged but MUST NOT affect the user experience.
+
+#### REQ-M-14d: Session Confidence Tracking
+
+The app MUST track per-session confidence statistics locally for transmission at session end:
+
+- `maxDetectionConfidence`: Highest plate detection model confidence seen during the session (from `ProcessedPlate.confidence` on Android, detection `confidence` parameter on iOS).
+- `totalDetectionConfidence`: Sum of all plate detection confidences across all non-duplicate plates.
+- `maxOCRConfidence`: Highest per-variant OCR confidence seen during the session.
+- `totalOCRConfidence`: Sum of all per-variant OCR confidences across all variants of all non-duplicate plates.
+
+These values MUST be reset to zero when a new session starts. They are sent with the `POST /api/v1/sessions/end` call.
+
 #### REQ-M-15: Offline Queue
 
 When the device has no network connectivity, the app MUST queue hashed plates in local storage. The queue MUST:

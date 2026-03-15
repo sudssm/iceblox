@@ -266,6 +266,22 @@ func (d *DB) TouchDeviceToken(ctx context.Context, hardwareID string) error {
 	return nil
 }
 
+func (d *DB) CreateSession(ctx context.Context, sessionID, deviceID string) error {
+	s := Session{
+		SessionID: sessionID,
+		DeviceID:  deviceID,
+		StartedAt: time.Now(),
+		Vehicles:  0,
+		Plates:    0,
+	}
+	return d.gorm.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "session_id"}},
+			DoNothing: true,
+		}).
+		Create(&s).Error
+}
+
 func (d *DB) UpsertSession(ctx context.Context, sessionID, deviceID string, plateCount int) error {
 	s := Session{
 		SessionID: sessionID,
