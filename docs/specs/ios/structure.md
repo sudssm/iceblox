@@ -59,7 +59,7 @@ ios/
 │   ├── Motion/
 │   │   └── MotionStateManager.swift   # CMMotionActivityManager-based stationary detection, auto-pause (REQ-M-4c)
 │   ├── Config/
-│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL (compile-time flag), zoom retry constants, battery optimization config
+│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, server URL (compile-time flag), zoom retry constants, battery optimization config
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
 │   ├── Settings/
 │   │   └── UserSettings.swift         # ObservableObject singleton: push notification + user debug mode toggles persisted via UserDefaults
