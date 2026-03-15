@@ -3,6 +3,7 @@ package com.iceblox.app.ui
 import android.app.Activity
 import android.graphics.Bitmap
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,8 +31,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +61,7 @@ import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.settings.UserSettings
+import kotlinx.coroutines.delay
 
 @Composable
 fun CameraScreen(
@@ -86,6 +90,11 @@ fun CameraScreen(
     var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(appContext)) }
 
     val freezeState by viewModel.previewFreezer.freezeState.collectAsState()
+
+    BackHandler {
+        viewModel.stopRecordingSession()
+        onSessionFinished()
+    }
 
     val activity = LocalContext.current as? Activity
     DisposableEffect(activity) {
@@ -256,7 +265,7 @@ fun CameraScreen(
                         .padding(bottom = 12.dp)
                         .testTag("stop_recording_button")
                 ) {
-                    Text("Stop Scanning")
+                    Text("Stop Scanning", color = Color.White)
                 }
 
                 if (BuildConfig.DEBUG && debugMode && queueDepth > 0) {
@@ -401,6 +410,17 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 
 @Composable
 fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, modifier: Modifier = Modifier) {
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5000)
+            tick++
+        }
+    }
+
+    @Suppress("UNUSED_EXPRESSION")
+    tick
+
     val lastDetectedText = if (lastDetectionTime > 0) {
         val elapsed = (System.currentTimeMillis() - lastDetectionTime) / 1000
         if (elapsed < 60) "Last: ${elapsed}s ago" else "Last: ${elapsed / 60}m ago"

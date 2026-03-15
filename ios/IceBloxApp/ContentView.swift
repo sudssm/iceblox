@@ -321,6 +321,7 @@ struct ContentView: View {
     }
 
     private func resumeActiveSession() {
+        UIApplication.shared.isIdleTimerDisabled = true
         frameProcessor?.isAcceptingDetections = true
         if cameraManager.permissionGranted {
             cameraManager.start()
