@@ -580,7 +580,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - Connectivity indicator (● Online / ● Offline) — both the dot and "Online"/"Offline" text are colored green/red
   - "No GPS" warning in orange (shown only when location permission is denied)
   - Nearby sightings count in cyan (shown only when count > 0, iOS only for now)
-  - Time since last plate detected ("Last: 2s ago", or "Last: --" if none), right-aligned
+  - Time since last plate detected ("Last: 2s ago", or "Last: --" if none), right-aligned. The elapsed time MUST update at least every 5 seconds while the camera view is active.
   - Session-scoped counts (plates, matches, pending) are intentionally omitted from the status bar to keep the dashboard UI minimal; these metrics are available in the session summary (REQ-M-3c)
 - **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session

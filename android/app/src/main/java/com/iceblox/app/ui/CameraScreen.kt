@@ -30,11 +30,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -401,6 +404,17 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 
 @Composable
 fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, modifier: Modifier = Modifier) {
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5000)
+            tick++
+        }
+    }
+
+    @Suppress("UNUSED_EXPRESSION")
+    tick
+
     val lastDetectedText = if (lastDetectionTime > 0) {
         val elapsed = (System.currentTimeMillis() - lastDetectionTime) / 1000
         if (elapsed < 60) "Last: ${elapsed}s ago" else "Last: ${elapsed / 60}m ago"
