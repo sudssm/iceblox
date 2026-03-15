@@ -76,6 +76,7 @@ struct ContentView: View {
     @State private var pendingSessionUploads = 0
     @State private var pendingSessionPlates = 0
     @State private var showingSummary = false
+    @State private var debugMinimized = false
     @State private var e2eStopTask: Task<Void, Never>?
     @State private var brightnessManager = BrightnessManager()
     @StateObject private var motionStateManager = MotionStateManager()
@@ -161,10 +162,30 @@ struct ContentView: View {
                     isConnected: connectivityMonitor.isConnected,
                     logEntries: debugLog.entries,
                     framesSkippedByDiff: frameProcessor?.framesSkippedByDiff ?? 0,
-                    showFeedAndLogs: debugMode
+                    showFeedAndLogs: debugMode && !debugMinimized
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
+            }
+            if debugMode, !showingSummary, cameraManager.permissionGranted {
+                Button {
+                    debugMinimized.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("[DEBUG]")
+                            .font(.system(.caption, design: .monospaced))
+                        Text(debugMinimized ? "+" : "\u{2212}")
+                            .font(.system(.body, design: .monospaced).weight(.bold))
+                    }
+                    .foregroundStyle(.yellow)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 16)
+                .padding(.bottom, 186)
             }
             #endif
 
@@ -366,6 +387,8 @@ struct ContentView: View {
             client?.flushQueue()
         }
 
+        client.startSession(sessionID: activeSessionID)
+
         cameraManager.frameProcessor = processor
         self.frameProcessor = processor
         self.apiClient = client
@@ -378,6 +401,7 @@ struct ContentView: View {
     }
 
     private func resumeActiveSession() {
+        UIApplication.shared.isIdleTimerDisabled = true
         frameProcessor?.isAcceptingDetections = true
         if cameraManager.permissionGranted {
             cameraManager.start()
@@ -437,6 +461,17 @@ struct ContentView: View {
         showingMotionPauseOverlay = false
         motionStateManager.stopMonitoring()
         stopRequestedAt = Date()
+
+        if let fp = frameProcessor {
+            apiClient?.endSession(
+                sessionID: sessionID,
+                maxDetConf: fp.maxDetectionConfidence,
+                totalDetConf: fp.totalDetectionConfidence,
+                maxOCRConf: fp.maxOCRConfidence,
+                totalOCRConf: fp.totalOCRConfidence
+            )
+        }
+
         frameProcessor?.isAcceptingDetections = false
         cameraManager.stop()
         apiClient?.stopBatchTimer()

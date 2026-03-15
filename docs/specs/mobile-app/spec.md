@@ -47,7 +47,9 @@ While a recording session is active, the camera view MUST display a persistent "
 - Visibility: rendered above the camera preview and not hidden by debug UI
 - Interaction: one tap ends the active session
 
-When tapped, the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
+Pressing the system back button or gesture during an active recording session MUST behave identically to tapping the Stop Recording button.
+
+When tapped (or back pressed), the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
 
 #### REQ-M-3c: Session Summary
 
@@ -82,7 +84,7 @@ The app MUST support all device orientations (portrait, portrait upside-down, la
 The app MUST prevent the device screen from dimming or locking while the app is in the foreground. This is required for unattended dashboard-mounted operation.
 
 - **iOS**: Set `UIApplication.shared.isIdleTimerDisabled = true`
-- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window
+- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window. The foreground service MUST hold a `PARTIAL_WAKE_LOCK` as defense-in-depth to keep the CPU running during background capture when the screen is off.
 
 ### License Plate Detection
 
@@ -226,6 +228,25 @@ When the user taps "Stop Recording", the app MUST trigger an immediate upload at
 - Normal retry behavior from REQ-M-17 and REQ-M-17a MUST still apply
 - The session summary MAY be shown before all uploads complete, but it MUST indicate when match totals are still provisional
 
+#### REQ-M-14c: Session Lifecycle API Calls
+
+The app MUST notify the server at session boundaries:
+
+- **Session start**: When a new scanning session begins, the app MUST call `POST /api/v1/sessions/start` with `session_id` (the client-generated UUID) and `device_id`. This creates a zero-count session record for observability of sessions that detect no plates.
+- **Session end**: When the user stops scanning, the app MUST call `POST /api/v1/sessions/end` with `session_id` and accumulated confidence statistics (see REQ-M-14d).
+- Both calls are fire-and-forget: failures MUST be logged but MUST NOT affect the user experience.
+
+#### REQ-M-14d: Session Confidence Tracking
+
+The app MUST track per-session confidence statistics locally for transmission at session end:
+
+- `maxDetectionConfidence`: Highest plate detection model confidence seen during the session (from `ProcessedPlate.confidence` on Android, detection `confidence` parameter on iOS).
+- `totalDetectionConfidence`: Sum of all plate detection confidences across all non-duplicate plates.
+- `maxOCRConfidence`: Highest per-variant OCR confidence seen during the session.
+- `totalOCRConfidence`: Sum of all per-variant OCR confidences across all variants of all non-duplicate plates.
+
+These values MUST be reset to zero when a new session starts. They are sent with the `POST /api/v1/sessions/end` call.
+
 #### REQ-M-15: Offline Queue
 
 When the device has no network connectivity, the app MUST queue hashed plates in local storage. The queue MUST:
@@ -361,8 +382,8 @@ When the app enters background, it MUST perform a final subscribe call to refres
 
 The app has two debug modes that share the same overlay UI but expose different levels of detail:
 
-1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG MODE]` label.
-2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG MODE]` label.
+1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG]` toggle button. The `[DEBUG]` button allows minimizing the overlay (hides feed, logs, and header) while keeping bounding boxes visible.
+2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG]` toggle button.
 
 The overlay is visible when either mode is active. When both are active, the full developer overlay is shown.
 
@@ -382,13 +403,14 @@ When developer debug mode is active, the app MUST:
 - Display the current queue depth (pending uploads)
 - Display network connectivity status
 - Display the detection feed (DBG-2) and log panel (DBG-4)
+- Display a `[DEBUG]` toggle button (bottom-left) that minimizes or expands the overlay. When minimized, the feed, logs, and FPS/queue header are hidden but bounding boxes remain visible. The button shows `+` when minimized and `−` when expanded.
 
 When user debug mode is active, the app MUST:
 - Display bounding boxes around detected plates on the camera preview (yellow for raw detections, green for OCR'd plates)
 - Display the recognized plate text and truncated hash on OCR'd plate boxes
 
 When user debug mode is active, the app MUST NOT display:
-- The detection feed, log panel, FPS/queue header, or `[DEBUG MODE]` label (these are developer-only)
+- The detection feed, log panel, FPS/queue header, or `[DEBUG]` toggle button (these are developer-only)
 
 The app MAY:
 - Capture and store still images of detected plates to the app's sandboxed storage (developer debug mode only)
@@ -466,7 +488,7 @@ The debug overlay MUST display a translucent log panel at the bottom of the scre
 │  │  12:34:56 D/Pipeline: Detected 3 plates                 │    │
 │  │  12:34:57 D/Upload: Batch sent (3 plates)               │    │
 │  └──────────────────────────────────────────────────────────┘    │
-│  [DEBUG MODE]                                                    │
+│  [DEBUG] −                     ← toggle (click to minimize)      │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -524,10 +546,14 @@ On restart after a crash, the app MUST:
 
 Background behavior is platform-specific:
 
-- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground.
+- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground. When foregrounded again, the app MUST automatically restart the AVCaptureSession and resume plate detection within 1 second, preserving the active recording session (counters, session ID). The camera manager MUST observe `AVCaptureSession.wasInterruptedNotification` and `.interruptionEndedNotification` to recover from system interruptions (e.g., phone calls, Siri). If a runtime error resets media services, the session MUST be torn down and reconfigured. The idle timer (`isIdleTimerDisabled`) MUST be re-asserted on every foreground resume.
 - **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
+
+#### REQ-M-51a: Camera Recovery
+
+If the camera is interrupted for any reason (sleep, resource contention, thermal), the app MUST attempt to rebind the camera automatically when conditions allow, preserving the active session.
 
 ### ICE Vehicle Reporting
 
@@ -580,7 +606,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - Connectivity indicator (● Online / ● Offline) — both the dot and "Online"/"Offline" text are colored green/red
   - "No GPS" warning in orange (shown only when location permission is denied)
   - Nearby sightings count in cyan (shown only when count > 0, iOS only for now)
-  - Time since last plate detected ("Last: 2s ago", or "Last: --" if none), right-aligned
+  - Time since last plate detected ("Last: 2s ago", or "Last: --" if none), right-aligned. The elapsed time MUST update at least every 5 seconds while the camera view is active.
   - Session-scoped counts (plates, matches, pending) are intentionally omitted from the status bar to keep the dashboard UI minimal; these metrics are available in the session summary (REQ-M-3c)
 - **Bottom-center control**:
   - "Stop Recording" button, always visible during an active session
@@ -615,10 +641,10 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 
 ### Debug Overlay
 
-The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown:
+The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown with a `[DEBUG]` toggle button that can minimize it (hiding feed, logs, and header while keeping bounding boxes):
 
 ```
-Developer debug mode (full overlay):
+Developer debug mode (full overlay, expanded):
 ┌──────────────────────────────────────────────────────┐
 │  FPS: 28  │  Queue: 3  │  ● Online                  │
 │                                                      │
@@ -630,7 +656,7 @@ Developer debug mode (full overlay):
 │        │  a3f8b2c1   │  ← hash (truncated)           │
 │        └─────────────┘                               │
 │                                                      │
-│  [DEBUG MODE]                                        │
+│  [DEBUG] −                ← click to minimize        │
 └──────────────────────────────────────────────────────┘
 
 User debug mode (bounding boxes only):
@@ -747,7 +773,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 13 | Status bar | UI spec | Wire live data: connectivity, last detected, plates count, matches count, pending count |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
-| 16 | Background/crash | REQ-M-50, REQ-M-51 | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground |
+| 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground, auto-rebind camera on recovery |
 | 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
@@ -812,7 +838,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 13 | Status bar | UI spec | Wire ViewModel state to Compose UI |
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
-| 16 | Background/crash | REQ-M-50, REQ-M-51 | Start camera foreground service on background, keep analysis/upload running, and reattach preview on foreground |
+| 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Start camera foreground service on background, keep analysis/upload running, reattach preview on foreground, auto-rebind camera on recovery |
 | 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |

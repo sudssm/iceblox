@@ -252,16 +252,6 @@ fun DebugOverlay(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 32.dp)
             )
-
-            Text(
-                text = "[DEBUG MODE]",
-                color = Color.Yellow,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 8.dp, bottom = 186.dp)
-            )
         }
     }
 }

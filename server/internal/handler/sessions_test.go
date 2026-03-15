@@ -10,6 +10,135 @@ import (
 	"testing"
 )
 
+// --- StartSessionHandler tests ---
+
+type mockSessionStarter struct {
+	sessionID string
+	deviceID  string
+	calls     int
+	err       error
+}
+
+func (m *mockSessionStarter) CreateSession(_ context.Context, sessionID, deviceID string) error {
+	m.calls++
+	m.sessionID = sessionID
+	m.deviceID = deviceID
+	return m.err
+}
+
+func TestStartSessionHandler_ValidRequest(t *testing.T) {
+	starter := &mockSessionStarter{}
+	h := StartSessionHandler(starter)
+
+	body := `{"session_id":"sess-abc","device_id":"dev-1"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/start", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp["status"] != "ok" {
+		t.Errorf("expected status ok, got %s", resp["status"])
+	}
+	if starter.calls != 1 {
+		t.Errorf("expected 1 CreateSession call, got %d", starter.calls)
+	}
+	if starter.sessionID != "sess-abc" {
+		t.Errorf("expected session_id sess-abc, got %s", starter.sessionID)
+	}
+	if starter.deviceID != "dev-1" {
+		t.Errorf("expected device_id dev-1, got %s", starter.deviceID)
+	}
+}
+
+func TestStartSessionHandler_MethodNotAllowed(t *testing.T) {
+	starter := &mockSessionStarter{}
+	h := StartSessionHandler(starter)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sessions/start", nil)
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestStartSessionHandler_InvalidJSON(t *testing.T) {
+	starter := &mockSessionStarter{}
+	h := StartSessionHandler(starter)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/start", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestStartSessionHandler_EmptySessionID(t *testing.T) {
+	starter := &mockSessionStarter{}
+	h := StartSessionHandler(starter)
+
+	body := `{"session_id":"","device_id":"dev-1"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/start", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if starter.calls != 0 {
+		t.Errorf("expected 0 CreateSession calls, got %d", starter.calls)
+	}
+}
+
+func TestStartSessionHandler_EmptyDeviceID(t *testing.T) {
+	starter := &mockSessionStarter{}
+	h := StartSessionHandler(starter)
+
+	body := `{"session_id":"sess-abc","device_id":""}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/start", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if starter.calls != 0 {
+		t.Errorf("expected 0 CreateSession calls, got %d", starter.calls)
+	}
+}
+
+func TestStartSessionHandler_StoreErrorStillReturns200(t *testing.T) {
+	starter := &mockSessionStarter{err: fmt.Errorf("db error")}
+	h := StartSessionHandler(starter)
+
+	body := `{"session_id":"sess-fail","device_id":"dev-1"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/start", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 even with store error, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// --- EndSessionHandler tests ---
+
 type mockSessionEnder struct {
 	sessionID    string
 	maxDetConf   float64

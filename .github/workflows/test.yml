@@ -75,7 +75,7 @@ jobs:
       - name: Run integration tests
         env:
           TEST_DATABASE_URL: postgres://postgres:iceblox@localhost:5432/iceblox_test?sslmode=disable
-        run: cd server && go test -tags integration ./... -v
+        run: cd server && go test -tags integration -p 1 ./... -v
 
   swift-lint:
     name: Swift Lint
