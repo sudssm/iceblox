@@ -6,6 +6,7 @@ import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,6 +83,7 @@ fun CameraScreen(
     val testStatus by viewModel.testStatus.collectAsState()
 
     var debugMode by remember { mutableStateOf(false) }
+    var debugMinimized by remember { mutableStateOf(false) }
     val appContext = viewModel.getApplication<android.app.Application>()
     var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(appContext)) }
 
@@ -228,8 +230,35 @@ fun CameraScreen(
                 queueDepth = queueDepth,
                 isConnected = isConnected,
                 logEntries = logEntries,
-                showFeedAndLogs = debugMode
+                showFeedAndLogs = debugMode && !debugMinimized
             )
+        }
+
+        if (debugMode && sessionSummary == null) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 8.dp, bottom = 186.dp)
+                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
+                    .clickable { debugMinimized = !debugMinimized }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "[DEBUG]",
+                    color = Color.Yellow,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (debugMinimized) "+" else "\u2212",
+                    color = Color.Yellow,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
         }
 
         if (sessionSummary == null) {

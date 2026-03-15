@@ -87,14 +87,6 @@ struct DebugOverlayView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .padding(.bottom, 32)
 
-                // [DEBUG MODE] label (bottom-left)
-                Text("[DEBUG MODE]")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.yellow)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .padding(.leading, 8)
-                    .padding(.bottom, 186)
             }
         }
         .frame(width: screenSize.width, height: screenSize.height)
