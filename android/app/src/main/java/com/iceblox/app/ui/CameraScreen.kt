@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.iceblox.app.BuildConfig
 import com.iceblox.app.MainViewModel
 import com.iceblox.app.SessionSummary
+import com.iceblox.app.camera.BrightnessManager
 import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.debug.DebugLog
@@ -81,7 +83,9 @@ fun CameraScreen(
     val rawDetections by viewModel.frameAnalyzer.rawDetections.collectAsState()
     val detectionFeed by viewModel.detectionFeed.collectAsState()
     val logEntries by DebugLog.entries.collectAsState()
+    val framesSkippedByDiff by viewModel.frameAnalyzer.framesSkippedByDiff.collectAsState()
     val sessionSummary by viewModel.sessionSummary.collectAsState()
+    val isMotionPaused by viewModel.isMotionPaused.collectAsState()
 
     val testBitmap by viewModel.testBitmap.collectAsState()
     val testStatus by viewModel.testStatus.collectAsState()
@@ -93,6 +97,9 @@ fun CameraScreen(
 
     val freezeState by viewModel.previewFreezer.freezeState.collectAsState()
 
+    val brightnessManager = remember { BrightnessManager() }
+    val coroutineScope = rememberCoroutineScope()
+
     BackHandler {
         viewModel.stopRecordingSession()
         onSessionFinished()
@@ -101,7 +108,9 @@ fun CameraScreen(
     val activity = LocalContext.current as? Activity
     DisposableEffect(activity) {
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        brightnessManager.dim(activity)
         onDispose {
+            brightnessManager.teardown(activity)
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
@@ -112,10 +121,14 @@ fun CameraScreen(
             when (event) {
                 Lifecycle.Event.ON_START -> {
                     userDebugEnabled = UserSettings.isUserDebugEnabled(appContext)
-                    viewModel.startForegroundPipeline(isTestMode)
+                    brightnessManager.dim(activity)
+                    if (!isMotionPaused) {
+                        viewModel.startForegroundPipeline(isTestMode)
+                    }
                 }
 
                 Lifecycle.Event.ON_STOP -> {
+                    brightnessManager.restore(activity)
                     if (!isTestMode) {
                         viewModel.stopForegroundPipeline()
                     }
@@ -127,6 +140,12 @@ fun CameraScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(isMotionPaused) {
+        if (isMotionPaused) {
+            viewModel.pauseForMotion()
         }
     }
 
@@ -146,12 +165,23 @@ fun CameraScreen(
                 if (tapCount >= 3) {
                     debugMode = !debugMode
                     viewModel.frameAnalyzer.debugMode = debugMode
+                    if (debugMode) {
+                        brightnessManager.restore(activity)
+                    } else {
+                        brightnessManager.dim(activity)
+                    }
                     tapCount = 0
+                } else if (tapCount == 1 && !debugMode) {
+                    brightnessManager.temporarilyRestore(activity, coroutineScope)
                 }
             }
         }
     } else {
-        Modifier
+        Modifier.pointerInput(Unit) {
+            detectTapGestures {
+                brightnessManager.temporarilyRestore(activity, coroutineScope)
+            }
+        }
     }
 
     Box(modifier = modifier.fillMaxSize().then(tripleTapModifier)) {
@@ -239,6 +269,7 @@ fun CameraScreen(
                 queueDepth = queueDepth,
                 isConnected = isConnected,
                 logEntries = logEntries,
+                framesSkippedByDiff = framesSkippedByDiff,
                 showFeedAndLogs = debugMode && !debugMinimized
             )
         }
@@ -270,7 +301,7 @@ fun CameraScreen(
             }
         }
 
-        if (sessionSummary == null) {
+        if (sessionSummary == null && !isMotionPaused) {
             StatusBar(
                 isConnected = isConnected,
                 lastDetectionTime = lastDetectionTime,
@@ -302,6 +333,49 @@ fun CameraScreen(
                         count = queueDepth,
                         onClear = { viewModel.clearUploadQueue() }
                     )
+                }
+            }
+        }
+
+        if (isMotionPaused) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    Text(
+                        text = "\u23F8",
+                        fontSize = 64.sp,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Scanning Paused",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Waiting for motion to resume",
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                    Button(
+                        onClick = { viewModel.resumeFromMotion() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text(
+                            text = "Resume Now",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

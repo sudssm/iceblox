@@ -30,6 +30,7 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
     ImageAnalysis.Analyzer {
     private val detector = PlateDetector(context)
     private val ocr = PlateOCR(context)
+    val frameDiffer = FrameDiffer()
 
     private val rotationMatrix = Matrix()
     private var frameCount = 0
@@ -51,6 +52,9 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
     private val _fps = MutableStateFlow(0.0)
     val fps: StateFlow<Double> = _fps
+
+    private val _framesSkippedByDiff = MutableStateFlow(0)
+    val framesSkippedByDiff: StateFlow<Int> = _framesSkippedByDiff
 
     private val _debugDetections = MutableStateFlow<List<DebugDetection>>(emptyList())
     val debugDetections: StateFlow<List<DebugDetection>> = _debugDetections
@@ -120,6 +124,11 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
 
             val bitmap = extractBitmap(imageProxy)
             lastBitmap = bitmap
+
+            if (AppConfig.FRAME_DIFF_ENABLED && !frameDiffer.shouldProcess(bitmap)) {
+                _framesSkippedByDiff.value = frameDiffer.framesSkippedByDiff
+                return
+            }
 
             val detections = detector.detect(bitmap)
             if (detections.isNotEmpty()) {

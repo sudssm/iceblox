@@ -11,6 +11,7 @@ import com.iceblox.app.camera.ProcessedPlate
 import com.iceblox.app.camera.ZoomController
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.location.LocationProvider
+import com.iceblox.app.motion.MotionStateManager
 import com.iceblox.app.network.AlertClient
 import com.iceblox.app.network.ApiClient
 import com.iceblox.app.network.ConnectivityMonitor
@@ -42,6 +43,8 @@ class CaptureRepository(private val application: Application) {
     var activeSessionId: String? = null
         private set
 
+    val motionStateManager = MotionStateManager(application, scope)
+
     @Volatile
     var maxDetectionConfidence: Float = 0f
         private set
@@ -57,7 +60,6 @@ class CaptureRepository(private val application: Application) {
     @Volatile
     var totalOCRConfidence: Float = 0f
         private set
-
     val locationProvider = LocationProvider(application)
     val connectivityMonitor = ConnectivityMonitor(application)
     val alertClient = AlertClient(
@@ -128,6 +130,10 @@ class CaptureRepository(private val application: Application) {
     @Volatile
     private var backgroundActive = false
 
+    @Volatile
+    var motionPaused = false
+        private set
+
     init {
         connectivityMonitor.onReconnected = {
             apiClient.flushQueue()
@@ -145,6 +151,17 @@ class CaptureRepository(private val application: Application) {
     fun setBackgroundActive(active: Boolean) {
         backgroundActive = active
         updateSharedComponents()
+    }
+
+    fun setMotionPaused(paused: Boolean) {
+        motionPaused = paused
+        if (paused) {
+            locationProvider.stopUpdates()
+            alertClient.stopTimer()
+            apiClient.flushQueue()
+        } else {
+            updateSharedComponents()
+        }
     }
 
     data class ConfidenceStats(
@@ -200,6 +217,7 @@ class CaptureRepository(private val application: Application) {
     }
 
     private fun updateSharedComponents() {
+        if (motionPaused) return
         if (foregroundActive || backgroundActive) {
             locationProvider.startUpdates()
             alertClient.startTimer()

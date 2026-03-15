@@ -1,11 +1,16 @@
 package com.iceblox.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.graphics.Bitmap
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.iceblox.app.camera.TestFrameFeeder
 import com.iceblox.app.capture.CaptureRepository
+import com.iceblox.app.config.AppConfig
 import com.iceblox.app.debug.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +43,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val detectionFeed = repository.detectionFeed
     val alertClient = repository.alertClient
     val apiClient = repository.apiClient
+    val motionStateManager = repository.motionStateManager
+    val isMotionPaused: StateFlow<Boolean> = repository.motionStateManager.isMotionPaused
 
     private val _sessionSummary = MutableStateFlow<SessionSummary?>(null)
     val sessionSummary: StateFlow<SessionSummary?> = _sessionSummary
@@ -68,6 +75,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             startNewSession()
         }
         repository.setForegroundActive(true)
+        motionStateManager.startMonitoring()
         if (isTestMode) {
             startTestMode()
         } else {
@@ -92,10 +100,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.setForegroundActive(false)
     }
 
+    fun pauseForMotion() {
+        repository.setMotionPaused(true)
+        try {
+            val app = getApplication<Application>()
+            val manager = app.getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    AppConfig.MOTION_PAUSE_CHANNEL_ID,
+                    "Motion Pause",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
+            )
+            val notification = NotificationCompat.Builder(app, AppConfig.MOTION_PAUSE_CHANNEL_ID)
+                .setContentTitle("Scanning paused")
+                .setContentText("Stationary for too long. Tap to resume.")
+                .setSmallIcon(android.R.drawable.ic_media_pause)
+                .setOngoing(true)
+                .build()
+            NotificationManagerCompat.from(app).notify(AppConfig.MOTION_PAUSE_NOTIFICATION_ID, notification)
+        } catch (_: SecurityException) {
+            // Notification permission not granted
+        }
+    }
+
+    fun resumeFromMotion() {
+        repository.setMotionPaused(false)
+        motionStateManager.manualResume()
+        val app = getApplication<Application>()
+        NotificationManagerCompat.from(app).cancel(AppConfig.MOTION_PAUSE_NOTIFICATION_ID)
+    }
+
     fun stopRecordingSession() {
         val sessionId = activeSessionId ?: return
         val stoppedAt = System.currentTimeMillis()
         val durationMs = (stoppedAt - sessionStartedAt).coerceAtLeast(0L)
+
+        motionStateManager.stopMonitoring()
 
         val stats = repository.getConfidenceStats()
         repository.apiClient.endSession(
@@ -105,7 +146,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             stats.maxOCRConfidence,
             stats.totalOCRConfidence
         )
-
         activeSessionId = null
         stopForegroundPipeline()
 

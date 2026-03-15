@@ -204,10 +204,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        val vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+        val isMotionPaused = vm.isMotionPaused.value
         if (
             !isChangingConfigurations &&
             showCamera &&
-            hasCameraPermission
+            hasCameraPermission &&
+            !isMotionPaused
         ) {
             BackgroundCaptureService.start(this)
         }
@@ -246,12 +249,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestLocationPermission() {
-        locationPermissionLauncher.launch(
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            )
+        val permissions = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
+        locationPermissionLauncher.launch(permissions.toTypedArray())
     }
 
     companion object {

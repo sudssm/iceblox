@@ -52,6 +52,12 @@
 		A1B2C3D4E5F60001000081 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000081 /* UserSettings.swift */; };
 		A1B2C3D4E5F60001000090 /* MapClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000090 /* MapClient.swift */; };
 		A1B2C3D4E5F60001000091 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000091 /* MapView.swift */; };
+		A1B2C3D4E5F60001000100 /* FrameDiffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000100 /* FrameDiffer.swift */; };
+		A1B2C3D4E5F60001000101 /* FrameDifferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000101 /* FrameDifferTests.swift */; };
+		A1B2C3D4E5F60001000102 /* BrightnessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000102 /* BrightnessManager.swift */; };
+		A1B2C3D4E5F60001000103 /* BrightnessManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000103 /* BrightnessManagerTests.swift */; };
+		A1B2C3D4E5F60001000104 /* MotionStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000104 /* MotionStateManager.swift */; };
+		A1B2C3D4E5F60001000105 /* MotionStateManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000105 /* MotionStateManagerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +115,12 @@
 		A1B2C3D4E5F60002000081 /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000090 /* MapClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapClient.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000091 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000100 /* FrameDiffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameDiffer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000101 /* FrameDifferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameDifferTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000102 /* BrightnessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000103 /* BrightnessManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessManagerTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000104 /* MotionStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionStateManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000105 /* MotionStateManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionStateManagerTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60006000001 /* IceBloxApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IceBloxApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60006000002 /* IceBloxAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IceBloxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -157,6 +169,7 @@
 				A1B2C3D4E5F60008000014 /* Networking */,
 				A1B2C3D4E5F60008000015 /* Persistence */,
 				A1B2C3D4E5F60008000018 /* Models */,
+				A1B2C3D4E5F60008000021 /* Motion */,
 				A1B2C3D4E5F60008000016 /* Processing */,
 				A1B2C3D4E5F60008000017 /* Views */,
 				A1B2C3D4E5F60008000020 /* Settings */,
@@ -173,6 +186,9 @@
 				A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */,
 				A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */,
 				A1B2C3D4E5F60002000072 /* ZoomControllerTests.swift */,
+				A1B2C3D4E5F60002000101 /* FrameDifferTests.swift */,
+				A1B2C3D4E5F60002000103 /* BrightnessManagerTests.swift */,
+				A1B2C3D4E5F60002000105 /* MotionStateManagerTests.swift */,
 			);
 			path = IceBloxAppTests;
 			sourceTree = "<group>";
@@ -192,6 +208,8 @@
 				A1B2C3D4E5F60002000010 /* CameraManager.swift */,
 				A1B2C3D4E5F60002000011 /* CameraPreviewView.swift */,
 				A1B2C3D4E5F60002000032 /* FrameProcessor.swift */,
+				A1B2C3D4E5F60002000100 /* FrameDiffer.swift */,
+				A1B2C3D4E5F60002000102 /* BrightnessManager.swift */,
 				A1B2C3D4E5F60002000070 /* ZoomController.swift */,
 				A1B2C3D4E5F60002000071 /* PreviewFreezer.swift */,
 				A1B2C3D4E5F60002000039 /* SimulatorCamera.swift */,
@@ -286,6 +304,14 @@
 				A1B2C3D4E5F60002000036 /* DebugLog.swift */,
 			);
 			path = Debug;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60008000021 /* Motion */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60002000104 /* MotionStateManager.swift */,
+			);
+			path = Motion;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F60008000020 /* Settings */ = {
@@ -455,6 +481,9 @@
 				A1B2C3D4E5F60001000081 /* UserSettings.swift in Sources */,
 				A1B2C3D4E5F60001000090 /* MapClient.swift in Sources */,
 				A1B2C3D4E5F60001000091 /* MapView.swift in Sources */,
+				A1B2C3D4E5F60001000100 /* FrameDiffer.swift in Sources */,
+				A1B2C3D4E5F60001000102 /* BrightnessManager.swift in Sources */,
+				A1B2C3D4E5F60001000104 /* MotionStateManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -467,6 +496,9 @@
 				A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */,
 				A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */,
 				A1B2C3D4E5F60001000072 /* ZoomControllerTests.swift in Sources */,
+				A1B2C3D4E5F60001000101 /* FrameDifferTests.swift in Sources */,
+				A1B2C3D4E5F60001000103 /* BrightnessManagerTests.swift in Sources */,
+				A1B2C3D4E5F60001000105 /* MotionStateManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

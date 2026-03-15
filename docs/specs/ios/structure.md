@@ -31,6 +31,8 @@ ios/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
 │   │   ├── FrameProcessor.swift       # Orchestrates detect → OCR → normalize → dedup → hash → queue → zoom retry on failed OCR
+│   │   ├── FrameDiffer.swift          # 64x64 grayscale frame diff to skip static frames (REQ-M-4b)
+│   │   ├── BrightnessManager.swift    # Screen dimming during scanning, tap-to-restore (REQ-M-4a)
 │   │   ├── PreviewFreezer.swift       # Frozen-frame overlay for zoom retry UX (UIImageView over preview layer)
 │   │   ├── SimulatorCamera.swift      # Timer-driven frame generator for simulator testing (simulator-only)
 │   │   └── ZoomController.swift       # Optical zoom detection, eligibility check, zoom-capture-restore
@@ -53,9 +55,11 @@ ios/
 │   │   ├── OfflineQueue.swift         # SQLite-backed FIFO queue (hash, timestamp, lat, lng)
 │   │   └── OfflineQueueEntry.swift    # Data model for queue entries
 │   ├── Location/
-│   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning
+│   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning, distance filter (REQ-M-4d)
+│   ├── Motion/
+│   │   └── MotionStateManager.swift   # CMMotionActivityManager-based stationary detection, auto-pause (REQ-M-4c)
 │   ├── Config/
-│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL (compile-time flag), zoom retry constants
+│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL (compile-time flag), zoom retry constants, battery optimization config
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
 │   ├── Settings/
 │   │   └── UserSettings.swift         # ObservableObject singleton: push notification + user debug mode toggles persisted via UserDefaults
@@ -70,7 +74,10 @@ ios/
     ├── PushNotificationTests.swift    # Device token hex conversion, AppConfig endpoint tests
     ├── LookalikeExpanderTests.swift   # Lookalike character expansion tests (REQ-M-12a)
     ├── ZoomControllerTests.swift      # Zoom eligibility, safe zoom ratio, best candidate selection tests
-    └── OfflineQueueTests.swift        # Schema validation and migration tests for offline queue
+    ├── OfflineQueueTests.swift        # Schema validation and migration tests for offline queue
+    ├── FrameDifferTests.swift         # Frame differ grayscale diff and skip counter tests
+    ├── BrightnessManagerTests.swift   # Brightness dim/restore/teardown state tests
+    └── MotionStateManagerTests.swift  # Motion state manager initial state and resume tests
 ```
 
 ## Architecture
