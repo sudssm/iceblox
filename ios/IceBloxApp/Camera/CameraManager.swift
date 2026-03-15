@@ -15,6 +15,9 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var permissionDenied = false
     @Published var isThrottled = false
 
+    private var shouldBeRunning = false
+    private var needsReconfiguration = false
+
     #if targetEnvironment(simulator)
     private var simulatorCamera: SimulatorCamera?
     @Published var simulatorImage: UIImage?
@@ -45,6 +48,7 @@ final class CameraManager: NSObject, ObservableObject {
         #else
         observeThermalState()
         observeDeviceOrientation()
+        observeSessionNotifications()
         #endif
     }
 
@@ -75,14 +79,22 @@ final class CameraManager: NSObject, ObservableObject {
 
     func start() {
         #if targetEnvironment(simulator)
+        shouldBeRunning = true
         simulatorCamera?.frameProcessor = frameProcessor
         simulatorCamera?.start()
         DispatchQueue.main.async { [weak self] in self?.isRunning = true }
         #else
+        shouldBeRunning = true
         sessionQueue.async { [weak self] in
             guard let self else { return }
+            if self.needsReconfiguration {
+                self.resetSession()
+                self.needsReconfiguration = false
+            }
             self.configureSession()
-            self.session.startRunning()
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
             DispatchQueue.main.async { self.isRunning = true }
         }
         #endif
@@ -90,9 +102,11 @@ final class CameraManager: NSObject, ObservableObject {
 
     func stop() {
         #if targetEnvironment(simulator)
+        shouldBeRunning = false
         simulatorCamera?.stop()
         DispatchQueue.main.async { [weak self] in self?.isRunning = false }
         #else
+        shouldBeRunning = false
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.session.stopRunning()
@@ -167,6 +181,7 @@ final class CameraManager: NSObject, ObservableObject {
 
         captureDevice = camera
         zoomController = ZoomController(device: camera, baselineZoom: CGFloat(baselineZoom))
+        frameProcessor?.zoomController = zoomController
     }
 
     private func updateVideoOrientation() {
@@ -181,6 +196,58 @@ final class CameraManager: NSObject, ObservableObject {
         }
         if connection.isVideoRotationAngleSupported(angle) {
             connection.videoRotationAngle = angle
+        }
+    }
+
+    private func resetSession() {
+        session.beginConfiguration()
+        for input in session.inputs {
+            session.removeInput(input)
+        }
+        for output in session.outputs {
+            session.removeOutput(output)
+        }
+        session.commitConfiguration()
+        videoOutput = nil
+        captureDevice = nil
+        zoomController = nil
+    }
+
+    private func observeSessionNotifications() {
+        NotificationCenter.default.addObserver(
+            forName: .AVCaptureSessionWasInterrupted,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            if let reason = notification.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int,
+               let interruptionReason = AVCaptureSession.InterruptionReason(rawValue: reason) {
+                DebugLog.shared.w("CameraManager", "Session interrupted: \(interruptionReason.rawValue)")
+            }
+            self?.isRunning = false
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: .AVCaptureSessionInterruptionEnded,
+            object: session,
+            queue: nil
+        ) { [weak self] _ in
+            DebugLog.shared.d("CameraManager", "Session interruption ended")
+            guard let self, self.shouldBeRunning else { return }
+            self.start()
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: .AVCaptureSessionRuntimeError,
+            object: session,
+            queue: nil
+        ) { [weak self] notification in
+            guard let error = notification.userInfo?[AVCaptureSessionErrorKey] as? AVError else { return }
+            DebugLog.shared.e("CameraManager", "Session runtime error: \(error.localizedDescription)")
+            guard let self else { return }
+            self.needsReconfiguration = true
+            if self.shouldBeRunning {
+                self.start()
+            }
         }
     }
 
