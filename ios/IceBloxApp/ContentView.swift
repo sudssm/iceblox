@@ -367,8 +367,12 @@ struct ContentView: View {
             }
         }
     }
+}
 
-    private func setupPipeline() {
+// MARK: - Private Helpers
+
+extension ContentView {
+    func setupPipeline() {
         let activeSessionID = sessionID
         let client = APIClient(offlineQueue: offlineQueue, currentSessionID: activeSessionID)
         let processor = FrameProcessor(
@@ -400,7 +404,7 @@ struct ContentView: View {
         client.startBatchTimer()
     }
 
-    private func resumeActiveSession() {
+    func resumeActiveSession() {
         UIApplication.shared.isIdleTimerDisabled = true
         frameProcessor?.isAcceptingDetections = true
         if cameraManager.permissionGranted {
@@ -413,7 +417,7 @@ struct ContentView: View {
         alertClient?.startTimer()
     }
 
-    private func pauseForMotion() {
+    func pauseForMotion() {
         showingMotionPauseOverlay = true
         frameProcessor?.isAcceptingDetections = false
         cameraManager.stop()
@@ -430,14 +434,14 @@ struct ContentView: View {
         UNUserNotificationCenter.current().add(request)
     }
 
-    private func resumeFromMotionPause() {
+    func resumeFromMotionPause() {
         showingMotionPauseOverlay = false
         motionStateManager.manualResume()
         resumeActiveSession()
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["motion-pause"])
     }
 
-    private func pauseForBackground() {
+    func pauseForBackground() {
         frameProcessor?.isAcceptingDetections = false
         cameraManager.stop()
         apiClient?.flushQueue()
@@ -455,7 +459,7 @@ struct ContentView: View {
         }
     }
 
-    private func stopRecordingSession() {
+    func stopRecordingSession() {
         guard !showingSummary else { return }
         brightnessManager.teardown()
         showingMotionPauseOverlay = false
@@ -481,19 +485,19 @@ struct ContentView: View {
         showingSummary = true
     }
 
-    private func clearUploadQueue() {
+    func clearUploadQueue() {
         apiClient?.stopBatchTimer()
         offlineQueue.clearAll()
         pendingSessionUploads = 0
         apiClient?.startBatchTimer()
     }
 
-    private func returnToSplash() {
+    func returnToSplash() {
         showingSummary = false
         onExitToSplash()
     }
 
-    private func startE2EStopWatcher() {
+    func startE2EStopWatcher() {
         guard AppConfig.stopRecordingTriggerURL != nil else { return }
 
         e2eStopTask?.cancel()
@@ -512,7 +516,7 @@ struct ContentView: View {
         }
     }
 
-    private func syncSessionSummaryArtifact() {
+    func syncSessionSummaryArtifact() {
         guard showingSummary, let artifactURL = AppConfig.sessionSummaryArtifactURL else { return }
 
         let durationSeconds = max(0, Int((stopRequestedAt ?? Date()).timeIntervalSince(sessionStartedAt)))
@@ -533,12 +537,12 @@ struct ContentView: View {
         try? payload.write(to: artifactURL, atomically: true, encoding: .utf8)
     }
 
-    private func clearSessionSummaryArtifact() {
+    func clearSessionSummaryArtifact() {
         guard let artifactURL = AppConfig.sessionSummaryArtifactURL else { return }
         try? FileManager.default.removeItem(at: artifactURL)
     }
 
-    private var sessionDurationText: String {
+    var sessionDurationText: String {
         let endDate = stopRequestedAt ?? Date()
         let totalSeconds = max(0, Int(endDate.timeIntervalSince(sessionStartedAt)))
         let minutes = totalSeconds / 60
