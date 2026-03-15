@@ -569,6 +569,38 @@ After storing a report (REQ-S-20), the server MUST asynchronously submit it to t
 
 The server MUST track scanning sessions reported by mobile clients. Sessions are created client-side with a random UUID and sent with plate uploads. The server aggregates per-session statistics (vehicle count, plate count) for observability.
 
+**Start session endpoint:**
+
+```
+POST /api/v1/sessions/start
+Content-Type: application/json
+
+{
+  "session_id": "string (UUID, required)",
+  "device_id": "string (required)"
+}
+```
+
+**Field validation:**
+- `session_id`: Required. Non-empty string. Returns `400 Bad Request` if empty.
+- `device_id`: Required. Non-empty string. Returns `400 Bad Request` if empty.
+
+**Behavior:**
+- Creates a new session record with `started_at = NOW()`, `vehicles = 0`, `plates = 0`, and all confidence fields set to 0.
+- Uses `ON CONFLICT (session_id) DO NOTHING` for idempotency — calling start on an existing session is a no-op.
+- Database errors are logged but the endpoint always returns `200 OK`.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok"
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — invalid JSON, empty `session_id`, or empty `device_id`.
+- `405 Method Not Allowed` — non-POST request.
+
 **Session upsert (via plates endpoint):**
 
 When `POST /api/v1/plates` includes an optional `session_id` field in the request body, the server MUST upsert a session record:

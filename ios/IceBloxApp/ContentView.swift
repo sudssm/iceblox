@@ -307,6 +307,8 @@ struct ContentView: View {
             client?.flushQueue()
         }
 
+        client.startSession(sessionID: activeSessionID)
+
         cameraManager.frameProcessor = processor
         self.frameProcessor = processor
         self.apiClient = client
@@ -350,6 +352,17 @@ struct ContentView: View {
     private func stopRecordingSession() {
         guard !showingSummary else { return }
         stopRequestedAt = Date()
+
+        if let fp = frameProcessor {
+            apiClient?.endSession(
+                sessionID: sessionID,
+                maxDetConf: fp.maxDetectionConfidence,
+                totalDetConf: fp.totalDetectionConfidence,
+                maxOCRConf: fp.maxOCRConfidence,
+                totalOCRConf: fp.totalOCRConfidence
+            )
+        }
+
         frameProcessor?.isAcceptingDetections = false
         cameraManager.stop()
         apiClient?.stopBatchTimer()

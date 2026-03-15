@@ -8,6 +8,8 @@ object AppConfig {
     const val DEVICES_ENDPOINT = "/api/v1/devices"
     const val REPORTS_ENDPOINT = "/api/v1/reports"
     const val MAP_SIGHTINGS_ENDPOINT = "/api/v1/map-sightings"
+    const val SESSIONS_START_ENDPOINT = "/api/v1/sessions/start"
+    const val SESSIONS_END_ENDPOINT = "/api/v1/sessions/end"
 
     const val NOTIFICATION_CHANNEL_ID = "plate_alerts"
     const val NOTIFICATION_CHANNEL_NAME = "Plate Alerts"

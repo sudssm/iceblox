@@ -97,6 +97,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val stoppedAt = System.currentTimeMillis()
         val durationMs = (stoppedAt - sessionStartedAt).coerceAtLeast(0L)
 
+        val stats = repository.getConfidenceStats()
+        repository.apiClient.endSession(
+            sessionId,
+            stats.maxDetectionConfidence,
+            stats.totalDetectionConfidence,
+            stats.maxOCRConfidence,
+            stats.totalOCRConfidence
+        )
+
         activeSessionId = null
         stopForegroundPipeline()
 
@@ -133,6 +142,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         activeSessionId = java.util.UUID.randomUUID().toString()
         sessionStartedAt = System.currentTimeMillis()
         repository.resetSessionState(activeSessionId!!)
+        repository.apiClient.startSession(activeSessionId!!)
         _sessionSummary.value = null
     }
 }

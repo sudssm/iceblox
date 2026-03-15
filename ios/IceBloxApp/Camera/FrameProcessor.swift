@@ -60,6 +60,11 @@ final class FrameProcessor: ObservableObject {
     @Published var zoomRetryFrozen = false
     @Published var frozenPreviewImage: UIImage?
 
+    var maxDetectionConfidence: Float = 0
+    var totalDetectionConfidence: Float = 0
+    var maxOCRConfidence: Float = 0
+    var totalOCRConfidence: Float = 0
+
     var isAcceptingDetections = true
     var zoomController: ZoomController?
     var isThrottled = false
@@ -378,6 +383,18 @@ final class FrameProcessor: ObservableObject {
 
         let variants = LookalikeExpander.expand(normalizedText, charConfidences: charConfidences, slotCandidates: slotCandidates)
         let primaryHash = PlateHasher.hash(normalizedPlate: variants[0].0)
+
+        if confidence > maxDetectionConfidence {
+            maxDetectionConfidence = confidence
+        }
+        totalDetectionConfidence += confidence
+
+        for (_, _, variantConfidence) in variants {
+            if variantConfidence > maxOCRConfidence {
+                maxOCRConfidence = variantConfidence
+            }
+            totalOCRConfidence += variantConfidence
+        }
 
         DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(primaryHash.prefix(8))) variants=\(variants.count)")
 

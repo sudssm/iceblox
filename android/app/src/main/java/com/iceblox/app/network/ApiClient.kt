@@ -205,6 +205,69 @@ class ApiClient(
         }
     }
 
+    fun startSession(sessionId: String) {
+        scope.launch {
+            val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.SESSIONS_START_ENDPOINT}"
+            val mediaType = "application/json".toMediaType()
+            val json = JSONObject().apply {
+                put("session_id", sessionId)
+                put("device_id", deviceId)
+            }
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .post(json.toString().toRequestBody(mediaType))
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        DebugLog.d(TAG, "Session started: $sessionId")
+                    } else {
+                        DebugLog.w(TAG, "Session start failed: ${response.code}")
+                    }
+                }
+            } catch (e: IOException) {
+                DebugLog.w(TAG, "Session start failed: ${e.message}")
+            }
+        }
+    }
+
+    fun endSession(
+        sessionId: String,
+        maxDetConf: Float,
+        totalDetConf: Float,
+        maxOCRConf: Float,
+        totalOCRConf: Float
+    ) {
+        scope.launch {
+            val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.SESSIONS_END_ENDPOINT}"
+            val mediaType = "application/json".toMediaType()
+            val json = JSONObject().apply {
+                put("session_id", sessionId)
+                put("max_detection_confidence", maxDetConf.toDouble())
+                put("total_detection_confidence", totalDetConf.toDouble())
+                put("max_ocr_confidence", maxOCRConf.toDouble())
+                put("total_ocr_confidence", totalOCRConf.toDouble())
+            }
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .post(json.toString().toRequestBody(mediaType))
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        DebugLog.d(TAG, "Session ended: $sessionId")
+                    } else {
+                        DebugLog.w(TAG, "Session end failed: ${response.code}")
+                    }
+                }
+            } catch (e: IOException) {
+                DebugLog.w(TAG, "Session end failed: ${e.message}")
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "ApiClient"
     }

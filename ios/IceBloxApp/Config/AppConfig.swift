@@ -56,6 +56,8 @@ enum AppConfig {
     static let reportsEndpoint = "/api/v1/reports"
     static let mapSightingsEndpoint = "/api/v1/map-sightings"
     static let devicesEndpoint = "/api/v1/devices"
+    static let sessionsStartEndpoint = "/api/v1/sessions/start"
+    static let sessionsEndEndpoint = "/api/v1/sessions/end"
     static let subscribeEndpoint = "/api/v1/subscribe"
     static let subscribeIntervalSeconds: TimeInterval = 600
     static let defaultRadiusMiles: Double = 100
