@@ -86,7 +86,6 @@ struct DebugOverlayView: View {
                     .frame(maxWidth: screenSize.width - 16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .padding(.bottom, 32)
-
             }
         }
         .frame(width: screenSize.width, height: screenSize.height)

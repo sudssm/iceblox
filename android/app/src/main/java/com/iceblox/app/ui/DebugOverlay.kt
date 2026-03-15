@@ -244,7 +244,6 @@ fun DebugOverlay(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 32.dp)
             )
-
         }
     }
 }
