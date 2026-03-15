@@ -46,10 +46,36 @@ Run the /qa-report skill.
 
 ---
 
-## Step 5: Summary
+## Step 5: Update README screenshots (iOS)
 
-After all four agents complete, provide a combined summary covering:
+Launch an Agent (subagent_type: `general-purpose`, name: `update-screenshots`) with this prompt:
+
+```
+Take fresh iOS screenshots and update docs/screenshots/ if they look different from the current ones.
+
+1. Run the appstore screenshot script to capture all 4 iOS screens (splash, camera, map, report):
+   scripts/simulator/appstore_screenshots.sh
+   This saves screenshots to .context/screenshots/.
+
+2. Compare each .context/screenshots/*.png against the corresponding docs/screenshots/iphone_*.png using the Read tool.
+
+3. If any screenshot looks materially different from the existing one (layout changes, new buttons, color changes, etc.), copy the new version over:
+   cp .context/screenshots/01_splash.png docs/screenshots/iphone_splash.png
+   cp .context/screenshots/02_camera.png docs/screenshots/iphone_camera.png
+   cp .context/screenshots/03_map.png docs/screenshots/iphone_map.png
+   cp .context/screenshots/04_report.png docs/screenshots/iphone_report.png
+
+4. Stage and commit any updated screenshots with a message like "Update iOS screenshots to match current UI".
+   If no screenshots changed, report that all screenshots are up to date.
+```
+
+---
+
+## Step 6: Summary
+
+After all five agents complete, provide a combined summary covering:
 - **Todo**: items removed, items remaining
 - **Specs**: issues found, fixed, and flagged; new todo items added
 - **Code**: refactors implemented, proposals declined, test results
 - **QA**: test coverage gaps, test results, bugs found/fixed, open issues, manual E2E findings
+- **Screenshots**: which README screenshots were updated (if any)
