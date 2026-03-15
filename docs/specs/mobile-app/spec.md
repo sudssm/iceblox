@@ -526,7 +526,7 @@ On restart after a crash, the app MUST:
 
 Background behavior is platform-specific:
 
-- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground.
+- **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground. When foregrounded again, the app MUST automatically restart the AVCaptureSession and resume plate detection within 1 second, preserving the active recording session (counters, session ID). The camera manager MUST observe `AVCaptureSession.wasInterruptedNotification` and `.interruptionEndedNotification` to recover from system interruptions (e.g., phone calls, Siri). If a runtime error resets media services, the session MUST be torn down and reconfigured. The idle timer (`isIdleTimerDisabled`) MUST be re-asserted on every foreground resume.
 - **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
