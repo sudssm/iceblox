@@ -29,6 +29,21 @@ class BackgroundCaptureService : LifecycleService() {
     private var captureBound = false
     private var wakeLock: PowerManager.WakeLock? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        ensureNotificationChannel()
+        try {
+            startForeground(
+                AppConfig.BACKGROUND_CAPTURE_NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            )
+        } catch (e: SecurityException) {
+            DebugLog.w(TAG, "Cannot start foreground service: ${e.message}")
+            stopSelf()
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action ?: AppConfig.ACTION_START_BACKGROUND_CAPTURE) {
@@ -45,18 +60,6 @@ class BackgroundCaptureService : LifecycleService() {
             return
         }
 
-        ensureNotificationChannel()
-        try {
-            startForeground(
-                AppConfig.BACKGROUND_CAPTURE_NOTIFICATION_ID,
-                buildNotification(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            )
-        } catch (e: SecurityException) {
-            DebugLog.w(TAG, "Cannot start foreground service: ${e.message}")
-            stopSelf()
-            return
-        }
         repository.setBackgroundActive(true)
 
         if (wakeLock == null) {
