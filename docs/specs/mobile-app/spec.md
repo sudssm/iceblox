@@ -47,7 +47,9 @@ While a recording session is active, the camera view MUST display a persistent "
 - Visibility: rendered above the camera preview and not hidden by debug UI
 - Interaction: one tap ends the active session
 
-When tapped, the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
+Pressing the system back button or gesture during an active recording session MUST behave identically to tapping the Stop Recording button.
+
+When tapped (or back pressed), the app MUST immediately stop accepting new frames for plate detection and transition to the `Stopping` state.
 
 #### REQ-M-3c: Session Summary
 
