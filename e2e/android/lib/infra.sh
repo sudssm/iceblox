@@ -39,13 +39,18 @@ e2e_dsn() {
 start_go_server() {
     echo "Starting Go server on port $E2E_SERVER_PORT..."
 
-    # Kill any stale process on the port
-    local stale_pid
-    stale_pid=$(lsof -ti :"$E2E_SERVER_PORT" 2>/dev/null || true)
-    if [ -n "$stale_pid" ]; then
-        echo "Killing stale process on port $E2E_SERVER_PORT (PID $stale_pid)..."
-        kill "$stale_pid" 2>/dev/null || true
-        sleep 1
+    # Kill any stale process on the port (unquoted to handle multiple PIDs)
+    local stale_pids
+    stale_pids=$(lsof -ti :"$E2E_SERVER_PORT" 2>/dev/null || true)
+    if [ -n "$stale_pids" ]; then
+        echo "Killing stale process(es) on port $E2E_SERVER_PORT..."
+        # shellcheck disable=SC2086
+        kill -9 $stale_pids 2>/dev/null || true
+        sleep 2
+        # Verify port is free
+        if lsof -ti :"$E2E_SERVER_PORT" &>/dev/null; then
+            echo "WARNING: Port $E2E_SERVER_PORT still in use after kill"
+        fi
     fi
 
     cd "$PROJECT_ROOT/server"
@@ -82,6 +87,13 @@ stop_go_server() {
         echo "Stopping Go server (PID $E2E_SERVER_PID)..."
         kill "$E2E_SERVER_PID" 2>/dev/null || true
         wait "$E2E_SERVER_PID" 2>/dev/null || true
+    fi
+    # Also kill any remaining process on the port (go run child may linger)
+    local remaining
+    remaining=$(lsof -ti :"$E2E_SERVER_PORT" 2>/dev/null || true)
+    if [ -n "$remaining" ]; then
+        # shellcheck disable=SC2086
+        kill -9 $remaining 2>/dev/null || true
     fi
     rm -f "$E2E_SERVER_LOG"
 }

@@ -67,6 +67,53 @@ final class IceBloxAppTests: XCTestCase {
         XCTAssertFalse(cache.isDuplicate("ABC1234"))
     }
 
+    func testDedupSessionScoped() {
+        let cache = DeduplicationCache()
+        _ = cache.isDuplicate("ABC1234")
+        XCTAssertTrue(cache.isDuplicate("ABC1234"))
+        XCTAssertTrue(cache.isDuplicate("ABC1234"))
+    }
+
+    // MARK: - Hash Dedup
+
+    func testHashDedupNewHashesNotSeen() {
+        let cache = DeduplicationCache()
+        XCTAssertFalse(cache.areAllHashesSeen(["hash1", "hash2"]))
+    }
+
+    func testHashDedupAllHashesSeen() {
+        let cache = DeduplicationCache()
+        cache.addHashes(["hash1", "hash2"])
+        XCTAssertTrue(cache.areAllHashesSeen(["hash1", "hash2"]))
+    }
+
+    func testHashDedupPartialHashesSeen() {
+        let cache = DeduplicationCache()
+        cache.addHashes(["hash1"])
+        XCTAssertFalse(cache.areAllHashesSeen(["hash1", "hash2"]))
+    }
+
+    func testHashDedupResetClearsHashes() {
+        let cache = DeduplicationCache()
+        cache.addHashes(["hash1", "hash2"])
+        cache.reset()
+        XCTAssertFalse(cache.areAllHashesSeen(["hash1", "hash2"]))
+    }
+
+    func testHashDedupEmptyHashList() {
+        let cache = DeduplicationCache()
+        XCTAssertFalse(cache.areAllHashesSeen([]))
+    }
+
+    func testHashDedupResetClearsBothSets() {
+        let cache = DeduplicationCache()
+        _ = cache.isDuplicate("ABC1234")
+        cache.addHashes(["hash1"])
+        cache.reset()
+        XCTAssertFalse(cache.isDuplicate("ABC1234"))
+        XCTAssertFalse(cache.areAllHashesSeen(["hash1"]))
+    }
+
     // MARK: - RetryManager
 
     func testRetryInitialState() {
@@ -150,7 +197,6 @@ final class IceBloxAppTests: XCTestCase {
     func testAppConfigDefaults() {
         XCTAssertEqual(AppConfig.detectionConfidenceThreshold, 0.5)
         XCTAssertEqual(AppConfig.ocrConfidenceThreshold, 0.6)
-        XCTAssertEqual(AppConfig.deduplicationWindowSeconds, 60)
         XCTAssertEqual(AppConfig.batchSize, 65)
         XCTAssertEqual(AppConfig.maxQueueSize, 1000)
     }

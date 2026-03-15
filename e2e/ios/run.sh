@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/tests/test_queued_clears.sh"
 source "$SCRIPT_DIR/tests/test_report_ice.sh"
 source "$SCRIPT_DIR/tests/test_settings.sh"
 source "$SCRIPT_DIR/tests/test_map_sightings.sh"
+source "$SCRIPT_DIR/tests/test_session_dedup.sh"
 
 SKIP_BUILD=false
 for arg in "$@"; do
@@ -67,6 +68,8 @@ run_test_proximity_subscribe_distant
 run_test_device_registration
 run_test_match_debug_label
 run_test_queued_clears
+run_test_session_dedup_stable
+run_test_session_dedup_cross_session
 run_test_report_ice
 run_test_settings_ui
 run_test_map_sightings_api

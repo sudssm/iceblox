@@ -64,7 +64,7 @@ android/
         │   │   │   ├── OfflineQueueDatabase.kt # Room database singleton
         │   │   │   └── OfflineQueueEntry.kt # Room entity: hash, timestamp, lat, lng, session_id, confidence, is_primary
         │   │   ├── processing/
-        │   │   │   ├── DeduplicationCache.kt # 60-second time-windowed set
+        │   │   │   ├── DeduplicationCache.kt # Session-scoped text + hash dedup
         │   │   │   ├── LookalikeExpander.kt # BFS expansion of confusable characters (REQ-M-12a)
         │   │   │   ├── PlateHasher.kt      # HMAC-SHA256 via javax.crypto.Mac, pepper from BuildConfig
         │   │   │   └── PlateNormalizer.kt  # Uppercase, strip, validate 2-8 chars
@@ -97,7 +97,8 @@ android/
         │       └── test_images/             # Test plate images for test mode (debug builds only)
         └── test/
             └── java/com/iceblox/app/
-                ├── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, dedup, retry, AppConfig
+                ├── ExampleUnitTest.kt      # Tests: normalizer, NMS, hasher, retry, AppConfig
+                ├── DeduplicationCacheTest.kt # Session-scoped text + hash dedup tests (REQ-M-8)
                 ├── AlertClientTest.kt      # AlertClient GPS truncation, timer, subscribe tests
                 ├── DeviceTokenManagerTest.kt # Token registration request tests
                 ├── NotificationHelperTest.kt # Notification channel and display tests

@@ -167,7 +167,7 @@ run_test_map_view_ios_ui() {
 
     # Tap "View Map" via trigger file or UI tap
     local container
-    container=$(xcrun simctl get_app_container "$IOS_SIMULATOR_UDID" "$IOS_BUNDLE_ID" data 2>/dev/null)
+    container=$(xcrun simctl get_app_container "$IOS_DEVICE_UDID" "$IOS_BUNDLE_ID" data 2>/dev/null)
     if [ -n "$container" ]; then
         touch "$container/Library/Application Support/e2e_view_map.trigger"
         sleep "$E2E_SETTLE_WAIT"

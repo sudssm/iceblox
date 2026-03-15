@@ -153,9 +153,15 @@ The detection model SHOULD:
 
 The app MUST apply a configurable confidence threshold (default: 0.5) before passing detected regions to OCR. Detections below this threshold MUST be discarded.
 
-#### REQ-M-8: Deduplication Window
+#### REQ-M-8: Session-Scoped Deduplication
 
-The app MUST deduplicate detected plates within a configurable time window (default: 60 seconds). If the same plate text is detected multiple times within the window, only the first occurrence MUST be processed (hashed and queued). "Same plate" is determined by normalized text equality.
+The app MUST deduplicate detected plates at two levels:
+
+1. **Text-level dedup (session-scoped):** The app MUST maintain a session-scoped set of normalized plate texts. If the same normalized text has already been seen in the current session, it MUST be skipped before lookalike expansion. The set MUST be cleared when a new session starts (via `reset()`). There is no time-based expiry — plates remain deduplicated for the entire session.
+
+2. **Hash-variant dedup (session-scoped):** After a plate passes text-level dedup and lookalike expansion generates hash variants, the app MUST check whether ALL generated hashes already exist in a session-scoped hash set. If every hash variant is already present, the entire detection MUST be silently dropped — no variants enqueued, no counters incremented, no `onPlateSent` callbacks fired. If any hash is new, ALL variants (including previously seen ones) MUST be enqueued, and all hashes MUST be added to the hash set. The hash set MUST be cleared on session start.
+
+**Counter behavior:** The "plates seen" counter MUST only increment when at least one new hash variant is enqueued. If all variants are duplicates, the detection is silently dropped.
 
 ### OCR
 
@@ -233,7 +239,7 @@ Each variant carries a confidence value computed as the geometric mean of the ac
 After hashing, the app MUST immediately discard the plaintext plate text from memory. Normalized plate text MUST NOT be:
 - Written to disk
 - Written to logs (including crash logs)
-- Stored in any cache other than the deduplication window (REQ-M-8)
+- Stored in any cache other than the session-scoped deduplication set (REQ-M-8)
 - Transmitted over the network
 
 **Exception:** In debug builds only, the `DebugLog` ring buffer (REQ-M-19, DBG-2) MAY retain normalized plate text in memory for display in the debug overlay detection feed. This buffer is capped at 50 entries and exists only in the app process — it is never persisted to disk or transmitted. Release builds MUST NOT include this buffer.
@@ -805,7 +811,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | Core ML inference on camera frames, confidence filter, bounding boxes |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped plate regions, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | CryptoKit HMAC, pepper from generated Pepper.swift, immediate plaintext discard |
-| 7 | Deduplication | REQ-M-8 | Time-windowed cache keyed by normalized text |
+| 7 | Deduplication | REQ-M-8 | Session-scoped text + hash-variant dedup |
 | 8 | Frame processor | REQ-M-30 | Wire pipeline: frame → detect → OCR → normalize → dedup → hash → queue |
 | 9 | Offline queue | REQ-M-15, REQ-M-15a | SQLite persistence, max 1000 entries, oldest eviction, local session attribution |
 | 10 | Location | REQ-M-16 | CLLocationManager, attach GPS to each queue entry, "No GPS" warning |
@@ -870,7 +876,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 4 | Plate detection | REQ-M-5, REQ-M-6, REQ-M-7 | TFLite interpreter, YOLOv8-nano inference, NMS, confidence filter |
 | 5 | OCR | REQ-M-9, REQ-M-10, REQ-M-11 | ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps, normalization, validation |
 | 6 | Hashing | REQ-M-12, REQ-M-13, REQ-M-42 | javax.crypto.Mac HMAC, pepper from BuildConfig, plaintext discard |
-| 7 | Deduplication | REQ-M-8 | Time-windowed cache |
+| 7 | Deduplication | REQ-M-8 | Session-scoped text + hash-variant dedup |
 | 8 | Frame analyzer | REQ-M-30 | Wire pipeline in ImageAnalysis.Analyzer callback |
 | 9 | Offline queue | REQ-M-15, REQ-M-15a | Room database, max 1000 entries, oldest eviction, local session attribution |
 | 10 | Location | REQ-M-16 | FusedLocationProviderClient, permission flow, GPS warning |

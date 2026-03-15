@@ -29,7 +29,6 @@ enum AppConfig {
 
     static let detectionConfidenceThreshold = floatEnv("E2E_DETECTION_CONFIDENCE_THRESHOLD", defaultValue: 0.5)
     static let ocrConfidenceThreshold = floatEnv("E2E_OCR_CONFIDENCE_THRESHOLD", defaultValue: 0.6)
-    static let deduplicationWindowSeconds: TimeInterval = 60
     static let minPlateLength = 2
     static let maxPlateLength = 8
 

@@ -42,7 +42,7 @@ ios/
 │   ├── Processing/
 │   │   ├── PlateNormalizer.swift      # Uppercase, strip, validate length
 │   │   ├── PlateHasher.swift          # HMAC-SHA256 via CryptoKit, pepper from generated Pepper.swift
-│   │   ├── DeduplicationCache.swift   # Time-windowed set of recently seen plates
+│   │   ├── DeduplicationCache.swift   # Session-scoped text + hash dedup
 │   │   └── LookalikeExpander.swift   # BFS expansion of confusable characters (REQ-M-12a)
 │   ├── Networking/
 │   │   ├── APIClient.swift            # URLSession POST to server, batch construction
@@ -59,7 +59,7 @@ ios/
 │   ├── Motion/
 │   │   └── MotionStateManager.swift   # CMMotionActivityManager-based stationary detection, auto-pause (REQ-M-4c)
 │   ├── Config/
-│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, dedup window, server URL (compile-time flag), zoom retry constants, battery optimization config
+│   │   ├── AppConfig.swift            # Confidence thresholds, batch size, server URL (compile-time flag), zoom retry constants, battery optimization config
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)
 │   ├── Settings/
 │   │   └── UserSettings.swift         # ObservableObject singleton: push notification + user debug mode toggles persisted via UserDefaults
