@@ -78,10 +78,14 @@ final class FrameDifferTests: XCTestCase {
             nil,
             &pixelBuffer
         )
-        let buffer = pixelBuffer!
+        guard let buffer = pixelBuffer else {
+            fatalError("Failed to create CVPixelBuffer for test")
+        }
 
         CVPixelBufferLockBaseAddress(buffer, [])
-        let baseAddress = CVPixelBufferGetBaseAddress(buffer)!
+        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
+            fatalError("Failed to get base address for test CVPixelBuffer")
+        }
         let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
         let ptr = baseAddress.assumingMemoryBound(to: UInt8.self)
         for y in 0..<height {

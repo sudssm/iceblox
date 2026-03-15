@@ -39,7 +39,9 @@ final class FrameDiffer {
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
         let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
-        let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer)!
+        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else {
+            return [UInt8](repeating: 0, count: Self.pixelCount)
+        }
 
         var sourceBuffer = vImage_Buffer(
             data: baseAddress,
