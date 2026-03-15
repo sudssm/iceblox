@@ -82,7 +82,7 @@ The app MUST support all device orientations (portrait, portrait upside-down, la
 The app MUST prevent the device screen from dimming or locking while the app is in the foreground. This is required for unattended dashboard-mounted operation.
 
 - **iOS**: Set `UIApplication.shared.isIdleTimerDisabled = true`
-- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window
+- **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window. The foreground service MUST hold a `PARTIAL_WAKE_LOCK` as defense-in-depth to keep the CPU running during background capture when the screen is off.
 
 ### License Plate Detection
 
@@ -528,6 +528,10 @@ Background behavior is platform-specific:
 - **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
+
+#### REQ-M-51a: Camera Recovery
+
+If the camera is interrupted for any reason (sleep, resource contention, thermal), the app MUST attempt to rebind the camera automatically when conditions allow, preserving the active session.
 
 ### ICE Vehicle Reporting
 
