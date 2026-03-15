@@ -84,11 +84,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        if (intent.getBooleanExtra("SHOW_MAP", false)) {
-            showMap = true
-        }
-        if (intent.getBooleanExtra("SHOW_REPORT", false)) {
-            showReport = true
+        if (savedInstanceState != null) {
+            showCamera = savedInstanceState.getBoolean(KEY_SHOW_CAMERA, false)
+            showReport = savedInstanceState.getBoolean(KEY_SHOW_REPORT, false)
+            showMap = savedInstanceState.getBoolean(KEY_SHOW_MAP, false)
+            showSettings = savedInstanceState.getBoolean(KEY_SHOW_SETTINGS, false)
+        } else {
+            if (intent.getBooleanExtra("SHOW_MAP", false)) {
+                showMap = true
+            }
+            if (intent.getBooleanExtra("SHOW_REPORT", false)) {
+                showReport = true
+            }
         }
 
         isTestMode = intent.getBooleanExtra(AppConfig.INTENT_EXTRA_TEST_MODE, false)
@@ -197,23 +204,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_SHOW_CAMERA, showCamera)
+        outState.putBoolean(KEY_SHOW_REPORT, showReport)
+        outState.putBoolean(KEY_SHOW_MAP, showMap)
+        outState.putBoolean(KEY_SHOW_SETTINGS, showSettings)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        val vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+        val isMotionPaused = vm.isMotionPaused.value
+        if (showCamera && hasCameraPermission && !isMotionPaused) {
+            BackgroundCaptureService.start(this)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         BackgroundCaptureService.stop(this)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        val vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
-        val isMotionPaused = vm.isMotionPaused.value
-        if (
-            !isChangingConfigurations &&
-            showCamera &&
-            hasCameraPermission &&
-            !isMotionPaused
-        ) {
-            BackgroundCaptureService.start(this)
-        }
     }
 
     private fun createNotificationChannel() {
@@ -261,6 +271,10 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val KEY_SHOW_CAMERA = "show_camera"
+        private const val KEY_SHOW_REPORT = "show_report"
+        private const val KEY_SHOW_MAP = "show_map"
+        private const val KEY_SHOW_SETTINGS = "show_settings"
     }
 }
 
