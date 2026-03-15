@@ -232,13 +232,7 @@ class ApiClient(
         }
     }
 
-    fun endSession(
-        sessionId: String,
-        maxDetConf: Float,
-        totalDetConf: Float,
-        maxOCRConf: Float,
-        totalOCRConf: Float
-    ) {
+    fun endSession(sessionId: String, maxDetConf: Float, totalDetConf: Float, maxOCRConf: Float, totalOCRConf: Float) {
         scope.launch {
             val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.SESSIONS_END_ENDPOINT}"
             val mediaType = "application/json".toMediaType()
