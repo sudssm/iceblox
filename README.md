@@ -1,4 +1,4 @@
-[![Tests](https://github.com/sudssm/iceblox/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/iceblox/actions/workflows/test.yml) ![Lines of Code](https://img.shields.io/badge/lines%20of%20code-22%2E3k-blue)
+[![Tests](https://github.com/sudssm/iceblox/actions/workflows/test.yml/badge.svg)](https://github.com/sudssm/iceblox/actions/workflows/test.yml) ![Lines of Code](https://img.shields.io/badge/lines%20of%20code-22%2E4k-blue)
 
 # IceBlox
 
