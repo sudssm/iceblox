@@ -5,6 +5,7 @@ struct StatusBarView: View {
     let lastDetection: Date?
     let hasGPS: Bool
     var nearbySightings: Int = 0
+    var totalPlates: Int = 0
 
     @State private var tick = false
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -30,6 +31,9 @@ struct StatusBarView: View {
                     .foregroundStyle(Color(red: 1.0, green: 0.596, blue: 0.0))
                     .accessibilityIdentifier("gps_warning")
             }
+            Spacer()
+            Text("Plates: \(totalPlates)")
+                .accessibilityIdentifier("plates_count")
             Spacer()
             Text("Last: \(lastDetectionText)")
         }

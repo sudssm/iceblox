@@ -195,7 +195,8 @@ struct ContentView: View {
                         isConnected: connectivityMonitor.isConnected,
                         lastDetection: frameProcessor?.lastDetectionTime,
                         hasGPS: locationManager.hasPermission,
-                        nearbySightings: alertClient?.nearbySightings ?? 0
+                        nearbySightings: alertClient?.nearbySightings ?? 0,
+                        totalPlates: frameProcessor?.totalPlates ?? 0
                     )
 
                     Spacer()
