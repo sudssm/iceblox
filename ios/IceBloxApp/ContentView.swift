@@ -164,7 +164,9 @@ struct ContentView: View {
                 .allowsHitTesting(false)
             }
             if debugMode, !showingSummary, cameraManager.permissionGranted {
-                Button(action: { debugMinimized.toggle() }) {
+                Button {
+                    debugMinimized.toggle()
+                } label: {
                     HStack(spacing: 6) {
                         Text("[DEBUG]")
                             .font(.system(.caption, design: .monospaced))
