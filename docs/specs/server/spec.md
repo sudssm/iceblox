@@ -154,7 +154,7 @@ make extract  # Parse XML → data/plates.txt
 make db       # Start PostgreSQL via Docker
 ```
 
-The server MUST support reloading the plates file without restart (e.g., via SIGHUP). On reload, the server re-reads the file, re-seeds the database, and rebuilds the in-memory hash set.
+Reloading the plates file currently requires a server restart. Future enhancement: support hot-reloading without restart (e.g., via SIGHUP or admin endpoint).
 
 ### REQ-S-6: Rate Limiting
 
@@ -565,6 +565,73 @@ After storing a report (REQ-S-20), the server MUST asynchronously submit it to t
 - On failure (HTTP error or network error), update `stop_ice_status` to `"failed"` and store the error message in `stop_ice_error`.
 - HTTP client timeout: 30 seconds.
 
+### REQ-S-22: Map Sightings Endpoint
+
+The server MUST expose an endpoint for the mobile map view to retrieve recent sightings and reports within a geographic area.
+
+```
+GET /api/v1/map-sightings?lat=<latitude>&lng=<longitude>&radius=<miles>
+```
+
+**Query parameters:**
+- `lat`: Required. Latitude in range [-90, 90].
+- `lng`: Required. Longitude in range [-180, 180].
+- `radius`: Required. Radius in miles, range [1, 500].
+
+**Behavior:**
+- Compute a bounding box from the center point and radius (with a 20% padding factor for edge cases).
+- Query sightings from the `sightings` table joined with `plates`, deduplicated by plate (latest sighting per plate), within the last 2 hours.
+- Query reports from the `reports` table within the same bounding box and time window.
+- Return both as a unified array with a `type` field distinguishing `"sighting"` from `"report"`.
+- All entries include a `confidence` field (hardcoded to 1.0 for now).
+- Report entries include `description` and an optional `photo_url` (presigned S3 URL if S3 is configured, see REQ-S-23).
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "sightings": [
+    {
+      "latitude": 34.05,
+      "longitude": -118.24,
+      "confidence": 1.0,
+      "seen_at": "2026-03-08T14:30:00Z",
+      "type": "sighting"
+    },
+    {
+      "latitude": 34.06,
+      "longitude": -118.25,
+      "confidence": 1.0,
+      "seen_at": "2026-03-08T15:00:00Z",
+      "type": "report",
+      "description": "ICE vehicle parked outside building",
+      "photo_url": "https://s3.amazonaws.com/..."
+    }
+  ]
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — missing or invalid query parameters, or out-of-range values.
+- `405 Method Not Allowed` — non-GET request to this endpoint.
+- `500 Internal Server Error` — database query failure.
+
+### REQ-S-23: Report Photo Storage (S3)
+
+When S3 is configured (`S3_BUCKET` and `AWS_REGION` environment variables), the server MUST upload report photos to S3 and serve them via presigned URLs.
+
+**Upload behavior:**
+- After saving a report photo to local disk (REQ-S-20), upload it to S3 under the key `reports/{uuid}.jpg`.
+- The S3 upload uses the default AWS credential chain (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`).
+
+**Presigned URL generation:**
+- When the map sightings endpoint (REQ-S-22) returns report entries, it MUST generate presigned GET URLs for report photos with a 60-minute TTL.
+- If S3 is not configured, the `photo_url` field is omitted from report entries.
+
+**Configuration:**
+- `S3_BUCKET` (env var or `--s3-bucket` flag): S3 bucket name for report photos.
+- `AWS_REGION` (env var or `--s3-region` flag): AWS region. Default: `us-east-1`.
+
 ### REQ-S-25: Session Tracking
 
 The server MUST track scanning sessions reported by mobile clients. Sessions are created client-side with a random UUID and sent with plate uploads. The server aggregates per-session statistics (vehicle count, plate count) for observability.
@@ -700,16 +767,10 @@ server/
 │   └── server/
 │       └── main.go              # Entrypoint, flag parsing, DB init, signal handling
 ├── internal/
-│   ├── config/
-│   │   └── config.go            # CLI flags, env vars, config struct
 │   ├── db/
 │   │   └── db.go                # PostgreSQL connection, migrations, plate/sighting operations
 │   ├── targets/
 │   │   └── targets.go           # Load plates.txt, compute hashes, in-memory hash→plate_id map
-│   ├── matcher/
-│   │   └── matcher.go           # Constant-time hash comparison logic
-│   ├── ratelimit/
-│   │   └── ratelimit.go         # Per-device token bucket rate limiter
 │   ├── push/
 │   │   ├── apns.go              # APNs HTTP/2 client, ES256 JWT auth
 │   │   ├── fcm.go               # FCM HTTP v1 client, OAuth2 auth
@@ -756,11 +817,10 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 2 | Config | — | Parse CLI flags: `--port`, `--plates-file`, `--db-dsn`, `--pepper`, `--report-upload-dir`, `--s3-bucket`, `--s3-region`; env var overrides (`PORT`, `DATABASE_URL`, `PEPPER`, `PLATES_FILE`, `APNS_CONFIG_JSON`, `FCM_SERVICE_ACCOUNT_JSON`, `REPORT_UPLOAD_DIR`, `S3_BUCKET`, `AWS_REGION`, `REDIS_URL`). Push credentials use single JSON env vars: `APNS_CONFIG_JSON` (fields: `key_p8`, `key_id`, `team_id`, `bundle_id`, `production`) and `FCM_SERVICE_ACCOUNT_JSON`. Subscriber storage configured via `REDIS_URL` (required). |
 | 3 | Database | REQ-S-8 | Connect to PostgreSQL, run migrations, plate upsert, sighting insert |
 | 4 | Target loader | REQ-S-5 | Load plates.txt, compute HMAC hashes, seed DB, build in-memory hash→plate_id map |
-| 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup, return plate_id for matched hashes |
-| 6 | Rate limiter | REQ-S-6 | Token bucket per device_id, 429 response with Retry-After |
+| 5 | Matcher | REQ-S-2 | O(1) in-memory hash lookup in `targets.Store`, return plate_id for matched hashes |
 | 7 | Plates handler | REQ-S-1, REQ-S-3, REQ-S-4 | Parse request, validate fields, check match, record sighting to DB, return response |
 | 8 | Health handler | REQ-S-7 | Return status + targets_loaded count |
-| 9 | Integration | All | Wire handlers into `http.ServeMux`, graceful shutdown, SIGHUP reload with DB re-seed |
+| 9 | Integration | All | Wire handlers into `http.ServeMux`, graceful shutdown |
 | 10 | Tests | All | Unit tests per package, integration test with seed file + HTTP requests + mock recorder |
 | 11 | Device store | REQ-S-9 | `device_tokens` table operations, registration endpoint handler |
 | 12 | APNs client | REQ-S-11 | HTTP/2 provider, ES256 JWT auth, `.p8` key loading, token caching |
@@ -783,8 +843,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 - **External dependencies**: `gorm.io/gorm` (ORM), `gorm.io/driver/postgres` (PostgreSQL driver, uses `pgx` internally), `github.com/google/uuid` (UUID generation for report photo filenames), `github.com/aws/aws-sdk-go-v2` (S3 photo upload + presigned URLs), and `github.com/redis/go-redis/v9` (Redis-backed subscriber storage).
 - **Schema migrations**: GORM's `AutoMigrate` derives the schema from Go struct tags (types, indexes, constraints, foreign keys). It creates tables, adds missing columns, and creates missing indexes idempotently on each startup. A `make migrate` entrypoint runs migrations and exits for deploy-time execution (e.g., Railway predeploy).
 - **In-memory cache**: Hash → plate_id map in `targets.Store` provides O(1) lookup without per-request DB queries. DB is only written to (sighting inserts), not read on the hot path.
-- **Plates file reload**: Register `SIGHUP` handler in `main.go` → calls `targets.Reload()` → re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, rebuilds in-memory map.
-- **Rate limiter cleanup**: Stale device entries (no requests for >10 minutes) should be evicted periodically to prevent memory leaks.
+- **Plates file reload**: Currently requires server restart. The `targets.Store` supports `Reload()` which re-reads `plates.txt`, re-computes hashes, re-seeds DB via upsert, and rebuilds the in-memory map.
 - **Graceful shutdown**: `SIGTERM`/`SIGINT` → stop accepting new connections → close DB connection pool → exit.
 - **Docker dev setup**: `make db` starts PostgreSQL 16 Alpine container. Default DSN: `postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable`.
 - **APNs HTTP/2**: Go `net/http` automatically negotiates HTTP/2 over TLS via ALPN. Apple requires long-lived connections — use a single shared `http.Client` instance.

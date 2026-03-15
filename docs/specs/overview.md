@@ -53,7 +53,7 @@ License plates have a small keyspace (~2 billion US plates). An attacker with ac
 2. Access control (pepper is injected at build time from a committed `.env` file; a determined attacker with the binary can extract it)
 3. Honest-but-curious assumption (server doesn't actively attempt brute-force reversal)
 
-**Future enhancement:** Private Set Intersection (PSI) protocol would provide cryptographic guarantees independent of operational trust. See `docs/specs/privacy-roadmap.md` (TBD).
+**Future enhancement:** Private Set Intersection (PSI) protocol would provide cryptographic guarantees independent of operational trust. A future `docs/specs/privacy-roadmap.md` will detail this enhancement.
 
 ## Data Flow
 

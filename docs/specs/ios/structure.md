@@ -19,8 +19,8 @@ ios/
 │   │   ├── AccentColor.colorset/
 │   │   └── Contents.json
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
+│   ├── StatusBarView.swift             # Top status bar (connectivity, GPS warning, nearby sightings, last detected)
 │   ├── Views/
-│   │   ├── StatusBarView.swift        # Top status bar (connectivity, GPS warning, nearby sightings, last detected)
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
 │   │   ├── DebugLogPanel.swift        # Translucent log panel at bottom of debug overlay
 │   │   ├── MapView.swift              # Map view showing nearby sightings and reports with offline caching
