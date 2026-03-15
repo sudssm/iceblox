@@ -730,7 +730,7 @@ server/
 │       ├── devices.go           # POST /api/v1/devices handler
 │       ├── reports.go           # POST /api/v1/reports handler (REQ-S-20)
 │       ├── reports_test.go      # Reports handler tests
-│       ├── sessions.go          # POST /api/v1/sessions/end handler (REQ-S-25)
+│       ├── sessions.go          # POST /api/v1/sessions/{start,end} handlers (REQ-S-25)
 │       ├── map_sightings.go     # GET /api/v1/map-sightings handler (REQ-S-22)
 │       ├── map_sightings_test.go # Map sightings handler tests
 │       ├── request_logging.go   # HTTP request logging middleware (REQ-S-17)
@@ -776,7 +776,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 22 | StopICE client | REQ-S-21 | Async form submission to StopICE plate tracker with status callback |
 | 23 | Map sightings endpoint | REQ-S-22 | GET `/api/v1/map-sightings?lat=X&lng=Y&radius=Z`, returns sightings + reports within bounding box from last 2h, deduped by plate, with confidence 1.0 |
 | 24 | Report photo serving | REQ-S-23 | S3 upload for report photos (`reports/{uuid}.jpg`), presigned GET URLs (60min TTL) in map sightings response, fallback to local disk if S3 not configured |
-| 25 | Session tracking | REQ-S-25 | `sessions` table, upsert on plate upload, `POST /api/v1/sessions/end` endpoint, best-effort non-blocking |
+| 25 | Session tracking | REQ-S-25 | `sessions` table, upsert on plate upload, `POST /api/v1/sessions/start` and `POST /api/v1/sessions/end` endpoints, best-effort non-blocking |
 
 ### Key Technical Notes
 
