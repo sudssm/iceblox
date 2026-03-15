@@ -36,7 +36,7 @@ check_platform() {
 ensure_android_emulator() {
     if ! "$ADB" devices 2>/dev/null | grep -q "emulator"; then
         echo "Starting Android emulator..."
-        "$EMULATOR_BIN" -avd "$ANDROID_AVD" &>/dev/null &
+        "$EMULATOR_BIN" -avd "$ANDROID_AVD" -gpu swiftshader_indirect -no-audio -no-boot-anim &>/dev/null &
         echo "Waiting for emulator to boot..."
         "$ADB" wait-for-device
         while [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]; do

@@ -88,10 +88,7 @@ enum AppConfig {
     }
 
     private static var appSupportDirectoryURL: URL? {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-        return appSupport
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
     }
 
     private static func stringEnv(_ key: String) -> String? {

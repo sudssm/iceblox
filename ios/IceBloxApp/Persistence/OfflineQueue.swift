@@ -187,69 +187,35 @@ final class OfflineQueue {
         sqlite3_step(stmt)
     }
 
-    private func ensureConfidenceColumns() {
-        guard let db else { return }
+    private func existingColumnNames() -> Set<String> {
+        guard let db else { return [] }
 
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(queue)", -1, &stmt, nil) == SQLITE_OK else { return [] }
 
-        guard sqlite3_prepare_v2(db, "PRAGMA table_info(queue)", -1, &stmt, nil) == SQLITE_OK else { return }
-
-        var hasConfidence = false
-        var hasIsPrimary = false
+        var names = Set<String>()
         while sqlite3_step(stmt) == SQLITE_ROW {
             guard let cName = sqlite3_column_text(stmt, 1) else { continue }
-            let name = String(cString: cName)
-            if name == "confidence" { hasConfidence = true }
-            if name == "is_primary" { hasIsPrimary = true }
+            names.insert(String(cString: cName))
         }
+        return names
+    }
 
-        if !hasConfidence {
-            sqlite3_exec(
-                db,
-                "ALTER TABLE queue ADD COLUMN confidence REAL NOT NULL DEFAULT 0",
-                nil,
-                nil,
-                nil
-            )
-        }
-        if !hasIsPrimary {
-            sqlite3_exec(
-                db,
-                "ALTER TABLE queue ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
-                nil,
-                nil,
-                nil
-            )
-        }
+    private func addColumnIfMissing(_ columnName: String, definition: String, existingColumns: Set<String>) {
+        guard let db, !existingColumns.contains(columnName) else { return }
+        sqlite3_exec(db, "ALTER TABLE queue ADD COLUMN \(definition)", nil, nil, nil)
+    }
+
+    private func ensureConfidenceColumns() {
+        let columns = existingColumnNames()
+        addColumnIfMissing("confidence", definition: "confidence REAL NOT NULL DEFAULT 0", existingColumns: columns)
+        addColumnIfMissing("is_primary", definition: "is_primary INTEGER NOT NULL DEFAULT 0", existingColumns: columns)
     }
 
     private func ensureSessionIDColumn() {
-        guard let db else { return }
-
-        var stmt: OpaquePointer?
-        defer { sqlite3_finalize(stmt) }
-
-        guard sqlite3_prepare_v2(db, "PRAGMA table_info(queue)", -1, &stmt, nil) == SQLITE_OK else { return }
-
-        var hasSessionID = false
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            guard let cName = sqlite3_column_text(stmt, 1) else { continue }
-            if String(cString: cName) == "session_id" {
-                hasSessionID = true
-                break
-            }
-        }
-
-        if !hasSessionID {
-            sqlite3_exec(
-                db,
-                "ALTER TABLE queue ADD COLUMN session_id TEXT NOT NULL DEFAULT ''",
-                nil,
-                nil,
-                nil
-            )
-        }
+        let columns = existingColumnNames()
+        addColumnIfMissing("session_id", definition: "session_id TEXT NOT NULL DEFAULT ''", existingColumns: columns)
     }
 
     private static func databasePath() -> String {

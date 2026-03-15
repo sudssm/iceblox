@@ -95,6 +95,7 @@ Specs live in `docs/specs/` and follow this hierarchy:
 docs/
   specs/
     overview.md              # System-level spec (architecture, boundaries)
+    testing.md               # Testing infrastructure, simulator/emulator setup, E2E patterns
     <feature>/
       spec.md                # Feature specification
       api.md                 # API contract (if applicable)

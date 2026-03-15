@@ -189,12 +189,9 @@ class FrameAnalyzer(context: Context, private val onPlatesDetected: (List<Proces
                     )
                 }
                 debugDetectionsTimestamp = System.currentTimeMillis()
+                onPlatesDetected(plates)
             } else if (System.currentTimeMillis() - debugDetectionsTimestamp > DETECTIONS_HOLD_MS) {
                 _debugDetections.value = emptyList()
-            }
-
-            if (plates.isNotEmpty()) {
-                onPlatesDetected(plates)
             }
 
             if (failedDetections.isNotEmpty()) {

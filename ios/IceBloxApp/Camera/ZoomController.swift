@@ -1,5 +1,4 @@
 import AVFoundation
-import CoreVideo
 
 final class ZoomController {
     private let device: AVCaptureDevice
