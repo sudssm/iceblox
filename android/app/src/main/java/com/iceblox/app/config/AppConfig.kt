@@ -8,6 +8,8 @@ object AppConfig {
     const val DEVICES_ENDPOINT = "/api/v1/devices"
     const val REPORTS_ENDPOINT = "/api/v1/reports"
     const val MAP_SIGHTINGS_ENDPOINT = "/api/v1/map-sightings"
+    const val SESSIONS_START_ENDPOINT = "/api/v1/sessions/start"
+    const val SESSIONS_END_ENDPOINT = "/api/v1/sessions/end"
 
     const val NOTIFICATION_CHANNEL_ID = "plate_alerts"
     const val NOTIFICATION_CHANNEL_NAME = "Plate Alerts"
@@ -35,6 +37,16 @@ const val MIN_PLATE_LENGTH = 2
 
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6
+
+    const val FRAME_DIFF_ENABLED = true
+    const val FRAME_DIFF_THRESHOLD = 5.0f
+
+    const val STATIONARY_TIMEOUT_MINUTES = 15L
+    const val MOTION_PAUSE_CHANNEL_ID = "motion_pause"
+    const val MOTION_PAUSE_NOTIFICATION_ID = 3001
+
+    const val DIM_SCREEN_DURING_SCANNING = true
+    const val DIM_BRIGHTNESS_LEVEL = 0.01f
 
     const val ZOOM_RETRY_ENABLED = true
     const val ZOOM_RETRY_COOLDOWN_MS = 1_000L

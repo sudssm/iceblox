@@ -82,7 +82,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 
 - [ ] **Larger stop button for driving context** — The "Stop Scanning" capsule on the camera screen is small for a driving use case. Widen to at least 200pt with more vertical padding, and consider placing it in a semi-opaque bottom bar for a consistent tap target.
 - [ ] **Add tagline on splash screen** — The splash is just a title and buttons with no context. Add a one-line subtitle below "IceBlox" (caption size, white at 0.5 opacity) to orient new users.
-- [ ] **Settings gear discoverability** — The gear icon at 0.7 opacity nearly disappears on black. Bump to 0.85 opacity or add a subtle circular background (white at 0.1 opacity).
+- [x] **Settings gear discoverability** — Resolved by replacing the gear icon with a full "Settings" button in the splash screen button stack (REQ-M-70).
 - [ ] **Report submit success feedback** — No confirmation after submitting a report. Show a brief success state (checkmark + "Report submitted") before dismissing the sheet.
 - [ ] **iOS/Android naming parity** — iOS says "Report ICE Activity", Android says "Report ICE Vehicle". Unify the label text across platforms.
 - [ ] **Disabled submit button + validation hints** — Android's gray disabled submit button doesn't explain why it's disabled. Add inline validation text (e.g., red hint below Description field saying "Required").

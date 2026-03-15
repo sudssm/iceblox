@@ -15,7 +15,7 @@ TRACKER_URL := https://www.stopice.net/platetracker
 DB_DSN ?= postgres://postgres:iceblox@localhost:5432/iceblox?sslmode=disable
 TEST_DB ?= iceblox_test
 
-.PHONY: setup extract migrate run-server run-test-server db db-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios publish-ios android-release-bundle publish-android
+.PHONY: setup extract migrate run-server run-test-server db db-stop redis redis-stop server-test server-test-db server-lint unit-test android-test ios-test android-unit-test kill-server clean run-android run-ios run-android-device run-ios-device package-ios publish-ios android-release-bundle publish-android
 
 ## setup: Download the latest ICE plate data ZIP from StopICE (skips if source unchanged)
 setup:
@@ -87,6 +87,14 @@ db:
 ## db-stop: Stop PostgreSQL container
 db-stop:
 	docker stop iceblox-postgres
+
+## redis: Start Redis in Docker for development
+redis:
+	docker run --name iceblox-redis -p 6379:6379 -d redis:7-alpine || docker start iceblox-redis
+
+## redis-stop: Stop Redis container
+redis-stop:
+	docker stop iceblox-redis
 
 # ── Run Apps ─────────────────────────────────────────────────────────────────
 

@@ -11,6 +11,7 @@ import com.iceblox.app.camera.ProcessedPlate
 import com.iceblox.app.camera.ZoomController
 import com.iceblox.app.config.AppConfig
 import com.iceblox.app.location.LocationProvider
+import com.iceblox.app.motion.MotionStateManager
 import com.iceblox.app.network.AlertClient
 import com.iceblox.app.network.ApiClient
 import com.iceblox.app.network.ConnectivityMonitor
@@ -42,6 +43,23 @@ class CaptureRepository(private val application: Application) {
     var activeSessionId: String? = null
         private set
 
+    val motionStateManager = MotionStateManager(application, scope)
+
+    @Volatile
+    var maxDetectionConfidence: Float = 0f
+        private set
+
+    @Volatile
+    var totalDetectionConfidence: Float = 0f
+        private set
+
+    @Volatile
+    var maxOCRConfidence: Float = 0f
+        private set
+
+    @Volatile
+    var totalOCRConfidence: Float = 0f
+        private set
     val locationProvider = LocationProvider(application)
     val connectivityMonitor = ConnectivityMonitor(application)
     val alertClient = AlertClient(
@@ -112,6 +130,10 @@ class CaptureRepository(private val application: Application) {
     @Volatile
     private var backgroundActive = false
 
+    @Volatile
+    var motionPaused = false
+        private set
+
     init {
         connectivityMonitor.onReconnected = {
             apiClient.flushQueue()
@@ -131,6 +153,31 @@ class CaptureRepository(private val application: Application) {
         updateSharedComponents()
     }
 
+    fun setMotionPaused(paused: Boolean) {
+        motionPaused = paused
+        if (paused) {
+            locationProvider.stopUpdates()
+            alertClient.stopTimer()
+            apiClient.flushQueue()
+        } else {
+            updateSharedComponents()
+        }
+    }
+
+    data class ConfidenceStats(
+        val maxDetectionConfidence: Float,
+        val totalDetectionConfidence: Float,
+        val maxOCRConfidence: Float,
+        val totalOCRConfidence: Float
+    )
+
+    fun getConfidenceStats(): ConfidenceStats = ConfidenceStats(
+        maxDetectionConfidence = maxDetectionConfidence,
+        totalDetectionConfidence = totalDetectionConfidence,
+        maxOCRConfidence = maxOCRConfidence,
+        totalOCRConfidence = totalOCRConfidence
+    )
+
     fun resetSessionState(sessionId: String) {
         activeSessionId = sessionId
         deduplicationCache.reset()
@@ -139,6 +186,10 @@ class CaptureRepository(private val application: Application) {
         _lastDetectionTime.value = 0L
         _pendingPlateCount.value = 0
         _detectionFeed.value = emptyList()
+        maxDetectionConfidence = 0f
+        totalDetectionConfidence = 0f
+        maxOCRConfidence = 0f
+        totalOCRConfidence = 0f
     }
 
     suspend fun countBySessionId(sessionId: String): Int = queueDao.countBySessionId(sessionId)
@@ -166,6 +217,7 @@ class CaptureRepository(private val application: Application) {
     }
 
     private fun updateSharedComponents() {
+        if (motionPaused) return
         if (foregroundActive || backgroundActive) {
             locationProvider.startUpdates()
             alertClient.startTimer()
@@ -194,6 +246,18 @@ class CaptureRepository(private val application: Application) {
             val primaryHash = variantHashes[0]
             val loc = locationProvider.currentLocation.value
             val now = System.currentTimeMillis()
+
+            if (plate.confidence > maxDetectionConfidence) {
+                maxDetectionConfidence = plate.confidence
+            }
+            totalDetectionConfidence += plate.confidence
+
+            for ((_, _, variantConfidence) in variants) {
+                if (variantConfidence > maxOCRConfidence) {
+                    maxOCRConfidence = variantConfidence
+                }
+                totalOCRConfidence += variantConfidence
+            }
 
             scope.launch(Dispatchers.IO) {
                 for (i in variants.indices) {

@@ -49,6 +49,7 @@ final class FrameProcessor: ObservableObject {
     let locationManager: LocationManager
     let apiClient: APIClient
     let sessionID: String
+    let frameDiffer = FrameDiffer()
 
     @Published var totalPlates = 0
     @Published var lastDetectionTime: Date?
@@ -56,9 +57,15 @@ final class FrameProcessor: ObservableObject {
     @Published var rawDetections: [RawDetectionBox] = []
     @Published var detectionFeed: [DetectionFeedEntry] = []
     @Published var fps: Double = 0
+    @Published var framesSkippedByDiff = 0
 
     @Published var zoomRetryFrozen = false
     @Published var frozenPreviewImage: UIImage?
+
+    private(set) var maxDetectionConfidence: Float = 0
+    private(set) var totalDetectionConfidence: Float = 0
+    private(set) var maxOCRConfidence: Float = 0
+    private(set) var totalOCRConfidence: Float = 0
 
     var isAcceptingDetections = true
     var zoomController: ZoomController?
@@ -99,6 +106,11 @@ final class FrameProcessor: ObservableObject {
 
         updateFPS()
 
+        if AppConfig.frameDiffEnabled && !frameDiffer.shouldProcess(pixelBuffer: pixelBuffer) {
+            framesSkippedByDiff = frameDiffer.framesSkippedByDiff
+            return
+        }
+
         let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 
         if !detection.failedDetections.isEmpty {
@@ -117,6 +129,11 @@ final class FrameProcessor: ObservableObject {
         if frameCount % (skipCount + 1) != 0 { return }
 
         updateFPS()
+
+        if AppConfig.frameDiffEnabled && !frameDiffer.shouldProcess(pixelBuffer: pixelBuffer) {
+            framesSkippedByDiff = frameDiffer.framesSkippedByDiff
+            return
+        }
 
         let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 
@@ -385,6 +402,19 @@ final class FrameProcessor: ObservableObject {
 
         if dedupCache.areAllHashesSeen(allHashes) { return nil }
         dedupCache.addHashes(allHashes)
+
+        if confidence > maxDetectionConfidence {
+            maxDetectionConfidence = confidence
+        }
+        totalDetectionConfidence += confidence
+
+        for (_, _, variantConfidence) in variants {
+            if variantConfidence > maxOCRConfidence {
+                maxOCRConfidence = variantConfidence
+            }
+            totalOCRConfidence += variantConfidence
+        }
+
 
         DebugLog.shared.d("FrameProcessor", "Plate: \(normalizedText) hash=\(String(primaryHash.prefix(8))) variants=\(variants.count)")
 

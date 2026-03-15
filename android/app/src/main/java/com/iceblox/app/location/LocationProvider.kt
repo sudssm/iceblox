@@ -51,6 +51,7 @@ class LocationProvider(private val context: Context) {
         try {
             val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000)
                 .setMinUpdateIntervalMillis(5_000)
+                .setMinUpdateDistanceMeters(50f)
                 .build()
             fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
             updatesStarted = true

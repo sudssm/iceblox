@@ -67,6 +67,51 @@ final class APIClient {
         }
     }
 
+    func startSession(sessionID: String) {
+        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
+        let url = AppConfig.serverBaseURL.appendingPathComponent(AppConfig.sessionsStartEndpoint)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = ["session_id": sessionID, "device_id": deviceId]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 10
+        session.dataTask(with: request) { _, response, error in
+            if let error {
+                DebugLog.shared.w("APIClient", "Session start failed: \(error.localizedDescription)")
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                DebugLog.shared.d("APIClient", "Session started: \(sessionID)")
+            }
+        }.resume()
+    }
+
+    func endSession(sessionID: String, maxDetConf: Float, totalDetConf: Float, maxOCRConf: Float, totalOCRConf: Float) {
+        let url = AppConfig.serverBaseURL.appendingPathComponent(AppConfig.sessionsEndEndpoint)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "session_id": sessionID,
+            "max_detection_confidence": Double(maxDetConf),
+            "total_detection_confidence": Double(totalDetConf),
+            "max_ocr_confidence": Double(maxOCRConf),
+            "total_ocr_confidence": Double(totalOCRConf)
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 10
+        session.dataTask(with: request) { _, response, error in
+            if let error {
+                DebugLog.shared.w("APIClient", "Session end failed: \(error.localizedDescription)")
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                DebugLog.shared.d("APIClient", "Session ended: \(sessionID)")
+            }
+        }.resume()
+    }
+
     func checkAndFlush() {
         let count = offlineQueue.count
         if count >= AppConfig.batchSize {

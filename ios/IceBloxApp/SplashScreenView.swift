@@ -13,20 +13,6 @@ struct SplashScreenView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            VStack {
-                HStack {
-                    Spacer()
-                    Button { showSettingsSheet = true } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .padding(16)
-                    }
-                    .accessibilityLabel("Settings")
-                }
-                Spacer()
-            }
-
             VStack(spacing: 32) {
                 Text("IceBlox")
                     .font(.system(size: 48, weight: .bold))
@@ -53,6 +39,18 @@ struct SplashScreenView: View {
                         .background(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+
+                Button { showSettingsSheet = true } label: {
+                    Text("Settings")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.black)
+                        .frame(minWidth: 260)
+                        .padding(.vertical, 14)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .accessibilityLabel("Settings")
 
                 Button { showReportSheet = true } label: {
                     Text("Report ICE Activity")

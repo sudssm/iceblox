@@ -76,7 +76,11 @@ struct ContentView: View {
     @State private var pendingSessionUploads = 0
     @State private var pendingSessionPlates = 0
     @State private var showingSummary = false
+    @State private var debugMinimized = false
     @State private var e2eStopTask: Task<Void, Never>?
+    @State private var brightnessManager = BrightnessManager()
+    @StateObject private var motionStateManager = MotionStateManager()
+    @State private var showingMotionPauseOverlay = false
 
     let statusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -157,14 +161,35 @@ struct ContentView: View {
                     queueDepth: offlineQueue.count,
                     isConnected: connectivityMonitor.isConnected,
                     logEntries: debugLog.entries,
-                    showFeedAndLogs: debugMode
+                    framesSkippedByDiff: frameProcessor?.framesSkippedByDiff ?? 0,
+                    showFeedAndLogs: debugMode && !debugMinimized
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
             }
+            if debugMode, !showingSummary, cameraManager.permissionGranted {
+                Button {
+                    debugMinimized.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("[DEBUG]")
+                            .font(.system(.caption, design: .monospaced))
+                        Text(debugMinimized ? "+" : "\u{2212}")
+                            .font(.system(.body, design: .monospaced).weight(.bold))
+                    }
+                    .foregroundStyle(.yellow)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 16)
+                .padding(.bottom, 186)
+            }
             #endif
 
-            if !showingSummary, cameraManager.permissionGranted {
+            if !showingSummary, !showingMotionPauseOverlay, cameraManager.permissionGranted {
                 VStack {
                     StatusBarView(
                         isConnected: connectivityMonitor.isConnected,
@@ -227,15 +252,55 @@ struct ContentView: View {
                     onDone: returnToSplash
                 )
             }
+
+            if showingMotionPauseOverlay {
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 20) {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.system(size: 64))
+                        .foregroundStyle(.white)
+
+                    Text("Scanning Paused")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
+
+                    Text("Waiting for motion to resume")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+
+                    Button(action: resumeFromMotionPause) {
+                        Text("Resume Now")
+                            .font(.headline)
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 12)
+                            .background(.white)
+                            .clipShape(Capsule())
+                    }
+                    .padding(.top, 8)
+                }
+            }
         }
         #if DEBUG
         .onTapGesture(count: 3) {
             if !showingSummary {
                 debugMode.toggle()
                 frameProcessor?.debugMode = debugMode
+                if debugMode {
+                    brightnessManager.restore()
+                } else {
+                    brightnessManager.dim()
+                }
             }
         }
         #endif
+        .onTapGesture(count: 1) {
+            if !debugMode, !showingSummary {
+                brightnessManager.temporarilyRestore()
+            }
+        }
         .onReceive(statusTimer) { _ in
             lastStatusUpdate = Date()
             pendingSessionUploads = offlineQueue.count(sessionID: sessionID)
@@ -246,6 +311,7 @@ struct ContentView: View {
         }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
+            brightnessManager.dim()
             if apiClient == nil {
                 sessionStartedAt = Date()
                 stopRequestedAt = nil
@@ -254,6 +320,7 @@ struct ContentView: View {
             if !showingSummary {
                 resumeActiveSession()
             }
+            motionStateManager.startMonitoring()
             if AppConfig.requestLocationPermission {
                 locationManager.requestPermission()
             }
@@ -263,20 +330,33 @@ struct ContentView: View {
             startE2EStopWatcher()
         }
         .onDisappear {
+            brightnessManager.teardown()
             UIApplication.shared.isIdleTimerDisabled = false
+            motionStateManager.stopMonitoring()
             e2eStopTask?.cancel()
             e2eStopTask = nil
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
-                if !showingSummary {
+                brightnessManager.dim()
+                if showingMotionPauseOverlay && !motionStateManager.isMotionPaused {
+                    resumeFromMotionPause()
+                } else if !showingMotionPauseOverlay && !showingSummary {
                     resumeActiveSession()
                 }
             case .background:
+                brightnessManager.restore()
                 pauseForBackground()
             default:
                 break
+            }
+        }
+        .onChange(of: motionStateManager.isMotionPaused) { _, isPaused in
+            if isPaused {
+                pauseForMotion()
+            } else if showingMotionPauseOverlay {
+                resumeFromMotionPause()
             }
         }
         .onChange(of: showingSummary) { _, isShowing in
@@ -307,6 +387,8 @@ struct ContentView: View {
             client?.flushQueue()
         }
 
+        client.startSession(sessionID: activeSessionID)
+
         cameraManager.frameProcessor = processor
         self.frameProcessor = processor
         self.apiClient = client
@@ -319,14 +401,40 @@ struct ContentView: View {
     }
 
     private func resumeActiveSession() {
+        UIApplication.shared.isIdleTimerDisabled = true
         frameProcessor?.isAcceptingDetections = true
         if cameraManager.permissionGranted {
             cameraManager.start()
         } else {
             cameraManager.checkPermissionAndStart()
         }
+        locationManager.startUpdatingLocation()
         apiClient?.startBatchTimer()
         alertClient?.startTimer()
+    }
+
+    private func pauseForMotion() {
+        showingMotionPauseOverlay = true
+        frameProcessor?.isAcceptingDetections = false
+        cameraManager.stop()
+        locationManager.stopUpdatingLocation()
+        apiClient?.flushQueue()
+        apiClient?.stopBatchTimer()
+        alertClient?.stopTimer()
+
+        let content = UNMutableNotificationContent()
+        content.title = "Scanning paused"
+        content.body = "Stationary for too long. Tap to resume."
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+        let request = UNNotificationRequest(identifier: "motion-pause", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    private func resumeFromMotionPause() {
+        showingMotionPauseOverlay = false
+        motionStateManager.manualResume()
+        resumeActiveSession()
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["motion-pause"])
     }
 
     private func pauseForBackground() {
@@ -337,7 +445,7 @@ struct ContentView: View {
         alertClient?.subscribe()
         alertClient?.stopTimer()
 
-        if !showingSummary {
+        if !showingSummary && !showingMotionPauseOverlay {
             let content = UNMutableNotificationContent()
             content.title = "Scanning paused"
             content.body = "Open IceBlox to resume"
@@ -349,7 +457,21 @@ struct ContentView: View {
 
     private func stopRecordingSession() {
         guard !showingSummary else { return }
+        brightnessManager.teardown()
+        showingMotionPauseOverlay = false
+        motionStateManager.stopMonitoring()
         stopRequestedAt = Date()
+
+        if let fp = frameProcessor {
+            apiClient?.endSession(
+                sessionID: sessionID,
+                maxDetConf: fp.maxDetectionConfidence,
+                totalDetConf: fp.totalDetectionConfidence,
+                maxOCRConf: fp.maxOCRConfidence,
+                totalOCRConf: fp.totalOCRConfidence
+            )
+        }
+
         frameProcessor?.isAcceptingDetections = false
         cameraManager.stop()
         apiClient?.stopBatchTimer()

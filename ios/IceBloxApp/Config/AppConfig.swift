@@ -44,8 +44,16 @@ enum AppConfig {
     static let maxLookalikeVariants = 64
     static let ocrCandidateThreshold: Float = 0.05
 
+    static let stationaryTimeoutMinutes: TimeInterval = 15
+
     static let frameSkipCount = 2
     static let throttledFrameSkipCount = 6
+
+    static let frameDiffEnabled = true
+    static let frameDiffThreshold: Float = 5.0
+
+    static let dimScreenDuringScanning = true
+    static let dimBrightnessLevel: CGFloat = 0.01
 
     static let isZoomRetryEnabled = true
     static let zoomRetryCooldownSeconds: TimeInterval = 2.0
@@ -55,6 +63,8 @@ enum AppConfig {
     static let reportsEndpoint = "/api/v1/reports"
     static let mapSightingsEndpoint = "/api/v1/map-sightings"
     static let devicesEndpoint = "/api/v1/devices"
+    static let sessionsStartEndpoint = "/api/v1/sessions/start"
+    static let sessionsEndEndpoint = "/api/v1/sessions/end"
     static let subscribeEndpoint = "/api/v1/subscribe"
     static let subscribeIntervalSeconds: TimeInterval = 600
     static let defaultRadiusMiles: Double = 100

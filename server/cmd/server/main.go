@@ -294,6 +294,7 @@ func (s *s3PhotoSigner) PresignedPhotoURL(ctx context.Context, key string) (stri
 func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store, notifier handler.PushNotifier, subStore *subscribers.Store, reportUploadDir string, stopiceSubmitter *stopice.Submitter, s3Client storage.S3Client) {
 	version := handler.APIVersionMiddleware("v1")
 	mux.Handle("/api/v1/plates", version(handler.PlatesHandler(database, store, notifier, database)))
+	mux.Handle("/api/v1/sessions/start", version(handler.StartSessionHandler(database)))
 	mux.Handle("/api/v1/sessions/end", version(handler.EndSessionHandler(database)))
 	mux.Handle("/api/v1/devices", version(handler.DevicesHandler(database)))
 	mux.Handle("/api/v1/subscribe", version(handler.SubscribeHandler(subStore, &dbSightingQuerier{db: database}, database)))

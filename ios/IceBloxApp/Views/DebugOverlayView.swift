@@ -8,6 +8,7 @@ struct DebugOverlayView: View {
     let queueDepth: Int
     let isConnected: Bool
     let logEntries: [LogEntry]
+    var framesSkippedByDiff: Int = 0
     var showFeedAndLogs: Bool = true
 
     private var screenSize: CGSize { UIScreen.main.bounds.size }
@@ -86,15 +87,6 @@ struct DebugOverlayView: View {
                     .frame(maxWidth: screenSize.width - 16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .padding(.bottom, 32)
-
-                // [DEBUG MODE] label (bottom-left)
-                Text("[DEBUG MODE]")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.yellow)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .padding(.leading, 8)
-                    .padding(.bottom, 186)
             }
         }
         .frame(width: screenSize.width, height: screenSize.height)
@@ -115,6 +107,7 @@ struct DebugOverlayView: View {
                 }
                 Text("Det: \(rawDetections.count)")
                     .foregroundStyle(.yellow)
+                Text("Diff skip: \(framesSkippedByDiff)")
             }
         }
         .font(.system(.caption, design: .monospaced))
