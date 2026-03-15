@@ -38,7 +38,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -62,6 +61,7 @@ import com.iceblox.app.camera.CameraPreview
 import com.iceblox.app.camera.PreviewFreezer
 import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.settings.UserSettings
+import kotlinx.coroutines.delay
 
 @Composable
 fun CameraScreen(

@@ -10,7 +10,7 @@ struct StatusBarView: View {
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        let _ = tick
+        let _ = tick // swiftlint:disable:this redundant_discardable_let
         HStack(spacing: 16) {
             HStack(spacing: 4) {
                 Circle()
