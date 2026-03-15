@@ -86,6 +86,7 @@ fun CameraScreen(
     val framesSkippedByDiff by viewModel.frameAnalyzer.framesSkippedByDiff.collectAsState()
     val sessionSummary by viewModel.sessionSummary.collectAsState()
     val isMotionPaused by viewModel.isMotionPaused.collectAsState()
+    val plateCount by viewModel.plateCount.collectAsState()
 
     val testBitmap by viewModel.testBitmap.collectAsState()
     val testStatus by viewModel.testStatus.collectAsState()
@@ -306,6 +307,7 @@ fun CameraScreen(
                 isConnected = isConnected,
                 lastDetectionTime = lastDetectionTime,
                 hasGps = hasGps,
+                plateCount = plateCount,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
@@ -512,7 +514,13 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, modifier: Modifier = Modifier) {
+fun StatusBar(
+    isConnected: Boolean,
+    lastDetectionTime: Long,
+    hasGps: Boolean,
+    plateCount: Long = 0,
+    modifier: Modifier = Modifier
+) {
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -565,6 +573,14 @@ fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, mo
                 modifier = Modifier.testTag("gps_warning")
             )
         }
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "Plates: $plateCount",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.testTag("plates_count")
+        )
         Spacer(modifier = Modifier.weight(1f))
         Text(
             text = lastDetectedText,
