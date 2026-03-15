@@ -514,7 +514,13 @@ fun UploadQueueBanner(count: Int, onClear: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-fun StatusBar(isConnected: Boolean, lastDetectionTime: Long, hasGps: Boolean, plateCount: Long = 0, modifier: Modifier = Modifier) {
+fun StatusBar(
+    isConnected: Boolean,
+    lastDetectionTime: Long,
+    hasGps: Boolean,
+    plateCount: Long = 0,
+    modifier: Modifier = Modifier
+) {
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
