@@ -5,14 +5,10 @@ class DeduplicationCache {
     private val seenHashes = mutableSetOf<String>()
 
     @Synchronized
-    fun isDuplicate(normalizedPlate: String): Boolean {
-        return !seenTexts.add(normalizedPlate)
-    }
+    fun isDuplicate(normalizedPlate: String): Boolean = !seenTexts.add(normalizedPlate)
 
     @Synchronized
-    fun allHashesSeen(hashes: List<String>): Boolean {
-        return hashes.isNotEmpty() && seenHashes.containsAll(hashes)
-    }
+    fun allHashesSeen(hashes: List<String>): Boolean = hashes.isNotEmpty() && seenHashes.containsAll(hashes)
 
     @Synchronized
     fun recordHashes(hashes: List<String>) {

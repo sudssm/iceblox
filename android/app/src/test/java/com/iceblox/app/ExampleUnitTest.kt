@@ -140,7 +140,6 @@ class PlateHasherTest {
     }
 }
 
-
 class RetryManagerTest {
     @Test
     fun firstFailureReturnsInitialDelay() {
