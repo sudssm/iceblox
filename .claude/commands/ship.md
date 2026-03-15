@@ -56,6 +56,16 @@ Look at the files changed in the diff from step 2 and run ONLY the test suites f
 
 Skip test suites for areas with no code changes. If a test suite fails, fix the issue and re-run. If you cannot fix a test failure, STOP and report it to the user.
 
+## Step 5b: Run CI checks locally
+
+Run the full CI test suite locally to catch failures before pushing. Run all of the following that apply based on the changed files (in parallel where possible):
+
+- If any `server/**` files changed: `make server-lint` and `make server-test-db` (integration tests with a real database — requires local PostgreSQL)
+- If any `ios/**` files changed: `cd ios && swiftlint --strict`
+- If any `android/**` files changed: `cd android && ktlint` and `make android-unit-test`
+
+This mirrors what GitHub Actions runs. If any check fails, fix the issue and re-run. If you cannot fix a failure, STOP and report it to the user.
+
 ## Step 6: Commit remaining code changes
 
 Stage and commit any remaining code changes (non-docs) with a descriptive commit message summarizing the feature. Do NOT commit .code-workspace files.
