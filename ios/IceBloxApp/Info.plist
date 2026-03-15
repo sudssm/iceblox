@@ -7,5 +7,7 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSMotionUsageDescription</key>
+	<string>IceBlox uses motion data to pause scanning when stationary to save battery.</string>
 </dict>
 </plist>

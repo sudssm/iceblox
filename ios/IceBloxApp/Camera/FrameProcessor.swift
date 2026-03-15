@@ -49,6 +49,7 @@ final class FrameProcessor: ObservableObject {
     let locationManager: LocationManager
     let apiClient: APIClient
     let sessionID: String
+    let frameDiffer = FrameDiffer()
 
     @Published var totalPlates = 0
     @Published var lastDetectionTime: Date?
@@ -56,6 +57,7 @@ final class FrameProcessor: ObservableObject {
     @Published var rawDetections: [RawDetectionBox] = []
     @Published var detectionFeed: [DetectionFeedEntry] = []
     @Published var fps: Double = 0
+    @Published var framesSkippedByDiff = 0
 
     @Published var zoomRetryFrozen = false
     @Published var frozenPreviewImage: UIImage?
@@ -99,6 +101,11 @@ final class FrameProcessor: ObservableObject {
 
         updateFPS()
 
+        if AppConfig.frameDiffEnabled && !frameDiffer.shouldProcess(pixelBuffer: pixelBuffer) {
+            framesSkippedByDiff = frameDiffer.framesSkippedByDiff
+            return
+        }
+
         let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 
         if !detection.failedDetections.isEmpty {
@@ -117,6 +124,11 @@ final class FrameProcessor: ObservableObject {
         if frameCount % (skipCount + 1) != 0 { return }
 
         updateFPS()
+
+        if AppConfig.frameDiffEnabled && !frameDiffer.shouldProcess(pixelBuffer: pixelBuffer) {
+            framesSkippedByDiff = frameDiffer.framesSkippedByDiff
+            return
+        }
 
         let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 

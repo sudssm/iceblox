@@ -37,6 +37,16 @@ object AppConfig {
     const val FRAME_SKIP_COUNT = 2
     const val THROTTLED_FRAME_SKIP_COUNT = 6
 
+    const val FRAME_DIFF_ENABLED = true
+    const val FRAME_DIFF_THRESHOLD = 5.0f
+
+    const val STATIONARY_TIMEOUT_MINUTES = 15L
+    const val MOTION_PAUSE_CHANNEL_ID = "motion_pause"
+    const val MOTION_PAUSE_NOTIFICATION_ID = 3001
+
+    const val DIM_SCREEN_DURING_SCANNING = true
+    const val DIM_BRIGHTNESS_LEVEL = 0.01f
+
     const val ZOOM_RETRY_ENABLED = true
     const val ZOOM_RETRY_COOLDOWN_MS = 1_000L
     const val ZOOM_RETRY_MARGIN = 0.8f

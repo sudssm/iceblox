@@ -13,6 +13,9 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = 50
+        manager.pausesLocationUpdatesAutomatically = true
+        manager.activityType = .automotiveNavigation
     }
 
     func requestPermission() {
@@ -39,6 +42,15 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         default:
             break
         }
+    }
+
+    func stopUpdatingLocation() {
+        manager.stopUpdatingLocation()
+    }
+
+    func startUpdatingLocation() {
+        guard hasPermission else { return }
+        manager.startUpdatingLocation()
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {

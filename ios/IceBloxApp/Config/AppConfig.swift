@@ -45,8 +45,16 @@ enum AppConfig {
     static let maxLookalikeVariants = 64
     static let ocrCandidateThreshold: Float = 0.05
 
+    static let stationaryTimeoutMinutes: TimeInterval = 15
+
     static let frameSkipCount = 2
     static let throttledFrameSkipCount = 6
+
+    static let frameDiffEnabled = true
+    static let frameDiffThreshold: Float = 5.0
+
+    static let dimScreenDuringScanning = true
+    static let dimBrightnessLevel: CGFloat = 0.01
 
     static let isZoomRetryEnabled = true
     static let zoomRetryCooldownSeconds: TimeInterval = 2.0

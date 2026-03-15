@@ -8,6 +8,7 @@ struct DebugOverlayView: View {
     let queueDepth: Int
     let isConnected: Bool
     let logEntries: [LogEntry]
+    var framesSkippedByDiff: Int = 0
     var showFeedAndLogs: Bool = true
 
     private var screenSize: CGSize { UIScreen.main.bounds.size }
@@ -115,6 +116,7 @@ struct DebugOverlayView: View {
                 }
                 Text("Det: \(rawDetections.count)")
                     .foregroundStyle(.yellow)
+                Text("Diff skip: \(framesSkippedByDiff)")
             }
         }
         .font(.system(.caption, design: .monospaced))

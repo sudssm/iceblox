@@ -63,6 +63,7 @@ fun DebugOverlay(
     queueDepth: Int,
     isConnected: Boolean,
     logEntries: List<LogEntry> = emptyList(),
+    framesSkippedByDiff: Int = 0,
     showFeedAndLogs: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -110,6 +111,13 @@ fun DebugOverlay(
                     Text(
                         text = "Det: ${rawDetections.size}",
                         color = Color.Yellow,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Diff skip: $framesSkippedByDiff",
+                        color = Color.White,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace
                     )
