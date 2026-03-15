@@ -106,6 +106,11 @@ scripts/simulator/screenshot_session.sh ios --output-dir ./screenshots/
 2. `02_splash` — app splash screen
 3. `03_camera_active` — camera/test-image feed active
 4. `04_debug_overlay` — debug overlay visible (only with `--debug`)
+5. `05_settings` — settings screen (iOS only, via `E2E_AUTO_SHOW_SETTINGS`)
+6. `06_map` — map view (iOS only, via `E2E_AUTO_SHOW_MAP`)
+7. `07_report` — report form (iOS only, via `E2E_AUTO_SHOW_REPORT`)
+
+Steps 5–7 are iOS-only: the script terminates and relaunches the app with the appropriate `E2E_AUTO_SHOW_*` env var for each screen, then captures a screenshot. After all screenshots, the app is terminated to leave the simulator in a clean state.
 
 Files are named `session_<platform>_<step>_<timestamp>.png`.
 
