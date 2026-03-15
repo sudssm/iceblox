@@ -7,7 +7,7 @@ A dashboard-mounted mobile app for private security and community watch that con
 ## Environment
 
 - **Mounting**: Dashboard-mounted, rear camera facing forward through windshield. Supports any device orientation (landscape or portrait) with automatic rotation handling.
-- **Power**: Assumed connected to car power (USB/12V) — battery optimization is secondary to performance
+- **Power**: Typically connected to car power (USB/12V), but battery-saving measures are applied to extend untethered operation and reduce thermal load (screen dimming, motion-aware pausing, frame diff skipping, GPS distance filtering)
 - **Connectivity**: Intermittent — app must handle offline periods gracefully
 - **Lighting**: Variable — daylight, night (headlights/streetlights), rain, glare
 
@@ -81,10 +81,51 @@ The app MUST support all device orientations (portrait, portrait upside-down, la
 
 #### REQ-M-4a: Keep Screen On
 
-The app MUST prevent the device screen from dimming or locking while the app is in the foreground. This is required for unattended dashboard-mounted operation.
+The app MUST prevent the device screen from locking while the app is in the foreground. This is required for unattended dashboard-mounted operation.
 
 - **iOS**: Set `UIApplication.shared.isIdleTimerDisabled = true`
 - **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window. The foreground service MUST hold a `PARTIAL_WAKE_LOCK` as defense-in-depth to keep the CPU running during background capture when the screen is off.
+
+The app MAY dim the screen brightness to a configurable level (default: 1%) during active scanning to reduce battery drain and OLED burn-in. A single tap on the camera preview MUST temporarily restore the original brightness for a configurable duration (default: 5 seconds). Entering developer debug mode (triple-tap) MUST restore full brightness; exiting debug mode MUST re-dim. Screen brightness MUST be fully restored when the scanning session ends or the app is backgrounded.
+
+- **iOS**: `BrightnessManager` sets `UIScreen.main.brightness`
+- **Android**: `BrightnessManager` sets `WindowManager.LayoutParams.screenBrightness`
+
+### Battery Optimization
+
+#### REQ-M-4b: Frame Diff Skipping
+
+When enabled (configurable, default: on), the app MUST compare each incoming camera frame to the previous frame using a downsampled 64x64 grayscale thumbnail. If the mean absolute pixel difference is below a configurable threshold (default: 5.0), the frame MUST be skipped — no detection or OCR is performed. This reduces CPU and GPU load when the camera view is static (e.g., stopped at a light).
+
+The first frame after startup or reset MUST always be processed. The debug overlay MUST display a "Diff skip" counter showing the total number of frames skipped by the differ.
+
+- **iOS**: `FrameDiffer` in `Camera/FrameDiffer.swift`, using Accelerate (`vImageScale_ARGB8888`) for fast downsampling
+- **Android**: `FrameDiffer` in `camera/FrameDiffer.kt`, using `Bitmap.createScaledBitmap`
+
+#### REQ-M-4c: Motion-Aware Scanning Pause
+
+The app MUST monitor device motion state using platform activity recognition APIs. If the device remains stationary for a configurable duration (default: 15 minutes), the app MUST automatically pause the scanning pipeline:
+
+- Stop camera capture and frame processing
+- Stop location updates
+- Flush the upload queue
+- Stop the batch upload timer and alert subscription timer
+- Display a full-screen "Scanning Paused" overlay with a "Resume Now" button
+- Post a local notification informing the user that scanning has paused
+
+When the device begins moving again (detected via activity recognition), the app MUST automatically resume scanning. The user MAY also manually resume by tapping the "Resume Now" button, which clears the paused state and restarts the pipeline.
+
+When the app is motion-paused on Android, the background capture service MUST NOT be started on activity pause.
+
+- **iOS**: `MotionStateManager` uses `CMMotionActivityManager` for activity updates; requires `NSMotionUsageDescription` in `Info.plist`
+- **Android**: `MotionStateManager` uses the Activity Recognition Transition API via Google Play Services; requires `ACTIVITY_RECOGNITION` permission (API 29+)
+
+#### REQ-M-4d: Location Distance Filter
+
+To reduce battery consumption from continuous GPS polling, the app MUST set a minimum distance filter on location updates (default: 50 meters). Location updates closer than this threshold are suppressed by the OS.
+
+- **iOS**: `CLLocationManager.distanceFilter = 50`, with `pausesLocationUpdatesAutomatically = true` and `activityType = .automotiveNavigation`
+- **Android**: `LocationRequest.Builder.setMinUpdateDistanceMeters(50f)`
 
 ### License Plate Detection
 
@@ -547,7 +588,7 @@ On restart after a crash, the app MUST:
 Background behavior is platform-specific:
 
 - **iOS**: When the app is backgrounded, it MUST stop camera capture and detection immediately, attempt to flush the offline queue, and stop consuming CPU for frame processing. Continuous camera capture on iOS REQUIRES the app to remain in the foreground. When foregrounded again, the app MUST automatically restart the AVCaptureSession and resume plate detection within 1 second, preserving the active recording session (counters, session ID). The camera manager MUST observe `AVCaptureSession.wasInterruptedNotification` and `.interruptionEndedNotification` to recover from system interruptions (e.g., phone calls, Siri). If a runtime error resets media services, the session MUST be torn down and reconfigured. The idle timer (`isIdleTimerDisabled`) MUST be re-asserted on every foreground resume.
-- **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action.
+- **Android**: When the app is backgrounded, it MUST continue camera capture, detection, deduplication, hashing, queueing, location attachment, and batch upload using an Android foreground service. The app MUST display a persistent notification while background capture is active, and that notification MUST include a user-visible stop action. **Exception**: If the scanning pipeline is motion-paused (REQ-M-4c), the background capture service MUST NOT be started when the app is backgrounded, since no useful work would be performed.
 
 When foregrounded again, the app MUST resume the visible camera preview within 1 second.
 

@@ -31,19 +31,23 @@ android/
         │   │   ├── capture/
         │   │   │   └── CaptureRepository.kt # Shared pipeline state used by UI + background service
         │   │   ├── camera/
+        │   │   │   ├── BrightnessManager.kt # Screen dimming during scanning, tap-to-restore (REQ-M-4a)
         │   │   │   ├── CameraCaptureBinder.kt # Shared CameraX bind/unbind helper for UI + service
         │   │   │   ├── CameraPreview.kt    # Compose CameraX preview wrapper
         │   │   │   ├── FrameAnalyzer.kt    # ImageAnalysis.Analyzer → detect → OCR → normalize → zoom retry on failed OCR
+        │   │   │   ├── FrameDiffer.kt      # 64x64 grayscale frame diff to skip static frames (REQ-M-4b)
         │   │   │   ├── PreviewFreezer.kt   # Frozen-frame overlay state for zoom retry UX
         │   │   │   ├── TestFrameFeeder.kt  # Test mode: loads images, feeds them through analyzeBitmap() on a timer
         │   │   │   └── ZoomController.kt   # Optical zoom detection, safe zoom ratio calculation, zoom-capture-restore
         │   │   ├── config/
-        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config, zoom retry constants
+        │   │   │   └── AppConfig.kt        # Confidence thresholds, batch sizes, server URL, notification config, zoom retry constants, battery optimization config
         │   │   ├── detection/
         │   │   │   ├── PlateDetector.kt    # TFLite interpreter, YOLOv8-nano inference, NMS
         │   │   │   └── PlateOCR.kt         # ONNX Runtime CCT-XS inference + fixed-slot decode on cropped bitmaps
         │   │   ├── location/
-        │   │   │   └── LocationProvider.kt # FusedLocationProviderClient, permission handling
+        │   │   │   └── LocationProvider.kt # FusedLocationProviderClient, permission handling, distance filter (REQ-M-4d)
+        │   │   ├── motion/
+        │   │   │   └── MotionStateManager.kt # Activity Recognition Transition API, stationary detection, auto-pause (REQ-M-4c)
         │   │   ├── network/
         │   │   │   ├── AlertClient.kt      # Subscribe endpoint client, coroutine timer, GPS truncation
         │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates + /api/v1/devices, batch, 429 handling
@@ -100,7 +104,10 @@ android/
                 ├── LookalikeExpanderTest.kt # Lookalike character expansion tests (REQ-M-12a)
                 ├── DetectionFeedUpdateTest.kt # Concurrent StateFlow update tests for detection feed
                 ├── ZoomControllerTest.kt  # Safe zoom ratio calculation and best candidate selection tests
-                └── OfflineQueueMigrationTest.kt # Room migration tests for offline queue schema changes
+                ├── OfflineQueueMigrationTest.kt # Room migration tests for offline queue schema changes
+                ├── BrightnessManagerTest.kt # Brightness dim/restore/teardown state tests
+                ├── FrameDifferTest.kt     # Frame differ grayscale diff and skip counter tests
+                └── MotionStateManagerTest.kt # Motion state manager initial state and resume tests
 ```
 
 ## Architecture
