@@ -82,8 +82,9 @@ struct SplashScreenView: View {
                     Spacer()
 
                     Button { showHelpSheet = true } label: {
-                        Image(systemName: "questionmark.circle.fill")
+                        Text("?")
                             .font(.title2)
+                            .fontWeight(.bold)
                             .foregroundStyle(.yellow)
                     }
                     .accessibilityLabel("Help")
@@ -103,7 +104,7 @@ struct SplashScreenView: View {
                     .accessibilityLabel("Contact")
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.top, 48)
 
                 Spacer()
             }

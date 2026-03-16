@@ -113,7 +113,7 @@ fun SplashScreen(
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 16.dp, end = 12.dp),
+                .padding(top = 48.dp, end = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconButton(
