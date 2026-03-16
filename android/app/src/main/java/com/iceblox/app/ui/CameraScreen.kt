@@ -109,7 +109,7 @@ fun CameraScreen(
     val activity = LocalContext.current as? Activity
     DisposableEffect(activity) {
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        brightnessManager.dim(activity)
+        if (!debugMode) brightnessManager.dim(activity)
         onDispose {
             brightnessManager.teardown(activity)
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -122,7 +122,7 @@ fun CameraScreen(
             when (event) {
                 Lifecycle.Event.ON_START -> {
                     userDebugEnabled = UserSettings.isUserDebugEnabled(appContext)
-                    brightnessManager.dim(activity)
+                    if (!debugMode) brightnessManager.dim(activity)
                     if (!isMotionPaused) {
                         viewModel.startForegroundPipeline(isTestMode)
                     }
@@ -271,7 +271,7 @@ fun CameraScreen(
                 isConnected = isConnected,
                 logEntries = logEntries,
                 framesSkippedByDiff = framesSkippedByDiff,
-                showFeedAndLogs = debugMode && !debugMinimized
+                showLogs = !debugMinimized
             )
         }
 
