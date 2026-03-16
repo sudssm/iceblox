@@ -276,6 +276,19 @@ CREATE TABLE sessions (
 );
 ```
 
+**Table: `contacts`** — user-submitted feedback and issue reports (REQ-S-26)
+```sql
+CREATE TABLE contacts (
+    id          SERIAL PRIMARY KEY,
+    name        TEXT,
+    email       TEXT,
+    message     TEXT NOT NULL,
+    log_path    TEXT,                       -- S3 key for uploaded diagnostic logs (empty if none)
+    hardware_id TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 **Data flow:**
 1. On startup, plates from `data/plates.txt` are upserted into the `plates` table
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
