@@ -159,7 +159,7 @@ struct ContentView: View {
                     isConnected: connectivityMonitor.isConnected,
                     logEntries: debugLog.entries,
                     framesSkippedByDiff: frameProcessor?.framesSkippedByDiff ?? 0,
-                    showFeedAndLogs: debugMode && !debugMinimized
+                    showLogs: !debugMinimized
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -309,7 +309,7 @@ struct ContentView: View {
         }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
-            brightnessManager.dim()
+            if !debugMode { brightnessManager.dim() }
             if apiClient == nil {
                 sessionStartedAt = Date()
                 stopRequestedAt = nil
@@ -337,7 +337,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
-                brightnessManager.dim()
+                if !debugMode { brightnessManager.dim() }
                 if showingMotionPauseOverlay && !motionStateManager.isMotionPaused {
                     resumeFromMotionPause()
                 } else if !showingMotionPauseOverlay && !showingSummary {

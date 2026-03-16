@@ -64,64 +64,62 @@ fun DebugOverlay(
     isConnected: Boolean,
     logEntries: List<LogEntry> = emptyList(),
     framesSkippedByDiff: Int = 0,
-    showFeedAndLogs: Boolean = true,
+    showLogs: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        if (showFeedAndLogs) {
-            // Debug header (top-left, below status bar)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 40.dp, start = 8.dp)
-                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
-                    .padding(8.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "FPS: ${fps.toInt()}",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Queue: $queueDepth",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "\u25CF",
-                        color = if (isConnected) Color.Green else Color.Red,
-                        fontSize = 11.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (isConnected) "Online" else "Offline",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Det: ${rawDetections.size}",
-                        color = Color.Yellow,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Diff skip: $framesSkippedByDiff",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
+        // Debug header (top-left, below status bar)
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 40.dp, start = 8.dp)
+                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
+                .padding(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "FPS: ${fps.toInt()}",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Queue: $queueDepth",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "\u25CF",
+                    color = if (isConnected) Color.Green else Color.Red,
+                    fontSize = 11.sp
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (isConnected) "Online" else "Offline",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Det: ${rawDetections.size}",
+                    color = Color.Yellow,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Diff skip: $framesSkippedByDiff",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
             }
         }
 
@@ -202,49 +200,49 @@ fun DebugOverlay(
             }
         }
 
-        if (showFeedAndLogs) {
-            // Detection feed (right side)
-            if (feedEntries.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(top = 40.dp, end = 8.dp, bottom = 40.dp)
-                        .widthIn(max = 200.dp)
-                        .fillMaxHeight()
-                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
-                        .padding(6.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Text(
-                        text = "Detection Feed",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    for (entry in feedEntries) {
-                        val stateColor = when (entry.state) {
-                            DetectionState.QUEUED -> Color.White
-                            DetectionState.SENT -> Color.Green
-                            DetectionState.MATCHED -> Color(0xFFFFD700)
-                        }
-                        val stateLabel = when (entry.state) {
-                            DetectionState.QUEUED -> "QUED"
-                            DetectionState.SENT -> "SENT"
-                            DetectionState.MATCHED -> "MTCH"
-                        }
-                        Text(
-                            text = "${entry.plateText} ${entry.hashPrefix} [$stateLabel]",
-                            color = stateColor,
-                            fontSize = 9.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontStyle = if (entry.isExpanded) FontStyle.Italic else FontStyle.Normal,
-                            maxLines = 1
-                        )
+        // Detection feed (right side)
+        if (feedEntries.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 40.dp, end = 8.dp, bottom = 40.dp)
+                    .widthIn(max = 200.dp)
+                    .fillMaxHeight()
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
+                    .padding(6.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "Detection Feed",
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                for (entry in feedEntries) {
+                    val stateColor = when (entry.state) {
+                        DetectionState.QUEUED -> Color.White
+                        DetectionState.SENT -> Color.Green
+                        DetectionState.MATCHED -> Color(0xFFFFD700)
                     }
+                    val stateLabel = when (entry.state) {
+                        DetectionState.QUEUED -> "QUED"
+                        DetectionState.SENT -> "SENT"
+                        DetectionState.MATCHED -> "MTCH"
+                    }
+                    Text(
+                        text = "${entry.plateText} ${entry.hashPrefix} [$stateLabel]",
+                        color = stateColor,
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontStyle = if (entry.isExpanded) FontStyle.Italic else FontStyle.Normal,
+                        maxLines = 1
+                    )
                 }
             }
+        }
 
+        if (showLogs) {
             // Log panel (bottom)
             DebugLogPanel(
                 entries = logEntries,
