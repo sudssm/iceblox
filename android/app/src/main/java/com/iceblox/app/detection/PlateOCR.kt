@@ -39,7 +39,7 @@ class PlateOCR(context: Context) {
             inputName = sess.inputNames.first()
             val outputInfo = sess.outputInfo.values.first()
             DebugLog.d(TAG, "OCR model loaded (ONNX Runtime), input=$inputName, output=${outputInfo.info}")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             DebugLog.e(TAG, "OCR model init failed: ${e.javaClass.simpleName}: ${e.message}", e)
         }
     }

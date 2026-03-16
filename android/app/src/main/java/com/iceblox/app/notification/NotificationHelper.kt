@@ -33,6 +33,10 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(context).notify(sightingId.hashCode(), notification)
+        try {
+            NotificationManagerCompat.from(context).notify(sightingId.hashCode(), notification)
+        } catch (_: SecurityException) {
+            // POST_NOTIFICATIONS permission not granted on Android 13+
+        }
     }
 }
