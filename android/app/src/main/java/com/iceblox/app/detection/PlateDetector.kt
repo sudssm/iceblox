@@ -42,7 +42,7 @@ class PlateDetector(context: Context) {
             }
             DebugLog.d(TAG, "Interpreter ready, numChannels=$numChannels (default was $NUM_CHANNELS)")
             interpreter = interp
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             DebugLog.e(TAG, "Model init failed: ${e.javaClass.simpleName}: ${e.message}", e)
         }
     }

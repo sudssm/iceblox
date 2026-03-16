@@ -37,5 +37,19 @@
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
+# --- TensorFlow Lite ---
+-keep class org.tensorflow.lite.** { *; }
+-dontwarn org.tensorflow.lite.**
+
+# --- ONNX Runtime ---
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+
+# --- Room ---
+-keep class com.iceblox.app.persistence.** { *; }
+
+# --- Firebase Messaging ---
+-keep class com.google.firebase.messaging.** { *; }
+
 # --- Google Maps ---
 -keep class com.google.android.gms.maps.** { *; }

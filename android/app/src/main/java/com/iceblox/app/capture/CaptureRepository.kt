@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.PowerManager
 import com.iceblox.app.camera.FrameAnalyzer
 import com.iceblox.app.camera.PreviewFreezer
@@ -138,7 +139,9 @@ class CaptureRepository(private val application: Application) {
         connectivityMonitor.onReconnected = {
             apiClient.flushQueue()
         }
-        powerManager.addThermalStatusListener(thermalListener)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            powerManager.addThermalStatusListener(thermalListener)
+        }
         refreshQueueDepth()
         apiClient.startBatchTimer()
     }

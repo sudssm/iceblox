@@ -26,8 +26,8 @@ android {
         applicationId = "com.iceblox.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -113,6 +113,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.fragment)
     implementation(libs.okhttp)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     testImplementation(libs.junit)
