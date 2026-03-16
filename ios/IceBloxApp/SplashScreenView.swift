@@ -20,37 +20,60 @@ struct SplashScreenView: View {
                     .font(.system(size: 48, weight: .bold))
                     .foregroundStyle(.white)
 
+                let buttonMinWidth: CGFloat = 260
+
                 Button(action: onStartCamera) {
-                    Text("Start Camera")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 260)
-                        .padding(.vertical, 14)
-                        .background(.green)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "camera.fill")
+                            .font(.title2)
+                            .frame(width: 28)
+                        Text("Start Camera")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 16)
+                    .foregroundStyle(.white)
+                    .frame(width: buttonMinWidth)
+                    .padding(.vertical, 14)
+                    .background(.green)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
                 Button { showMapSheet = true } label: {
-                    Text("View Map")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.black)
-                        .frame(minWidth: 260)
-                        .padding(.vertical, 14)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "map.fill")
+                            .font(.title2)
+                            .frame(width: 28)
+                        Text("View Map")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 16)
+                    .foregroundStyle(.black)
+                    .frame(width: buttonMinWidth)
+                    .padding(.vertical, 14)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
                 Button { showReportSheet = true } label: {
-                    Text("Report ICE Activity")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 260)
-                        .padding(.vertical, 14)
-                        .background(.red)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "megaphone.fill")
+                            .font(.title2)
+                            .frame(width: 28)
+                        Text("Report ICE Activity")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 16)
+                    .foregroundStyle(.white)
+                    .frame(width: buttonMinWidth)
+                    .padding(.vertical, 14)
+                    .background(.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
 
@@ -59,8 +82,9 @@ struct SplashScreenView: View {
                     Spacer()
 
                     Button { showHelpSheet = true } label: {
-                        Image(systemName: "questionmark.circle.fill")
+                        Text("?")
                             .font(.title2)
+                            .fontWeight(.bold)
                             .foregroundStyle(.yellow)
                     }
                     .accessibilityLabel("Help")
@@ -80,7 +104,7 @@ struct SplashScreenView: View {
                     .accessibilityLabel("Contact")
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.top, 48)
 
                 Spacer()
             }

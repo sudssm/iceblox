@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -22,10 +25,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iceblox.app.R
@@ -61,52 +66,46 @@ fun SplashScreen(
 
             Button(
                 onClick = onStartCamera,
-                modifier = Modifier.padding(top = 32.dp).widthIn(min = buttonWidth),
+                modifier = Modifier.padding(top = 32.dp).width(buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF4CAF50),
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "Start Camera",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                IconButtonContent(
+                    icon = Icons.Filled.Videocam,
+                    text = "Start Camera"
                 )
             }
 
             Button(
                 onClick = onViewMap,
-                modifier = Modifier.padding(top = 16.dp).widthIn(min = buttonWidth),
+                modifier = Modifier.padding(top = 16.dp).width(buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
                     contentColor = Color.Black
                 )
             ) {
-                Text(
-                    text = "View Map",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                IconButtonContent(
+                    icon = Icons.Filled.Map,
+                    text = "View Map"
                 )
             }
 
             Button(
                 onClick = onReportICE,
-                modifier = Modifier.padding(top = 16.dp).widthIn(min = buttonWidth),
+                modifier = Modifier.padding(top = 16.dp).width(buttonWidth),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Red,
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "Report ICE Activity",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                IconButtonContent(
+                    icon = Icons.Filled.Campaign,
+                    text = "Report ICE Activity"
                 )
             }
         }
@@ -114,7 +113,7 @@ fun SplashScreen(
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 16.dp, end = 12.dp),
+                .padding(top = 48.dp, end = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconButton(
@@ -151,5 +150,23 @@ fun SplashScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun IconButtonContent(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
+        Text(
+            text = text,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f).padding(vertical = 4.dp)
+        )
     }
 }
