@@ -126,8 +126,8 @@ fun DebugOverlay(
 
         // Bounding boxes
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Yellow boxes for raw detections (pre-OCR, system debug only)
-            if (systemDebug) for (raw in rawDetections) {
+            // Yellow boxes for raw detections (pre-OCR)
+            for (raw in rawDetections) {
                 val scaleX = size.width / raw.imageWidth
                 val scaleY = size.height / raw.imageHeight
                 val box = raw.boundingBox

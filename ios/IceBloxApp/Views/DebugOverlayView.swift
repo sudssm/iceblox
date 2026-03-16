@@ -28,8 +28,8 @@ struct DebugOverlayView: View {
 
     var body: some View {
         ZStack {
-            // Bounding boxes - yellow (raw detections, system debug only)
-            if systemDebug { ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
+            // Bounding boxes - yellow (raw detections)
+            ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
                 let rect = raw.boundingBox
                 let scaleX = screenSize.width / CGFloat(raw.imageWidth)
                 let scaleY = screenSize.height / CGFloat(raw.imageHeight)
@@ -43,7 +43,7 @@ struct DebugOverlayView: View {
                         .foregroundStyle(.yellow)
                 }
                 .position(x: rect.midX * scaleX, y: rect.midY * scaleY)
-            } }
+            }
 
             // Bounding boxes - green (OCR'd plates)
             ForEach(Array(detections.enumerated()), id: \.offset) { _, detection in
