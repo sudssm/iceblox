@@ -7,6 +7,7 @@ object AppConfig {
     const val PLATES_ENDPOINT = "/api/v1/plates"
     const val DEVICES_ENDPOINT = "/api/v1/devices"
     const val REPORTS_ENDPOINT = "/api/v1/reports"
+    const val CONTACT_ENDPOINT = "/api/v1/contact"
     const val MAP_SIGHTINGS_ENDPOINT = "/api/v1/map-sightings"
     const val SESSIONS_START_ENDPOINT = "/api/v1/sessions/start"
     const val SESSIONS_END_ENDPOINT = "/api/v1/sessions/end"

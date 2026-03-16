@@ -145,7 +145,6 @@ final class FrameProcessor: ObservableObject {
 
     private func detectAndProcess(pixelBuffer: CVPixelBuffer) -> DetectionResult {
         let detections = detector.detect(pixelBuffer: pixelBuffer)
-        DebugLog.shared.d("FrameProcessor", "\(detections.count) raw detections")
 
         let imageWidth = CVPixelBufferGetWidth(pixelBuffer)
         let imageHeight = CVPixelBufferGetHeight(pixelBuffer)

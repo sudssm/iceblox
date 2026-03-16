@@ -27,7 +27,7 @@ The app MUST use a resolution sufficient for plate detection at distances of 3â€
 
 #### REQ-M-3: Splash Screen and Camera Start
 
-When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, a "Settings" button (REQ-M-70), and a "Report ICE Activity" button (REQ-M-60). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). Tapping the "Settings" button MUST open the Settings screen (REQ-M-70). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
+When the app is opened, it MUST display a splash screen with the app name, a "Start Camera" button, a "View Map" button, and a "Report ICE Activity" button (REQ-M-60). The top-right corner MUST display three icon buttons: a yellow question-mark icon for Help (REQ-M-71), a white gear icon for Settings (REQ-M-70), and a green chat-bubble icon for Contact (REQ-M-72). Camera capture and plate detection MUST begin when the user taps "Start Camera". Tapping "Report ICE Activity" MUST open the ICE vehicle report form (REQ-M-61). This provides an explicit user-initiated start rather than immediately activating the camera on launch.
 
 #### REQ-M-3a: Recording Session Lifecycle
 
@@ -376,17 +376,51 @@ Push notification payloads MUST NOT contain plaintext plate text, hashes, or tar
 
 #### REQ-M-70: Settings Screen
 
-The app MUST provide a Settings screen accessible from a "Settings" button on the splash screen. The button MUST be positioned above the "Report ICE Activity" button, styled as a white button with black text matching the other splash screen buttons.
+The app MUST provide a Settings screen accessible from a white gear icon in the top-right corner of the splash screen (see REQ-M-3).
 
 **Settings screen contents:**
 - **Push Notifications toggle**: A toggle switch to enable or disable push notifications. Defaults to enabled. The toggle state MUST persist across app restarts using local storage (iOS: `UserDefaults`, Android: `SharedPreferences`).
 - **Debug Mode toggle**: A toggle switch to enable or disable user debug mode (REQ-M-18). Defaults to disabled. When enabled, shows detection bounding boxes on the camera preview. The toggle state MUST persist across app restarts. Includes a subtitle: "Shows detection bounding boxes on the camera preview".
 
 **Platform implementations:**
-- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist toggle states via `UserDefaults`. The "Settings" button is in the center VStack alongside the other splash screen buttons. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
-- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist toggle states. The "Settings" button is in the center Column alongside the other splash screen buttons. The screen is navigated to from `MainActivity`.
+- **iOS**: The settings screen is presented as a modal sheet (`SettingsView`) with a navigation bar containing the title "Settings" and a "Done" dismiss button. Uses `UserSettings` (an `ObservableObject` singleton) to persist toggle states via `UserDefaults`. An `E2E_AUTO_SHOW_SETTINGS` environment variable auto-opens the settings sheet for testing.
+- **Android**: The settings screen is a full-screen composable (`SettingsScreen`) with a top app bar containing a back arrow. Uses `UserSettings` object with `SharedPreferences` to persist toggle states. The screen is navigated to from `MainActivity`.
 
 When push notifications are disabled via the toggle, the app MUST skip requesting notification permission and skip FCM/APNs token registration on subsequent launches (see REQ-M-60).
+
+#### REQ-M-71: Help Screen
+
+The app MUST provide a Help screen accessible from a yellow question-mark icon in the top-right corner of the splash screen (see REQ-M-3). The Help screen MUST display the following sections:
+
+- **Getting Started**: "Mount your phone on the dashboard with the camera facing forward."
+- **How It Works**: "IceBlox automatically scans license plates using your camera. If a match is found, nearby users are alerted via push notification."
+- **Push Notifications**: "Notifications are enabled by default. You can toggle them in Settings."
+- **Privacy**: "All plate data is hashed on-device before being sent to the server. No raw plate numbers leave your phone."
+
+**Platform implementations:**
+- **iOS**: Presented as a modal sheet (`HelpView`) with a navigation bar containing the title "Help" and a "Done" dismiss button. Dark theme (black background, white text). Bold section titles at 18pt, body text at 14pt with 0.8 opacity.
+- **Android**: A full-screen composable (`HelpScreen`) with a top app bar containing a back arrow. Dark theme matching the Settings screen pattern. Bold section titles at 18sp, body text at 14sp with 0.8 alpha.
+
+#### REQ-M-72: Contact Form
+
+The app MUST provide a Contact form accessible from a green chat-bubble icon in the top-right corner of the splash screen (see REQ-M-3). The form allows users to send feedback or report issues.
+
+**Form fields:**
+- **Name** (optional): Text input for the user's name
+- **Email** (optional): Text input for email, with email keyboard type
+- **Message** (required): Multi-line text input, minimum 150dp/pt height
+- **Include diagnostic logs** (toggle, default on): When enabled, serializes `DebugLog` entries as formatted text and includes them in the submission
+
+**Submission:**
+- POST to `/api/v1/contact` with JSON body: `{ "name": "", "email": "", "message": "", "logs": "" }`
+- Include `X-Device-ID` header
+- The Send button MUST be disabled when the message field is empty or a submission is in progress
+- Show a loading indicator during submission
+- Display success confirmation or error message after submission
+
+**Platform implementations:**
+- **iOS**: Presented as a modal sheet (`ContactView`) with a navigation bar containing "Contact Us" title and "Done" dismiss button. Uses `ContactClient` for the API call. Dark theme.
+- **Android**: A full-screen composable (`ContactScreen`) with a top app bar containing a back arrow. Uses `ContactClient` for the API call via OkHttp. Dark theme.
 
 ### Proximity Alerts
 

@@ -16,7 +16,7 @@ struct LogEntry: Identifiable {
 final class DebugLog: ObservableObject {
     static let shared = DebugLog()
 
-    private let maxEntries = 50
+    private let maxEntries = 1000
     @Published var entries: [LogEntry] = []
 
     private let lock = NSLock()

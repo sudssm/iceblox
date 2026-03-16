@@ -89,12 +89,6 @@ class PlateDetector(context: Context) {
         )
 
         val result = nms(rawDetections)
-        if (result.isNotEmpty()) {
-            DebugLog.d(
-                TAG,
-                "detect: ${rawDetections.size} raw -> ${result.size} after NMS (channels=$numChannels, threshold=$confidenceThreshold)"
-            )
-        }
         return result
     }
 
@@ -114,9 +108,6 @@ class PlateDetector(context: Context) {
             maxCoord = maxOf(maxCoord, output[0][i], output[1][i])
         }
         val coordScale = if (maxCoord > 2.0f) 1.0f else inputSize.toFloat()
-        if (coordScale != 1.0f) {
-            DebugLog.d(TAG, "coordScale=%.0f (maxCoord=%.2f)".format(coordScale, maxCoord))
-        }
 
         for (i in 0 until NUM_DETECTIONS) {
             // Find max class confidence across all class channels (4..numChannels-1)
@@ -145,13 +136,6 @@ class PlateDetector(context: Context) {
             )
         }
 
-        if (detections.isNotEmpty()) {
-            DebugLog.d(
-                TAG,
-                "parseDetections: maxConf=%.4f, passed=${detections.size}/$NUM_DETECTIONS"
-                    .format(maxConfSeen)
-            )
-        }
         return detections
     }
 

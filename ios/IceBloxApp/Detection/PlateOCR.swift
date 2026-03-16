@@ -59,8 +59,6 @@ enum PlateOCR {
             DebugLog.shared.w("PlateOCR", "Invalid crop dimensions: \(srcWidth)x\(srcHeight)")
             return nil
         }
-        DebugLog.shared.d("PlateOCR", "OCR input: \(srcWidth)x\(srcHeight)")
-
         guard let inputData = preprocessImage(pixelBuffer, srcWidth: srcWidth, srcHeight: srcHeight) else {
             DebugLog.shared.w("PlateOCR", "Preprocessing failed")
             return nil
@@ -88,8 +86,6 @@ enum PlateOCR {
             }
             let outputData = try outputTensor.tensorData()
             let shapeInfo = try outputTensor.tensorTypeAndShapeInfo()
-            DebugLog.shared.d("PlateOCR", "ONNX output shape: \(shapeInfo.shape)")
-
             return fixedSlotDecode(data: outputData as Data, shape: shapeInfo.shape)
         } catch {
             DebugLog.shared.w("PlateOCR", "OCR failed: \(error.localizedDescription)")
@@ -150,8 +146,6 @@ enum PlateOCR {
             DebugLog.shared.w("PlateOCR", "Unexpected output shape rank: \(shape.count)")
             return nil
         }
-        DebugLog.shared.d("PlateOCR", "Decode: numSlots=\(numSlots) alphabetSize=\(alphabetSize)")
-
         var decoded: [Character] = []
         var charConfidences: [Float] = []
         var allSlotCandidates: [[SlotCandidate]] = []

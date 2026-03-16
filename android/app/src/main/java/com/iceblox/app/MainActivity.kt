@@ -37,6 +37,8 @@ import com.iceblox.app.debug.DebugLog
 import com.iceblox.app.service.BackgroundCaptureService
 import com.iceblox.app.settings.UserSettings
 import com.iceblox.app.ui.CameraScreen
+import com.iceblox.app.ui.ContactScreen
+import com.iceblox.app.ui.HelpScreen
 import com.iceblox.app.ui.MapViewScreen
 import com.iceblox.app.ui.ReportICEScreen
 import com.iceblox.app.ui.SettingsScreen
@@ -50,6 +52,8 @@ class MainActivity : ComponentActivity() {
     private var showReport by mutableStateOf(false)
     private var showMap by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
+    private var showHelp by mutableStateOf(false)
+    private var showContact by mutableStateOf(false)
     private var isTestMode = false
     private var isScreenshotMode = false
 
@@ -89,6 +93,8 @@ class MainActivity : ComponentActivity() {
             showReport = savedInstanceState.getBoolean(KEY_SHOW_REPORT, false)
             showMap = savedInstanceState.getBoolean(KEY_SHOW_MAP, false)
             showSettings = savedInstanceState.getBoolean(KEY_SHOW_SETTINGS, false)
+            showHelp = savedInstanceState.getBoolean(KEY_SHOW_HELP, false)
+            showContact = savedInstanceState.getBoolean(KEY_SHOW_CONTACT, false)
         } else {
             if (intent.getBooleanExtra("SHOW_MAP", false)) {
                 showMap = true
@@ -176,6 +182,10 @@ class MainActivity : ComponentActivity() {
                     )
                 } else if (showSettings) {
                     SettingsScreen(onBack = { showSettings = false })
+                } else if (showHelp) {
+                    HelpScreen(onBack = { showHelp = false })
+                } else if (showContact) {
+                    ContactScreen(onBack = { showContact = false })
                 } else {
                     SplashScreen(
                         onStartCamera = {
@@ -190,7 +200,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onReportICE = { showReport = true },
                         onViewMap = { showMap = true },
-                        onSettings = { showSettings = true }
+                        onSettings = { showSettings = true },
+                        onHelp = { showHelp = true },
+                        onContact = { showContact = true }
                     )
                 }
             }
@@ -210,6 +222,8 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(KEY_SHOW_REPORT, showReport)
         outState.putBoolean(KEY_SHOW_MAP, showMap)
         outState.putBoolean(KEY_SHOW_SETTINGS, showSettings)
+        outState.putBoolean(KEY_SHOW_HELP, showHelp)
+        outState.putBoolean(KEY_SHOW_CONTACT, showContact)
     }
 
     override fun onUserLeaveHint() {
@@ -275,6 +289,8 @@ class MainActivity : ComponentActivity() {
         private const val KEY_SHOW_REPORT = "show_report"
         private const val KEY_SHOW_MAP = "show_map"
         private const val KEY_SHOW_SETTINGS = "show_settings"
+        private const val KEY_SHOW_HELP = "show_help"
+        private const val KEY_SHOW_CONTACT = "show_contact"
     }
 }
 
