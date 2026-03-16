@@ -52,7 +52,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
 - [ ] **Splash page** — Build a marketing/landing splash page for the project.
 - [ ] **Cluster overlapping map pins** — Merge multiple plates at same location into single high-confidence pin.
-- [ ] **Add instructions to app** — In-app onboarding or help content explaining how to use the app.
+- [x] **Add instructions to app** — In-app onboarding or help content explaining how to use the app. (Help screen + Contact form — REQ-M-71, REQ-M-72)
 
 ---
 

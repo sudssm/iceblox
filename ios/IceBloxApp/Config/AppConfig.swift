@@ -61,6 +61,7 @@ enum AppConfig {
     static let zoomRetryMaxWaitMs: Int = 500
 
     static let reportsEndpoint = "/api/v1/reports"
+    static let contactEndpoint = "/api/v1/contact"
     static let mapSightingsEndpoint = "/api/v1/map-sightings"
     static let devicesEndpoint = "/api/v1/devices"
     static let sessionsStartEndpoint = "/api/v1/sessions/start"

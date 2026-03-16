@@ -276,6 +276,19 @@ CREATE TABLE sessions (
 );
 ```
 
+**Table: `contacts`** — user-submitted feedback and issue reports (REQ-S-26)
+```sql
+CREATE TABLE contacts (
+    id          SERIAL PRIMARY KEY,
+    name        TEXT,
+    email       TEXT,
+    message     TEXT NOT NULL,
+    log_path    TEXT,                       -- S3 key for uploaded diagnostic logs (empty if none)
+    hardware_id TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 **Data flow:**
 1. On startup, plates from `data/plates.txt` are upserted into the `plates` table
 2. Hash → plate_id mappings are loaded into memory for O(1) lookup
@@ -718,6 +731,47 @@ The confidence fields allow computing per-session statistics:
 - `400 Bad Request` — invalid JSON or empty `session_id`.
 - `405 Method Not Allowed` — non-POST request.
 
+### REQ-S-26: Contact Form Endpoint
+
+The server MUST provide a `POST /api/v1/contact` endpoint for users to submit feedback or issue reports from the mobile app.
+
+**Request:**
+
+```
+POST /api/v1/contact
+Content-Type: application/json
+X-Device-ID: <hardware-id>
+
+{
+  "name": "string (optional)",
+  "email": "string (optional)",
+  "message": "string (required)",
+  "logs": "string (optional — diagnostic log text)"
+}
+```
+
+**Validation:**
+- `message`: Required. Returns `400 Bad Request` if empty or whitespace-only.
+- `X-Device-ID`: Required header. Returns `400 Bad Request` if missing.
+
+**Behavior:**
+- If `logs` is non-empty and S3 is configured, upload the log text to S3 at key `contact-logs/{uuid}.txt` with content type `text/plain`.
+- Create a `contacts` database record with fields: `name`, `email`, `message`, `log_path` (S3 key or empty), `hardware_id`, `created_at`.
+- Request body limited to 5 MB.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "contact_id": 42
+}
+```
+
+**Error responses:**
+- `400 Bad Request` — invalid JSON, missing message, or missing X-Device-ID.
+- `405 Method Not Allowed` — non-POST request.
+- `500 Internal Server Error` — S3 upload failure or database error.
+
 ## Out of Scope (v1)
 
 - Admin dashboard
@@ -791,6 +845,7 @@ server/
 │       ├── devices.go           # POST /api/v1/devices handler
 │       ├── reports.go           # POST /api/v1/reports handler (REQ-S-20)
 │       ├── reports_test.go      # Reports handler tests
+│       ├── contact.go           # POST /api/v1/contact handler (REQ-S-26)
 │       ├── sessions.go          # POST /api/v1/sessions/{start,end} handlers (REQ-S-25)
 │       ├── map_sightings.go     # GET /api/v1/map-sightings handler (REQ-S-22)
 │       ├── map_sightings_test.go # Map sightings handler tests
@@ -837,6 +892,7 @@ Each step is independently testable. Later steps depend on earlier ones.
 | 23 | Map sightings endpoint | REQ-S-22 | GET `/api/v1/map-sightings?lat=X&lng=Y&radius=Z`, returns sightings + reports within bounding box from last 2h, deduped by plate, with confidence 1.0 |
 | 24 | Report photo serving | REQ-S-23 | S3 upload for report photos (`reports/{uuid}.jpg`), presigned GET URLs (60min TTL) in map sightings response, fallback to local disk if S3 not configured |
 | 25 | Session tracking | REQ-S-25 | `sessions` table, upsert on plate upload, `POST /api/v1/sessions/start` and `POST /api/v1/sessions/end` endpoints, best-effort non-blocking |
+| 26 | Contact endpoint | REQ-S-26 | `POST /api/v1/contact`, JSON body with name/email/message/logs, S3 log upload at `contact-logs/{uuid}.txt`, `contacts` table |
 
 ### Key Technical Notes
 
