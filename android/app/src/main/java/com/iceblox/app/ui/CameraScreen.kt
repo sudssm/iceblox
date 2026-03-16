@@ -91,10 +91,10 @@ fun CameraScreen(
     val testBitmap by viewModel.testBitmap.collectAsState()
     val testStatus by viewModel.testStatus.collectAsState()
 
-    var debugMode by remember { mutableStateOf(false) }
-    var debugMinimized by remember { mutableStateOf(false) }
+    var systemDebug by remember { mutableStateOf(false) }
+    var showDebugLogs by remember { mutableStateOf(true) }
     val appContext = viewModel.getApplication<android.app.Application>()
-    var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(appContext)) }
+    var userDebug by remember { mutableStateOf(UserSettings.isUserDebugEnabled(appContext)) }
 
     val freezeState by viewModel.previewFreezer.freezeState.collectAsState()
 
@@ -109,7 +109,7 @@ fun CameraScreen(
     val activity = LocalContext.current as? Activity
     DisposableEffect(activity) {
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        if (!debugMode) brightnessManager.dim(activity)
+        if (!systemDebug) brightnessManager.dim(activity)
         onDispose {
             brightnessManager.teardown(activity)
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -121,8 +121,8 @@ fun CameraScreen(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> {
-                    userDebugEnabled = UserSettings.isUserDebugEnabled(appContext)
-                    if (!debugMode) brightnessManager.dim(activity)
+                    userDebug = UserSettings.isUserDebugEnabled(appContext)
+                    if (!systemDebug) brightnessManager.dim(activity)
                     if (!isMotionPaused) {
                         viewModel.startForegroundPipeline(isTestMode)
                     }
@@ -164,15 +164,16 @@ fun CameraScreen(
                 }
                 lastTapTime = now
                 if (tapCount >= 3) {
-                    debugMode = !debugMode
-                    viewModel.frameAnalyzer.debugMode = debugMode
-                    if (debugMode) {
+                    systemDebug = !systemDebug
+                    viewModel.frameAnalyzer.debugMode = systemDebug
+                    if (systemDebug) {
+                        showDebugLogs = true
                         brightnessManager.restore(activity)
                     } else {
                         brightnessManager.dim(activity)
                     }
                     tapCount = 0
-                } else if (tapCount == 1 && !debugMode) {
+                } else if (tapCount == 1 && !systemDebug) {
                     brightnessManager.temporarilyRestore(activity, coroutineScope)
                 }
             }
@@ -207,7 +208,7 @@ fun CameraScreen(
 
             val frozen = freezeState
             if (frozen is PreviewFreezer.FreezeState.Frozen) {
-                if (!debugMode) {
+                if (!systemDebug) {
                     frozen.overlayBitmap?.let { bmp ->
                         Image(
                             bitmap = bmp.asImageBitmap(),
@@ -229,7 +230,7 @@ fun CameraScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                if (debugMode) {
+                if (systemDebug) {
                     Text(
                         text = "ZOOM RETRY",
                         color = Color.Yellow,
@@ -261,7 +262,7 @@ fun CameraScreen(
             )
         }
 
-        if ((debugMode || userDebugEnabled) && sessionSummary == null) {
+        if ((systemDebug || userDebug) && sessionSummary == null) {
             DebugOverlay(
                 detections = debugDetections,
                 rawDetections = rawDetections,
@@ -271,17 +272,18 @@ fun CameraScreen(
                 isConnected = isConnected,
                 logEntries = logEntries,
                 framesSkippedByDiff = framesSkippedByDiff,
-                showLogs = !debugMinimized
+                showLogs = showDebugLogs,
+                systemDebug = systemDebug
             )
         }
 
-        if (debugMode && sessionSummary == null) {
+        if (systemDebug && sessionSummary == null) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(start = 8.dp, bottom = 186.dp)
                     .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
-                    .clickable { debugMinimized = !debugMinimized }
+                    .clickable { showDebugLogs = !showDebugLogs }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -293,7 +295,7 @@ fun CameraScreen(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (debugMinimized) "+" else "\u2212",
+                    text = if (showDebugLogs) "\u2212" else "+",
                     color = Color.Yellow,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -330,7 +332,7 @@ fun CameraScreen(
                     Text("Stop Scanning", color = Color.White)
                 }
 
-                if (BuildConfig.DEBUG && debugMode && queueDepth > 0) {
+                if (BuildConfig.DEBUG && systemDebug && queueDepth > 0) {
                     UploadQueueBanner(
                         count = queueDepth,
                         onClear = { viewModel.clearUploadQueue() }
