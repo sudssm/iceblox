@@ -212,12 +212,14 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(KEY_SHOW_SETTINGS, showSettings)
     }
 
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        val vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
-        val isMotionPaused = vm.isMotionPaused.value
-        if (showCamera && hasCameraPermission && !isMotionPaused) {
-            BackgroundCaptureService.start(this)
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) {
+            val vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+            val isMotionPaused = vm.isMotionPaused.value
+            if (showCamera && hasCameraPermission && !isMotionPaused) {
+                BackgroundCaptureService.start(this)
+            }
         }
     }
 
