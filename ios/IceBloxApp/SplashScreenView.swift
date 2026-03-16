@@ -89,19 +89,19 @@ struct SplashScreenView: View {
                     }
                     .accessibilityLabel("Help")
 
-                    Button { showSettingsSheet = true } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white)
-                    }
-                    .accessibilityLabel("Settings")
-
                     Button { showContactSheet = true } label: {
                         Image(systemName: "bubble.left.fill")
                             .font(.title2)
                             .foregroundStyle(.green)
                     }
                     .accessibilityLabel("Contact")
+
+                    Button { showSettingsSheet = true } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                    }
+                    .accessibilityLabel("Settings")
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 48)

@@ -128,17 +128,6 @@ fun SplashScreen(
                 )
             }
             IconButton(
-                onClick = onSettings,
-                modifier = Modifier.semantics { contentDescription = "Settings" }
-            ) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            IconButton(
                 onClick = onContact,
                 modifier = Modifier.semantics { contentDescription = "Contact" }
             ) {
@@ -146,6 +135,17 @@ fun SplashScreen(
                     painter = painterResource(id = R.drawable.ic_chat),
                     contentDescription = "Contact",
                     tint = Color.Green,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            IconButton(
+                onClick = onSettings,
+                modifier = Modifier.semantics { contentDescription = "Settings" }
+            ) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
             }
