@@ -35,7 +35,7 @@ struct ContactView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .keyboardType(.emailAddress)
                                 .textContentType(.emailAddress)
-                                .autocapitalization(.none)
+                                .textInputAutocapitalization(.never)
                         }
 
                         Group {
@@ -43,7 +43,7 @@ struct ContactView: View {
                                 .foregroundStyle(.white.opacity(0.7))
                                 .font(.caption)
                             TextEditor(text: $message)
-                                .frame(minHeight: 120)
+                                .frame(minHeight: 150)
                                 .scrollContentBackground(.hidden)
                                 .background(Color.white.opacity(0.1))
                                 .foregroundStyle(.white)
@@ -107,6 +107,7 @@ struct ContactView: View {
         var logs: String?
         if includeLogs {
             let entries = DebugLog.shared.entries
+            let formatter = ISO8601DateFormatter()
             logs = entries.map { entry in
                 let level: String
                 switch entry.level {
@@ -114,7 +115,6 @@ struct ContactView: View {
                 case .warning: level = "W"
                 case .error: level = "E"
                 }
-                let formatter = ISO8601DateFormatter()
                 return "[\(formatter.string(from: entry.timestamp))] [\(level)] [\(entry.tag)] \(entry.message)"
             }.joined(separator: "\n")
         }
