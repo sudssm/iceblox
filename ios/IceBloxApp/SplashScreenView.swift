@@ -18,26 +18,42 @@ struct SplashScreenView: View {
                     .font(.system(size: 48, weight: .bold))
                     .foregroundStyle(.white)
 
+                let buttonMinWidth: CGFloat = 260
+
                 Button(action: onStartCamera) {
-                    Text("Start Camera")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 260)
-                        .padding(.vertical, 14)
-                        .background(.green)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "camera.fill")
+                            .font(.title2)
+                            .frame(width: 28)
+                        Text("Start Camera")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 16)
+                    .foregroundStyle(.white)
+                    .frame(width: buttonMinWidth)
+                    .padding(.vertical, 14)
+                    .background(.green)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
                 Button { showMapSheet = true } label: {
-                    Text("View Map")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.black)
-                        .frame(minWidth: 260)
-                        .padding(.vertical, 14)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "map.fill")
+                            .font(.title2)
+                            .frame(width: 28)
+                        Text("View Map")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 16)
+                    .foregroundStyle(.black)
+                    .frame(width: buttonMinWidth)
+                    .padding(.vertical, 14)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
                 Button { showSettingsSheet = true } label: {
@@ -45,7 +61,7 @@ struct SplashScreenView: View {
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(.black)
-                        .frame(minWidth: 260)
+                        .frame(width: buttonMinWidth)
                         .padding(.vertical, 14)
                         .background(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -53,14 +69,21 @@ struct SplashScreenView: View {
                 .accessibilityLabel("Settings")
 
                 Button { showReportSheet = true } label: {
-                    Text("Report ICE Activity")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 260)
-                        .padding(.vertical, 14)
-                        .background(.red)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "megaphone.fill")
+                            .font(.title2)
+                            .frame(width: 28)
+                        Text("Report ICE Activity")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 16)
+                    .foregroundStyle(.white)
+                    .frame(width: buttonMinWidth)
+                    .padding(.vertical, 14)
+                    .background(.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
         }
