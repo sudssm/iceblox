@@ -86,7 +86,7 @@ The app MUST prevent the device screen from locking while the app is in the fore
 - **iOS**: Set `UIApplication.shared.isIdleTimerDisabled = true`
 - **Android**: Set `WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON` on the activity window. The foreground service MUST hold a `PARTIAL_WAKE_LOCK` as defense-in-depth to keep the CPU running during background capture when the screen is off.
 
-The app MAY dim the screen brightness to a configurable level (default: 1%) during active scanning to reduce battery drain and OLED burn-in. A single tap on the camera preview MUST temporarily restore the original brightness for a configurable duration (default: 5 seconds). Entering developer debug mode (triple-tap) MUST restore full brightness; exiting debug mode MUST re-dim. Screen brightness MUST be fully restored when the scanning session ends or the app is backgrounded.
+The app MAY dim the screen brightness to a configurable level (default: 1%) during active scanning to reduce battery drain and OLED burn-in. A single tap on the camera preview MUST temporarily restore the original brightness for a configurable duration (default: 5 seconds). Entering developer debug mode (triple-tap) MUST restore full brightness; exiting debug mode MUST re-dim. While developer debug mode is active, the app MUST NOT re-dim the screen during lifecycle transitions (e.g., app returning to foreground). Screen brightness MUST be fully restored when the scanning session ends or the app is backgrounded.
 
 - **iOS**: `BrightnessManager` sets `UIScreen.main.brightness`
 - **Android**: `BrightnessManager` sets `WindowManager.LayoutParams.screenBrightness`
@@ -429,7 +429,7 @@ When the app enters background, it MUST perform a final subscribe call to refres
 
 The app has two debug modes that share the same overlay UI but expose different levels of detail:
 
-1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG]` toggle button. The `[DEBUG]` button allows minimizing the overlay (hides feed, logs, and header) while keeping bounding boxes visible.
+1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG]` toggle button. The `[DEBUG]` button allows minimizing the overlay (hides the log panel) while keeping bounding boxes, the FPS/queue/connectivity header, and the detection feed visible.
 2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG]` toggle button.
 
 The overlay is visible when either mode is active. When both are active, the full developer overlay is shown.
@@ -450,7 +450,7 @@ When developer debug mode is active, the app MUST:
 - Display the current queue depth (pending uploads)
 - Display network connectivity status
 - Display the detection feed (DBG-2) and log panel (DBG-4)
-- Display a `[DEBUG]` toggle button (bottom-left) that minimizes or expands the overlay. When minimized, the feed, logs, and FPS/queue header are hidden but bounding boxes remain visible. The button shows `+` when minimized and `−` when expanded.
+- Display a `[DEBUG]` toggle button (bottom-left) that minimizes or expands the overlay. When minimized, the log panel is hidden but bounding boxes, the FPS/queue/connectivity header, and the detection feed remain visible. The button shows `+` when minimized and `−` when expanded.
 
 When user debug mode is active, the app MUST:
 - Display bounding boxes around detected plates on the camera preview (yellow for raw detections, green for OCR'd plates)
@@ -688,7 +688,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
 
 ### Debug Overlay
 
-The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown with a `[DEBUG]` toggle button that can minimize it (hiding feed, logs, and header while keeping bounding boxes):
+The debug overlay is shown when either developer debug mode or user debug mode is active. In user debug mode, only bounding boxes are displayed. In developer debug mode, the full overlay is shown with a `[DEBUG]` toggle button that can minimize it (hiding the log panel while keeping bounding boxes, the FPS/queue/connectivity header, and the detection feed visible):
 
 ```
 Developer debug mode (full overlay, expanded):
