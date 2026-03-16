@@ -40,57 +40,17 @@ class ZoomController(context: Context) {
 
     fun isOnCooldown(): Boolean {
         val elapsed = System.currentTimeMillis() - lastRetryTime
-        val onCooldown = elapsed < AppConfig.ZOOM_RETRY_COOLDOWN_MS
-        if (onCooldown) {
-            DebugLog.d(TAG, "On cooldown: ${elapsed}ms elapsed, need ${AppConfig.ZOOM_RETRY_COOLDOWN_MS}ms")
-        }
-        return onCooldown
+        return elapsed < AppConfig.ZOOM_RETRY_COOLDOWN_MS
     }
 
     fun maxSafeZoomRatio(boundingBox: RectF, imageWidth: Int, imageHeight: Int): Float {
-        if (maxOpticalZoom <= 1.0f) {
-            DebugLog.d(TAG, "SafeZoom: no optical zoom (maxOpticalZoom=$maxOpticalZoom)")
-            return 0f
-        }
+        if (maxOpticalZoom <= 1.0f) return 0f
         val ratio = safeZoomRatio(boundingBox, imageWidth, imageHeight, maxOpticalZoom, AppConfig.ZOOM_RETRY_MARGIN)
-        if (ratio < AppConfig.ZOOM_RETRY_MIN_RATIO) {
-            DebugLog.d(
-                TAG,
-                "SafeZoom FAIL: safeRatio=${"%.2f".format(
-                    ratio
-                )}x < min=${AppConfig.ZOOM_RETRY_MIN_RATIO}x (box=[${String.format(
-                    "%.1f",
-                    boundingBox.left
-                )},${String.format(
-                    "%.1f",
-                    boundingBox.top
-                )},${String.format(
-                    "%.1f",
-                    boundingBox.right
-                )},${String.format("%.1f", boundingBox.bottom)}] in ${imageWidth}x$imageHeight)"
-            )
-            return 0f
-        }
-        DebugLog.d(
-            TAG,
-            "SafeZoom PASS: ${"%.2f".format(
-                ratio
-            )}x (max=${maxOpticalZoom}x, box=[${String.format(
-                "%.1f",
-                boundingBox.left
-            )},${String.format(
-                "%.1f",
-                boundingBox.top
-            )},${String.format(
-                "%.1f",
-                boundingBox.right
-            )},${String.format("%.1f", boundingBox.bottom)}] in ${imageWidth}x$imageHeight)"
-        )
+        if (ratio < AppConfig.ZOOM_RETRY_MIN_RATIO) return 0f
         return ratio
     }
 
     fun bestCandidate(detections: List<Triple<RectF, Int, Int>>): Pair<Int, Float>? {
-        DebugLog.d(TAG, "bestCandidate: evaluating ${detections.size} failed detections")
         var bestIdx: Int? = null
         var bestDist = Float.MAX_VALUE
         var bestRatio = 0f
@@ -98,30 +58,17 @@ class ZoomController(context: Context) {
         for ((i, det) in detections.withIndex()) {
             val (box, imgW, imgH) = det
             val ratio = maxSafeZoomRatio(box, imgW, imgH)
-            if (ratio <= 0f) {
-                DebugLog.d(TAG, "  candidate[$i] NOT eligible")
-                continue
-            }
+            if (ratio <= 0f) continue
             val cx = (box.centerX() / imgW.toFloat()) - 0.5f
             val cy = (box.centerY() / imgH.toFloat()) - 0.5f
             val dist = sqrt(cx * cx + cy * cy)
-            DebugLog.d(
-                TAG,
-                "  candidate[$i] eligible, safeZoom=${"%.2f".format(ratio)}x, distFromCenter=${"%.4f".format(dist)}"
-            )
             if (dist < bestDist) {
                 bestDist = dist
                 bestIdx = i
                 bestRatio = ratio
             }
         }
-        return bestIdx?.let { idx ->
-            DebugLog.d(TAG, "Best candidate: [$idx] dist=${"%.4f".format(bestDist)}, zoom=${"%.2f".format(bestRatio)}x")
-            Pair(idx, bestRatio)
-        } ?: run {
-            DebugLog.d(TAG, "No eligible candidates for zoom retry")
-            null
-        }
+        return bestIdx?.let { Pair(it, bestRatio) }
     }
 
     fun zoomIn(ratio: Float): Boolean {
@@ -131,14 +78,9 @@ class ZoomController(context: Context) {
             return false
         }
         return try {
-            DebugLog.d(
-                TAG,
-                "zoomIn: setting zoom ratio to ${"%.2f".format(ratio)}x (attempt #${zoomRetryAttempts + 1})"
-            )
             cam.cameraControl.setZoomRatio(ratio)
             lastRetryTime = System.currentTimeMillis()
             zoomRetryAttempts++
-            DebugLog.d(TAG, "zoomIn: SUCCESS, total attempts=$zoomRetryAttempts, successes=$zoomRetrySuccesses")
             true
         } catch (e: Exception) {
             DebugLog.e(TAG, "zoomIn FAILED: ${e.message}", e)
@@ -149,9 +91,7 @@ class ZoomController(context: Context) {
     fun restoreZoom(): ListenableFuture<Void>? {
         val cam = camera ?: return null
         return try {
-            val future = cam.cameraControl.setZoomRatio(1.0f)
-            DebugLog.d(TAG, "restoreZoom: reset to 1.0x")
-            future
+            cam.cameraControl.setZoomRatio(1.0f)
         } catch (e: Exception) {
             DebugLog.e(TAG, "restoreZoom FAILED: ${e.message}", e)
             null
@@ -174,7 +114,6 @@ class ZoomController(context: Context) {
     private fun detectMaxOpticalZoom(context: Context): Float {
         return try {
             val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-            DebugLog.d(TAG, "detectMaxOpticalZoom: camera IDs=${cameraManager.cameraIdList.toList()}")
 
             var baseFocal = 0f
             var maxFocal = 0f
@@ -183,51 +122,30 @@ class ZoomController(context: Context) {
                 val chars = cameraManager.getCameraCharacteristics(id)
                 if (chars.get(CameraCharacteristics.LENS_FACING) != CameraCharacteristics.LENS_FACING_BACK) continue
                 val focals = chars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS) ?: continue
-                DebugLog.d(TAG, "detectMaxOpticalZoom: back camera=$id, focalLengths=${focals.toList()}")
 
-                // The logical camera's focal length is the CameraX 1.0x baseline
                 if (baseFocal == 0f && focals.isNotEmpty()) {
                     baseFocal = focals[0]
                 }
                 for (f in focals) if (f > maxFocal) maxFocal = f
 
-                // Check physical cameras behind this logical camera (API 28+)
                 val physicalIds = chars.physicalCameraIds
-                if (physicalIds.isNotEmpty()) {
-                    DebugLog.d(TAG, "detectMaxOpticalZoom: logical camera=$id has physical cameras=$physicalIds")
-                    for (physId in physicalIds) {
-                        try {
-                            val physChars = cameraManager.getCameraCharacteristics(physId)
-                            val physFocals =
-                                physChars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS) ?: continue
-                            DebugLog.d(
-                                TAG,
-                                "detectMaxOpticalZoom: physical camera=$physId, focalLengths=${physFocals.toList()}"
-                            )
-                            for (f in physFocals) if (f > maxFocal) maxFocal = f
-                        } catch (e: Exception) {
-                            DebugLog.w(
-                                TAG,
-                                "detectMaxOpticalZoom: failed to query physical camera $physId: ${e.message}"
-                            )
-                        }
+                for (physId in physicalIds) {
+                    try {
+                        val physChars = cameraManager.getCameraCharacteristics(physId)
+                        val physFocals =
+                            physChars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS) ?: continue
+                        for (f in physFocals) if (f > maxFocal) maxFocal = f
+                    } catch (e: Exception) {
+                        DebugLog.w(TAG, "detectMaxOpticalZoom: failed to query physical camera $physId: ${e.message}")
                     }
                 }
             }
 
-            if (baseFocal <= 0f || maxFocal <= 0f) {
-                DebugLog.w(TAG, "detectMaxOpticalZoom: no valid focal lengths found")
+            if (baseFocal <= 0f || maxFocal <= 0f || maxFocal <= baseFocal) {
                 return 1.0f
             }
 
-            if (maxFocal <= baseFocal) {
-                DebugLog.d(TAG, "detectMaxOpticalZoom: no telephoto (base=$baseFocal, max=$maxFocal)")
-                return 1.0f
-            }
-
-            // Ratio from the logical camera baseline (CameraX 1.0x) to the longest telephoto
             val ratio = maxFocal / baseFocal
-            DebugLog.d(TAG, "detectMaxOpticalZoom: base=$baseFocal (CameraX 1.0x), telephoto=$maxFocal, ratio=$ratio")
             ratio
         } catch (e: Exception) {
             DebugLog.e(TAG, "detectMaxOpticalZoom FAILED: ${e.message}", e)

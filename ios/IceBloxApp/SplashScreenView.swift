@@ -5,6 +5,8 @@ struct SplashScreenView: View {
     @State private var showReportSheet = false
     @State private var showMapSheet = false
     @State private var showSettingsSheet = false
+    @State private var showHelpSheet = false
+    @State private var showContactSheet = false
     @State private var e2eTriggerTask: Task<Void, Never>?
     @State private var offlineQueue = OfflineQueue()
     @State private var drainClient: APIClient?
@@ -56,18 +58,6 @@ struct SplashScreenView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
-                Button { showSettingsSheet = true } label: {
-                    Text("Settings")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.black)
-                        .frame(width: buttonMinWidth)
-                        .padding(.vertical, 14)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .accessibilityLabel("Settings")
-
                 Button { showReportSheet = true } label: {
                     HStack {
                         Image(systemName: "megaphone.fill")
@@ -85,6 +75,37 @@ struct SplashScreenView: View {
                     .background(.red)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+            }
+
+            VStack {
+                HStack(spacing: 16) {
+                    Spacer()
+
+                    Button { showHelpSheet = true } label: {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.yellow)
+                    }
+                    .accessibilityLabel("Help")
+
+                    Button { showSettingsSheet = true } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                    }
+                    .accessibilityLabel("Settings")
+
+                    Button { showContactSheet = true } label: {
+                        Image(systemName: "bubble.left.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                    }
+                    .accessibilityLabel("Contact")
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                Spacer()
             }
         }
         .onAppear {
@@ -134,6 +155,12 @@ struct SplashScreenView: View {
         }
         .sheet(isPresented: $showSettingsSheet) {
             SettingsView()
+        }
+        .sheet(isPresented: $showHelpSheet) {
+            HelpView()
+        }
+        .sheet(isPresented: $showContactSheet) {
+            ContactView()
         }
     }
 }

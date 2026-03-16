@@ -52,6 +52,7 @@ android/
         │   │   │   ├── AlertClient.kt      # Subscribe endpoint client, coroutine timer, GPS truncation
         │   │   │   ├── ApiClient.kt        # OkHttp POST /api/v1/plates + /api/v1/devices, batch, 429 handling
         │   │   │   ├── ConnectivityMonitor.kt # ConnectivityManager.NetworkCallback
+        │   │   │   ├── ContactClient.kt    # OkHttp POST to /api/v1/contact (contact form submissions, REQ-M-72)
         │   │   │   ├── DeviceTokenManager.kt # FCM token registration with retry
         │   │   │   ├── MapClient.kt        # OkHttp GET /api/v1/map-sightings for map view
         │   │   │   ├── ReportClient.kt     # OkHttp multipart POST to /api/v1/reports (ICE vehicle reports)
@@ -80,6 +81,8 @@ android/
         │   │       ├── MapViewScreen.kt    # Map view showing nearby sightings and reports with offline caching
         │   │       ├── ReportICEScreen.kt  # ICE vehicle report form (photo capture, description, plate, Google Map, submit)
         │   │       ├── SettingsScreen.kt  # Settings screen with push notification + debug mode toggles
+        │   │       ├── HelpScreen.kt      # Help screen with getting started, how it works, notifications, privacy sections (REQ-M-71)
+        │   │       ├── ContactScreen.kt   # Contact form with name, email, message, log attachment (REQ-M-72)
         │   │       ├── DebugOverlay.kt      # Bounding boxes, plate text, hash, FPS, detection feed
         │   │       ├── DebugLogPanel.kt     # Translucent log panel at bottom of debug overlay
         │   │       └── theme/
@@ -92,6 +95,8 @@ android/
         │       │   ├── colors.xml
         │       │   └── themes.xml
         │       └── drawable/
+        │           ├── ic_help.xml     # Question-mark circle icon for Help button
+        │           └── ic_chat.xml     # Chat bubble icon for Contact button
         ├── debug/
         │   └── assets/
         │       └── test_images/             # Test plate images for test mode (debug builds only)
@@ -214,8 +219,8 @@ The `make android-release-bundle` target runs `./gradlew bundleRelease` from the
 | Topic | Detail |
 |-------|--------|
 | **No local Java runtime** | This dev machine has no system Java. Android builds (`./gradlew assembleDebug`) require a JDK. Android Studio bundles one at `/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/`. For CI or CLI builds, install via `brew install openjdk`. |
-| **Background capture** | Android background capture runs in a `LifecycleService` foreground service with `foregroundServiceType="camera"`. The activity starts the service in `onUserLeaveHint` (user-initiated backgrounding such as pressing Home) and stops it in `onResume` (when it regains foreground), so CameraX preview can rebind cleanly without competing for the camera. Using `onUserLeaveHint` rather than `onPause` avoids false triggers from system-initiated pauses (configuration changes, notification shade, recent apps), which previously caused crashes during sleep/wake and screen rotation. The service calls `startForeground()` in `onCreate()` to satisfy Android's foreground service timing requirement. Navigation state (`showCamera`, `showReport`, `showMap`, `showSettings`) is preserved across configuration changes via `onSaveInstanceState`/`savedInstanceState`. |
-| **DebugLog replaces android.util.Log** | All `Log.d/w/e` calls are replaced with `DebugLog.d/w/e`. This routes logs through both `android.util.Log` (for logcat) and a 50-entry ring buffer (for the in-app panel). Throwable overloads (`d/w/e(tag, msg, throwable)`) append the exception message. |
+| **Background capture** | Android background capture runs in a `LifecycleService` foreground service with `foregroundServiceType="camera"`. The activity starts the service in `onUserLeaveHint` (user-initiated backgrounding such as pressing Home) and stops it in `onResume` (when it regains foreground), so CameraX preview can rebind cleanly without competing for the camera. Using `onUserLeaveHint` rather than `onPause` avoids false triggers from system-initiated pauses (configuration changes, notification shade, recent apps), which previously caused crashes during sleep/wake and screen rotation. The service calls `startForeground()` in `onCreate()` to satisfy Android's foreground service timing requirement. Navigation state (`showCamera`, `showReport`, `showMap`, `showSettings`, `showHelp`, `showContact`) is preserved across configuration changes via `onSaveInstanceState`/`savedInstanceState`. |
+| **DebugLog replaces android.util.Log** | All `Log.d/w/e` calls are replaced with `DebugLog.d/w/e`. This routes logs through both `android.util.Log` (for logcat) and a 1000-entry ring buffer (for the in-app panel and contact form log attachment). Throwable overloads (`d/w/e(tag, msg, throwable)`) append the exception message. |
 | **Thread safety for StateFlow** | `DebugLog` uses `@Synchronized` on the buffer mutation and emits via `MutableStateFlow`. `CaptureRepository` uses `MutableStateFlow.update {}` for atomic read-modify-write on the detection feed (prevents lost updates from concurrent add/markSent calls). Compose collects via `collectAsState()` — no main-thread dispatch needed since Compose recomposition handles the thread hop. |
 | **Debug gating** | Developer debug mode (triple-tap toggle) is gated behind `BuildConfig.DEBUG` — stripped from release builds by ProGuard/R8. The debug overlay bounding boxes are available in all builds via the user debug mode setting (REQ-M-18). When the debug overlay is visible, the FPS header and detection feed are always shown; the log panel is independently togglable via the minimize button (`showLogs`). |
 | **TFLite output tensor format** | YOLOv8 TFLite outputs `[1, 5, 8400]` for single-class (not `[1, 8400, 5]`). NMS must be implemented manually — unlike Core ML which bakes NMS into the export. |

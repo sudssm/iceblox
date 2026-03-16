@@ -14,7 +14,7 @@ data class LogEntry(
 )
 
 object DebugLog {
-    private const val MAX_ENTRIES = 50
+    private const val MAX_ENTRIES = 1000
 
     private val buffer = ArrayDeque<LogEntry>(MAX_ENTRIES)
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())

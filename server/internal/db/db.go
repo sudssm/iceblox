@@ -80,6 +80,16 @@ type Report struct {
 	CreatedAt     time.Time `gorm:"type:timestamptz;not null;autoCreateTime"`
 }
 
+type Contact struct {
+	ID         int64     `gorm:"primaryKey;autoIncrement"`
+	Name       string    `gorm:"type:text"`
+	Email      string    `gorm:"type:text"`
+	Message    string    `gorm:"type:text;not null"`
+	LogPath    string    `gorm:"type:text"`
+	HardwareID string    `gorm:"type:text;not null"`
+	CreatedAt  time.Time `gorm:"type:timestamptz;not null;autoCreateTime"`
+}
+
 // PlateRecord is the input type for UpsertPlates (no ID needed).
 type PlateRecord struct {
 	Plate string
@@ -124,7 +134,7 @@ func Connect(dsn string) (*DB, error) {
 }
 
 func (d *DB) Migrate(_ context.Context) error {
-	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{}, &Report{}, &Session{})
+	return d.gorm.AutoMigrate(&Plate{}, &Sighting{}, &DeviceToken{}, &SentPush{}, &Report{}, &Session{}, &Contact{})
 }
 
 func (d *DB) UpsertPlates(ctx context.Context, plates []PlateRecord) (map[string]int64, error) {
@@ -316,6 +326,10 @@ func (d *DB) EndSession(ctx context.Context, sessionID string, maxDetConf, total
 
 func (d *DB) CreateReport(ctx context.Context, report *Report) error {
 	return d.gorm.WithContext(ctx).Create(report).Error
+}
+
+func (d *DB) CreateContact(ctx context.Context, contact *Contact) error {
+	return d.gorm.WithContext(ctx).Create(contact).Error
 }
 
 func (d *DB) UpdateReportStopICE(ctx context.Context, id int64, status, errMsg string) error {

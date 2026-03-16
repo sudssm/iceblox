@@ -312,6 +312,9 @@ func registerV1Routes(mux *http.ServeMux, database *db.DB, store *targets.Store,
 		signer = &s3PhotoSigner{client: s3Client}
 	}
 	mux.Handle("/api/v1/map-sightings", version(handler.MapSightingsHandler(&dbMapQuerier{db: database}, signer)))
+
+	// Contact handler
+	mux.Handle("/api/v1/contact", version(handler.ContactHandler(&dbContactStore{db: database}, photoUploader)))
 }
 
 // dbReportStore adapts db.DB to the handler.ReportStore interface.
@@ -333,6 +336,26 @@ func (s *dbReportStore) CreateReport(ctx context.Context, report *handler.Report
 		return err
 	}
 	report.ID = dbReport.ID
+	return nil
+}
+
+// dbContactStore adapts db.DB to the handler.ContactStore interface.
+type dbContactStore struct {
+	db *db.DB
+}
+
+func (s *dbContactStore) CreateContact(ctx context.Context, contact *handler.Contact) error {
+	dbContact := &db.Contact{
+		Name:       contact.Name,
+		Email:      contact.Email,
+		Message:    contact.Message,
+		LogPath:    contact.LogPath,
+		HardwareID: contact.HardwareID,
+	}
+	if err := s.db.CreateContact(ctx, dbContact); err != nil {
+		return err
+	}
+	contact.ID = dbContact.ID
 	return nil
 }
 

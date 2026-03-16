@@ -26,7 +26,9 @@ ios/
 │   │   ├── MapView.swift              # Map view showing nearby sightings and reports with offline caching
 │   │   ├── ReportICEView.swift        # ICE vehicle report form (photo, description, plate, map, submit)
 │   │   ├── CameraPickerView.swift     # UIViewControllerRepresentable wrapping UIImagePickerController
-│   │   └── SettingsView.swift         # Settings screen with push notification + debug mode toggles
+│   │   ├── SettingsView.swift         # Settings screen with push notification + debug mode toggles
+│   │   ├── HelpView.swift             # Help screen with getting started, how it works, notifications, privacy sections (REQ-M-71)
+│   │   └── ContactView.swift          # Contact form with name, email, message, log attachment (REQ-M-72)
 │   ├── Camera/
 │   │   ├── CameraManager.swift        # AVCaptureSession setup, frame delegate, thermal mgmt
 │   │   ├── CameraPreviewView.swift    # UIViewRepresentable wrapping AVCaptureVideoPreviewLayer
@@ -49,6 +51,7 @@ ios/
 │   │   ├── AlertClient.swift          # Subscribe endpoint client, 10-min timer, GPS truncation
 │   │   ├── MapClient.swift            # GET /api/v1/map-sightings client for map view
 │   │   ├── ReportClient.swift         # Multipart form-data POST to /api/v1/reports (ICE vehicle reports)
+│   │   ├── ContactClient.swift        # URLSession POST to /api/v1/contact (contact form submissions, REQ-M-72)
 │   │   ├── RetryManager.swift         # Exponential backoff, 429 handling
 │   │   └── ConnectivityMonitor.swift  # NWPathMonitor wrapper, triggers queue flush
 │   ├── Persistence/
