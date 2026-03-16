@@ -9,20 +9,20 @@ final class UserSettings: ObservableObject {
         }
     }
 
-    @Published var userDebugEnabled: Bool {
+    @Published var userDebug: Bool {
         didSet {
-            UserDefaults.standard.set(userDebugEnabled, forKey: Self.userDebugKey)
+            UserDefaults.standard.set(userDebug, forKey: Self.userDebugKey)
         }
     }
 
     private static let pushNotificationsKey = "pushNotificationsEnabled"
-    private static let userDebugKey = "userDebugEnabled"
+    private static let userDebugKey = "userDebug"
 
     private init() {
         if UserDefaults.standard.object(forKey: Self.pushNotificationsKey) == nil {
             UserDefaults.standard.set(true, forKey: Self.pushNotificationsKey)
         }
         self.pushNotificationsEnabled = UserDefaults.standard.bool(forKey: Self.pushNotificationsKey)
-        self.userDebugEnabled = UserDefaults.standard.bool(forKey: Self.userDebugKey)
+        self.userDebug = UserDefaults.standard.bool(forKey: Self.userDebugKey)
     }
 }

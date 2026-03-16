@@ -36,7 +36,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var pushEnabled by remember { mutableStateOf(UserSettings.isPushNotificationsEnabled(context)) }
 
-    var userDebugEnabled by remember { mutableStateOf(UserSettings.isUserDebugEnabled(context)) }
+    var userDebug by remember { mutableStateOf(UserSettings.isUserDebugEnabled(context)) }
 
     Scaffold(
         topBar = {
@@ -101,9 +101,9 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                 }
                 Switch(
-                    checked = userDebugEnabled,
+                    checked = userDebug,
                     onCheckedChange = { enabled ->
-                        userDebugEnabled = enabled
+                        userDebug = enabled
                         UserSettings.setUserDebugEnabled(context, enabled)
                     }
                 )

@@ -63,7 +63,7 @@ struct ContentView: View {
     @State private var frameProcessor: FrameProcessor?
     @State private var apiClient: APIClient?
     @State private var alertClient: AlertClient?
-    @State private var debugMode = AppConfig.forceDebugMode
+    @State private var systemDebug = AppConfig.forceDebugMode
     @ObservedObject private var debugLog = DebugLog.shared
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var lastStatusUpdate = Date()
@@ -73,7 +73,7 @@ struct ContentView: View {
     @State private var pendingSessionUploads = 0
     @State private var pendingSessionPlates = 0
     @State private var showingSummary = false
-    @State private var debugMinimized = false
+    @State private var showDebugLogs = true
     @State private var e2eStopTask: Task<Void, Never>?
     @State private var brightnessManager = BrightnessManager()
     @StateObject private var motionStateManager = MotionStateManager()
@@ -100,7 +100,7 @@ struct ContentView: View {
                     .ignoresSafeArea()
 
                 if let fp = frameProcessor, fp.zoomRetryFrozen {
-                    if !debugMode, let frozenImage = fp.frozenPreviewImage {
+                    if !systemDebug, let frozenImage = fp.frozenPreviewImage {
                         Image(uiImage: frozenImage)
                             .resizable()
                             .scaledToFill()
@@ -115,7 +115,7 @@ struct ContentView: View {
                         .background(.black.opacity(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                    if debugMode {
+                    if systemDebug {
                         Text("ZOOM RETRY")
                             .font(.system(.caption, design: .monospaced).weight(.bold))
                             .foregroundStyle(.yellow)
@@ -149,7 +149,7 @@ struct ContentView: View {
             }
 
             #if DEBUG
-            if debugMode || userSettings.userDebugEnabled, !showingSummary, cameraManager.permissionGranted {
+            if systemDebug || userSettings.userDebug, !showingSummary, cameraManager.permissionGranted {
                 DebugOverlayView(
                     detections: frameProcessor?.currentDetections ?? [],
                     rawDetections: frameProcessor?.rawDetections ?? [],
@@ -159,19 +159,20 @@ struct ContentView: View {
                     isConnected: connectivityMonitor.isConnected,
                     logEntries: debugLog.entries,
                     framesSkippedByDiff: frameProcessor?.framesSkippedByDiff ?? 0,
-                    showLogs: !debugMinimized
+                    showLogs: showDebugLogs,
+                    systemDebug: systemDebug
                 )
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
             }
-            if debugMode, !showingSummary, cameraManager.permissionGranted {
+            if systemDebug, !showingSummary, cameraManager.permissionGranted {
                 Button {
-                    debugMinimized.toggle()
+                    showDebugLogs.toggle()
                 } label: {
                     HStack(spacing: 6) {
                         Text("[DEBUG]")
                             .font(.system(.caption, design: .monospaced))
-                        Text(debugMinimized ? "+" : "\u{2212}")
+                        Text(showDebugLogs ? "\u{2212}" : "+")
                             .font(.system(.body, design: .monospaced).weight(.bold))
                     }
                     .foregroundStyle(.yellow)
@@ -220,7 +221,7 @@ struct ContentView: View {
                     .padding(.bottom, 12)
 
                     #if DEBUG
-                    if debugMode, !offlineQueue.isEmpty {
+                    if systemDebug, !offlineQueue.isEmpty {
                         HStack(spacing: 8) {
                             Text("\(offlineQueue.count) uploads queued")
                                 .font(.system(.caption, design: .monospaced))
@@ -284,9 +285,10 @@ struct ContentView: View {
         #if DEBUG
         .onTapGesture(count: 3) {
             if !showingSummary {
-                debugMode.toggle()
-                frameProcessor?.debugMode = debugMode
-                if debugMode {
+                systemDebug.toggle()
+                frameProcessor?.debugMode = systemDebug
+                if systemDebug {
+                    showDebugLogs = true
                     brightnessManager.restore()
                 } else {
                     brightnessManager.dim()
@@ -295,7 +297,7 @@ struct ContentView: View {
         }
         #endif
         .onTapGesture(count: 1) {
-            if !debugMode, !showingSummary {
+            if !systemDebug, !showingSummary {
                 brightnessManager.temporarilyRestore()
             }
         }
@@ -309,7 +311,7 @@ struct ContentView: View {
         }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
-            if !debugMode { brightnessManager.dim() }
+            if !systemDebug { brightnessManager.dim() }
             if apiClient == nil {
                 sessionStartedAt = Date()
                 stopRequestedAt = nil
@@ -337,7 +339,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
-                if !debugMode { brightnessManager.dim() }
+                if !systemDebug { brightnessManager.dim() }
                 if showingMotionPauseOverlay && !motionStateManager.isMotionPaused {
                     resumeFromMotionPause()
                 } else if !showingMotionPauseOverlay && !showingSummary {

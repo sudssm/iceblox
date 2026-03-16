@@ -10,6 +10,7 @@ struct DebugOverlayView: View {
     let logEntries: [LogEntry]
     var framesSkippedByDiff: Int = 0
     var showLogs: Bool = true
+    var systemDebug: Bool = true
 
     private var screenSize: CGSize { UIScreen.main.bounds.size }
 
@@ -27,8 +28,8 @@ struct DebugOverlayView: View {
 
     var body: some View {
         ZStack {
-            // Bounding boxes - yellow (raw detections)
-            ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
+            // Bounding boxes - yellow (raw detections, system debug only)
+            if systemDebug { ForEach(Array(rawDetections.enumerated()), id: \.offset) { _, raw in
                 let rect = raw.boundingBox
                 let scaleX = screenSize.width / CGFloat(raw.imageWidth)
                 let scaleY = screenSize.height / CGFloat(raw.imageHeight)
@@ -42,7 +43,7 @@ struct DebugOverlayView: View {
                         .foregroundStyle(.yellow)
                 }
                 .position(x: rect.midX * scaleX, y: rect.midY * scaleY)
-            }
+            } }
 
             // Bounding boxes - green (OCR'd plates)
             ForEach(Array(detections.enumerated()), id: \.offset) { _, detection in
@@ -67,13 +68,15 @@ struct DebugOverlayView: View {
             }
 
             // Debug header (top-left, below status bar + 40pt gap)
-            debugHeader
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, topSafeArea + 40)
-                .padding(.leading, 8)
+            if systemDebug {
+                debugHeader
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, topSafeArea + 40)
+                    .padding(.leading, 8)
+            }
 
             // Detection feed (top-right, same vertical offset as header)
-            if !feedEntries.isEmpty {
+            if systemDebug, !feedEntries.isEmpty {
                 detectionFeed
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding(.top, topSafeArea + 40)
@@ -81,7 +84,7 @@ struct DebugOverlayView: View {
                     .padding(.bottom, 40)
             }
 
-            if showLogs {
+            if systemDebug, showLogs {
                 // Log panel (bottom-center)
                 DebugLogPanel(entries: logEntries)
                     .frame(maxWidth: screenSize.width - 16)

@@ -65,11 +65,12 @@ fun DebugOverlay(
     logEntries: List<LogEntry> = emptyList(),
     framesSkippedByDiff: Int = 0,
     showLogs: Boolean = true,
+    systemDebug: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         // Debug header (top-left, below status bar)
-        Column(
+        if (systemDebug) Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .windowInsetsPadding(WindowInsets.statusBars)
@@ -125,8 +126,8 @@ fun DebugOverlay(
 
         // Bounding boxes
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Yellow boxes for raw detections (pre-OCR)
-            for (raw in rawDetections) {
+            // Yellow boxes for raw detections (pre-OCR, system debug only)
+            if (systemDebug) for (raw in rawDetections) {
                 val scaleX = size.width / raw.imageWidth
                 val scaleY = size.height / raw.imageHeight
                 val box = raw.boundingBox
@@ -200,8 +201,8 @@ fun DebugOverlay(
             }
         }
 
-        // Detection feed (right side)
-        if (feedEntries.isNotEmpty()) {
+        // Detection feed (right side, system debug only)
+        if (systemDebug && feedEntries.isNotEmpty()) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -242,7 +243,7 @@ fun DebugOverlay(
             }
         }
 
-        if (showLogs) {
+        if (systemDebug && showLogs) {
             // Log panel (bottom)
             DebugLogPanel(
                 entries = logEntries,
