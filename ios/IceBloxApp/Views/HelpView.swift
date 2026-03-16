@@ -17,7 +17,8 @@ struct HelpView: View {
 
                         helpSection(
                             title: "How It Works",
-                            body: "IceBlox automatically scans license plates using your camera. If a match is found, nearby users are alerted via push notification."
+                            body: "IceBlox automatically scans license plates using your camera. " +
+                                "If a match is found, nearby users are alerted via push notification."
                         )
 
                         helpSection(

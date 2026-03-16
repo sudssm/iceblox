@@ -58,6 +58,9 @@
 		A1B2C3D4E5F60001000103 /* BrightnessManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000103 /* BrightnessManagerTests.swift */; };
 		A1B2C3D4E5F60001000104 /* MotionStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000104 /* MotionStateManager.swift */; };
 		A1B2C3D4E5F60001000105 /* MotionStateManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000105 /* MotionStateManagerTests.swift */; };
+		A1B2C3D4E5F60001000110 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000110 /* HelpView.swift */; };
+		A1B2C3D4E5F60001000111 /* ContactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000111 /* ContactView.swift */; };
+		A1B2C3D4E5F60001000112 /* ContactClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000112 /* ContactClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,6 +124,9 @@
 		A1B2C3D4E5F60002000103 /* BrightnessManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessManagerTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000104 /* MotionStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionStateManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000105 /* MotionStateManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionStateManagerTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000110 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000111 /* ContactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000112 /* ContactClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactClient.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60006000001 /* IceBloxApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IceBloxApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60006000002 /* IceBloxAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IceBloxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -248,6 +254,7 @@
 			children = (
 				A1B2C3D4E5F60002000029 /* APIClient.swift */,
 				A1B2C3D4E5F60002000040 /* AlertClient.swift */,
+				A1B2C3D4E5F60002000112 /* ContactClient.swift */,
 				A1B2C3D4E5F60002000090 /* MapClient.swift */,
 				A1B2C3D4E5F60002000062 /* ReportClient.swift */,
 				A1B2C3D4E5F60002000030 /* RetryManager.swift */,
@@ -285,6 +292,8 @@
 				A1B2C3D4E5F60002000060 /* ReportICEView.swift */,
 				A1B2C3D4E5F60002000061 /* CameraPickerView.swift */,
 				A1B2C3D4E5F60002000080 /* SettingsView.swift */,
+				A1B2C3D4E5F60002000110 /* HelpView.swift */,
+				A1B2C3D4E5F60002000111 /* ContactView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -484,6 +493,9 @@
 				A1B2C3D4E5F60001000100 /* FrameDiffer.swift in Sources */,
 				A1B2C3D4E5F60001000102 /* BrightnessManager.swift in Sources */,
 				A1B2C3D4E5F60001000104 /* MotionStateManager.swift in Sources */,
+				A1B2C3D4E5F60001000110 /* HelpView.swift in Sources */,
+				A1B2C3D4E5F60001000111 /* ContactView.swift in Sources */,
+				A1B2C3D4E5F60001000112 /* ContactClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

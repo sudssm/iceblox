@@ -58,7 +58,8 @@ fun HelpScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(24.dp))
             HelpSection(
                 title = "How It Works",
-                body = "IceBlox automatically scans license plates using your camera. If a match is found, nearby users are alerted via push notification."
+                body = "IceBlox automatically scans license plates using your camera. " +
+                    "If a match is found, nearby users are alerted via push notification."
             )
             Spacer(modifier = Modifier.height(24.dp))
             HelpSection(
@@ -68,7 +69,8 @@ fun HelpScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(24.dp))
             HelpSection(
                 title = "Privacy",
-                body = "All plate data is hashed on-device before being sent to the server. No raw plate numbers leave your phone."
+                body = "All plate data is hashed on-device before being sent to the server. " +
+                    "No raw plate numbers leave your phone."
             )
         }
     }

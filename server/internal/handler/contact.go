@@ -80,7 +80,7 @@ func ContactHandler(store ContactStore, s3 PhotoUploader) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("POST /api/v1/contact id=%d device=%s", contact.ID, sanitizeHeader(hardwareID))
+		log.Printf("POST /api/v1/contact id=%d device=%s", contact.ID, sanitizeHeader(hardwareID)) //nolint:gosec // hardwareID sanitized
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

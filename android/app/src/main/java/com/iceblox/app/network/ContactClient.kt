@@ -24,13 +24,7 @@ class ContactClient(context: Context) {
         Settings.Secure.ANDROID_ID
     ) ?: "unknown"
 
-    fun submitContact(
-        name: String,
-        email: String,
-        message: String,
-        logs: String?,
-        onResult: (Result<Int>) -> Unit
-    ) {
+    fun submitContact(name: String, email: String, message: String, logs: String?, onResult: (Result<Int>) -> Unit) {
         scope.launch {
             val url = "${AppConfig.SERVER_BASE_URL}${AppConfig.CONTACT_ENDPOINT}"
 
