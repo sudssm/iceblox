@@ -16,7 +16,7 @@ final class UserSettings: ObservableObject {
     }
 
     private static let pushNotificationsKey = "pushNotificationsEnabled"
-    private static let userDebugKey = "userDebug"
+    private static let userDebugKey = "userDebugEnabled"
 
     private init() {
         if UserDefaults.standard.object(forKey: Self.pushNotificationsKey) == nil {
