@@ -70,57 +70,59 @@ fun DebugOverlay(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         // Debug header (top-left, below status bar)
-        if (systemDebug) Column(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 40.dp, start = 8.dp)
-                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
-                .padding(8.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "FPS: ${fps.toInt()}",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Queue: $queueDepth",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "\u25CF",
-                    color = if (isConnected) Color.Green else Color.Red,
-                    fontSize = 11.sp
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = if (isConnected) "Online" else "Offline",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Det: ${rawDetections.size}",
-                    color = Color.Yellow,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Diff skip: $framesSkippedByDiff",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace
-                )
+        if (systemDebug) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 40.dp, start = 8.dp)
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
+                    .padding(8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "FPS: ${fps.toInt()}",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Queue: $queueDepth",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "\u25CF",
+                        color = if (isConnected) Color.Green else Color.Red,
+                        fontSize = 11.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (isConnected) "Online" else "Offline",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Det: ${rawDetections.size}",
+                        color = Color.Yellow,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Diff skip: $framesSkippedByDiff",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
             }
         }
 
