@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IceBlox — Realtime Detection &amp; Community Alerts</title>
+  <meta name="description" content="A dashboard-mounted app that scans plates and notifies your community automatically.">
+  <link rel="icon" href="img/app-icon.png" type="image/png">
+  <link rel="stylesheet" href="css/style-dark.css">
+
+  <!-- Google Analytics (replace G-X7PPX0DR8X with your Measurement ID) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X7PPX0DR8X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-X7PPX0DR8X');
+  </script>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="#" class="nav-brand">
+      <img src="img/app-icon.png" alt="IceBlox icon">
+      IceBlox
+    </a>
+    <div style="display:flex;gap:1rem;align-items:center">
+      <a href="mailto:hello@chesstris.io" class="nav-link" aria-label="Email"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></a>
+      <a href="https://github.com/sudssm/iceblox" class="nav-link" target="_blank" rel="noopener" aria-label="GitHub"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <img src="img/app-icon.png" alt="IceBlox" class="hero-icon">
+    <h1>IceBlox</h1>
+    <p class="tagline">Realtime detection. Instant community alerts.</p>
+    <p class="subtitle">A dashboard-mounted app that scans plates and notifies your community automatically.</p>
+    <div class="cta-buttons">
+      <a href="https://forms.gle/jRzpYTYctNhnNkpu7" class="cta-btn">
+        <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        Get Early Access — iOS
+      </a>
+      <a href="https://forms.gle/jRzpYTYctNhnNkpu7" class="cta-btn">
+        <svg viewBox="0 0 24 24"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
+        Get Early Access — Android
+      </a>
+    </div>
+  </header>
+
+  <!-- How It Works -->
+  <section>
+    <h2 class="section-title">How It Works</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon">&#128663;</div>
+        <h3>Mount &amp; Drive</h3>
+        <p>Mount your phone on the dashboard and drive normally. IceBlox works in the background.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#128269;</div>
+        <h3>Auto-Detect</h3>
+        <p>On-device AI scans license plates in realtime. Nothing leaves your phone.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#128276;</div>
+        <h3>Get Alerts</h3>
+        <p>Your community is notified instantly when a known vehicle is spotted nearby.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section>
+    <h2 class="section-title">See It in Action</h2>
+    <div class="screenshots">
+      <img src="img/iphone_splash.png" alt="IceBlox home screen">
+      <img src="img/iphone_camera.png" alt="IceBlox dashcam view">
+      <img src="img/iphone_map.png" alt="IceBlox map view">
+      <img src="img/iphone_report.png" alt="IceBlox report form">
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <h2 class="section-title">FAQ</h2>
+    <div class="faq-list">
+      <details>
+        <summary>What does IceBlox do?</summary>
+        <p>IceBlox continuously scans license plates from your dashboard camera and checks them against a known watchlist of ICE vehicles. If there's a match, your community gets an instant push notification.</p>
+      </details>
+      <details>
+        <summary>What information do you collect?</summary>
+        <p>IceBlox is designed to be privacy first. No images or videos are ever stored or uploaded. No license plate numbers are sent to our servers. The system is built so that we do not and cannot track your location.</p>
+      </details>
+      <details>
+        <summary>How much does it cost?</summary>
+        <p>Free.</p>
+      </details>
+      <details>
+        <summary>What phones are supported?</summary>
+        <p>iPhone (iOS 17+) and Android (9.0+).</p>
+      </details>
+      <details>
+        <summary>Can I report activity manually?</summary>
+        <p>Yes. The app includes a built-in report form you can use to report ICE activity anytime, even without a plate match.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p class="footer-contact">Questions? <a href="mailto:hello@chesstris.io">hello@chesstris.io</a></p>
+    <div class="footer-links">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="https://github.com/sudssm/iceblox" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <p class="footer-disclaimer">IceBlox is a community safety tool. It does not provide legal advice.</p>
+  </footer>
+
+</body>
+</html>
