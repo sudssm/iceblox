@@ -148,7 +148,6 @@ struct ContentView: View {
                     }
             }
 
-            #if DEBUG
             if systemDebug || userSettings.userDebug, !showingSummary, cameraManager.permissionGranted {
                 DebugOverlayView(
                     detections: frameProcessor?.currentDetections ?? [],
@@ -185,7 +184,6 @@ struct ContentView: View {
                 .padding(.leading, 16)
                 .padding(.bottom, 186)
             }
-            #endif
 
             if !showingSummary, !showingMotionPauseOverlay, cameraManager.permissionGranted {
                 VStack {
@@ -220,7 +218,6 @@ struct ContentView: View {
                     .accessibilityIdentifier("stop_recording_button")
                     .padding(.bottom, 12)
 
-                    #if DEBUG
                     if systemDebug, !offlineQueue.isEmpty {
                         HStack(spacing: 8) {
                             Text("\(offlineQueue.count) uploads queued")
@@ -238,7 +235,6 @@ struct ContentView: View {
                         .clipShape(Capsule())
                         .padding(.bottom, 4)
                     }
-                    #endif
                 }
             }
 
@@ -282,7 +278,6 @@ struct ContentView: View {
                 }
             }
         }
-        #if DEBUG
         .onTapGesture(count: 3) {
             if !showingSummary {
                 systemDebug.toggle()
@@ -295,7 +290,6 @@ struct ContentView: View {
                 }
             }
         }
-        #endif
         .onTapGesture(count: 1) {
             if !systemDebug, !showingSummary {
                 brightnessManager.temporarilyRestore()

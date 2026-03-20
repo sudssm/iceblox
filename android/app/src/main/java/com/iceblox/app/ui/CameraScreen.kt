@@ -56,7 +56,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.iceblox.app.BuildConfig
 import com.iceblox.app.MainViewModel
 import com.iceblox.app.SessionSummary
 import com.iceblox.app.camera.BrightnessManager
@@ -150,37 +149,29 @@ fun CameraScreen(
         }
     }
 
-    // Triple-tap detection for debug mode toggle (debug builds only)
-    val tripleTapModifier = if (BuildConfig.DEBUG) {
-        Modifier.pointerInput(Unit) {
-            var tapCount = 0
-            var lastTapTime = 0L
-            detectTapGestures {
-                val now = System.currentTimeMillis()
-                if (now - lastTapTime < 500) {
-                    tapCount++
-                } else {
-                    tapCount = 1
-                }
-                lastTapTime = now
-                if (tapCount >= 3) {
-                    systemDebug = !systemDebug
-                    viewModel.frameAnalyzer.debugMode = systemDebug
-                    if (systemDebug) {
-                        showDebugLogs = true
-                        brightnessManager.restore(activity)
-                    } else {
-                        brightnessManager.dim(activity)
-                    }
-                    tapCount = 0
-                } else if (tapCount == 1 && !systemDebug) {
-                    brightnessManager.temporarilyRestore(activity, coroutineScope)
-                }
+    // Triple-tap detection for debug mode toggle
+    val tripleTapModifier = Modifier.pointerInput(Unit) {
+        var tapCount = 0
+        var lastTapTime = 0L
+        detectTapGestures {
+            val now = System.currentTimeMillis()
+            if (now - lastTapTime < 500) {
+                tapCount++
+            } else {
+                tapCount = 1
             }
-        }
-    } else {
-        Modifier.pointerInput(Unit) {
-            detectTapGestures {
+            lastTapTime = now
+            if (tapCount >= 3) {
+                systemDebug = !systemDebug
+                viewModel.frameAnalyzer.debugMode = systemDebug
+                if (systemDebug) {
+                    showDebugLogs = true
+                    brightnessManager.restore(activity)
+                } else {
+                    brightnessManager.dim(activity)
+                }
+                tapCount = 0
+            } else if (tapCount == 1 && !systemDebug) {
                 brightnessManager.temporarilyRestore(activity, coroutineScope)
             }
         }
@@ -332,7 +323,7 @@ fun CameraScreen(
                     Text("Stop Scanning", color = Color.White)
                 }
 
-                if (BuildConfig.DEBUG && systemDebug && queueDepth > 0) {
+                if (systemDebug && queueDepth > 0) {
                     UploadQueueBanner(
                         count = queueDepth,
                         onClear = { viewModel.clearUploadQueue() }
