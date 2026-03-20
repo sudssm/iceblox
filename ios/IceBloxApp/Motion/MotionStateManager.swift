@@ -1,4 +1,5 @@
-import CoreMotion
+import Combine
+import CoreLocation
 import Foundation
 
 enum MotionState {
@@ -8,25 +9,29 @@ enum MotionState {
 }
 
 final class MotionStateManager: ObservableObject {
-    private let activityManager = CMMotionActivityManager()
     private var pollingTimer: Timer?
     private var stationaryStartTime: Date?
     private var isMonitoring = false
+    private var locationSubscription: AnyCancellable?
+    private weak var locationManager: LocationManager?
+
+    private static let movingSpeedThreshold: CLLocationSpeed = 0.5
 
     @Published var motionState: MotionState = .unknown
     @Published var isMotionPaused = false
 
     var timeoutMinutes: TimeInterval = AppConfig.stationaryTimeoutMinutes
 
-    func startMonitoring() {
-        guard CMMotionActivityManager.isActivityAvailable() else { return }
+    func startMonitoring(locationManager: LocationManager) {
         guard !isMonitoring else { return }
         isMonitoring = true
+        self.locationManager = locationManager
 
-        activityManager.startActivityUpdates(to: .main) { [weak self] activity in
-            guard let self, let activity, activity.confidence != .low else { return }
-            self.handleActivity(activity)
-        }
+        locationSubscription = locationManager.$lastSpeed
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] speed in
+                self?.handleSpeed(speed)
+            }
 
         pollingTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.checkStationaryTimeout()
@@ -34,7 +39,9 @@ final class MotionStateManager: ObservableObject {
     }
 
     func stopMonitoring() {
-        activityManager.stopActivityUpdates()
+        locationSubscription?.cancel()
+        locationSubscription = nil
+        locationManager = nil
         pollingTimer?.invalidate()
         pollingTimer = nil
         stationaryStartTime = nil
@@ -48,14 +55,16 @@ final class MotionStateManager: ObservableObject {
         stationaryStartTime = nil
     }
 
-    private func handleActivity(_ activity: CMMotionActivity) {
-        if activity.automotive || activity.walking || activity.running || activity.cycling {
+    private func handleSpeed(_ speed: CLLocationSpeed?) {
+        guard let speed, speed >= 0 else { return }
+
+        if speed >= Self.movingSpeedThreshold {
             motionState = .moving
             stationaryStartTime = nil
             if isMotionPaused {
                 isMotionPaused = false
             }
-        } else if activity.stationary {
+        } else {
             motionState = .stationary
             if stationaryStartTime == nil {
                 stationaryStartTime = Date()

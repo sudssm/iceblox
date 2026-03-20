@@ -61,7 +61,7 @@ ios/
 │   ├── Location/
 │   │   └── LocationManager.swift      # CLLocationManager, permission handling, GPS warning, distance filter (REQ-M-4d)
 │   ├── Motion/
-│   │   └── MotionStateManager.swift   # CMMotionActivityManager-based stationary detection, auto-pause (REQ-M-4c)
+│   │   └── MotionStateManager.swift   # GPS speed-based stationary detection, auto-pause (REQ-M-4c)
 │   ├── Config/
 │   │   ├── AppConfig.swift            # Confidence thresholds, batch size, server URL (compile-time flag), zoom retry constants, battery optimization config
 │   │   └── Pepper.swift               # Generated at build time from root .env (gitignored)

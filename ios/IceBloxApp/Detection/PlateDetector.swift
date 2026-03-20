@@ -41,15 +41,23 @@ final class PlateDetector {
         do {
             try handler.perform([request])
         } catch {
+            DebugLog.shared.w("PlateDetector", "Inference error: \(error.localizedDescription)")
             return []
         }
 
         guard let observations = request.results as? [VNRecognizedObjectObservation] else {
+            DebugLog.shared.w("PlateDetector", "No observations returned from model")
             return []
         }
 
         let imageWidth = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
         let imageHeight = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+
+        if !observations.isEmpty {
+            let confs = observations.map { String(format: "%.3f", $0.confidence) }.joined(separator: ", ")
+            DebugLog.shared.d("PlateDetector",
+                "Raw detections: \(observations.count) confs=[\(confs)] threshold=\(AppConfig.detectionConfidenceThreshold)")
+        }
 
         for observation in observations {
             guard observation.confidence >= AppConfig.detectionConfidenceThreshold else { continue }

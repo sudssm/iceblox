@@ -8,6 +8,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var longitude: Double?
     @Published var hasPermission = false
     @Published var permissionDenied = false
+    @Published var lastSpeed: CLLocationSpeed?
 
     override init() {
         super.init()
@@ -57,5 +58,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         guard let location = locations.last else { return }
         latitude = location.coordinate.latitude
         longitude = location.coordinate.longitude
+        lastSpeed = location.speed
     }
 }
