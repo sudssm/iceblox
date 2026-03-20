@@ -26,8 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iceblox.app.BuildConfig
 import com.iceblox.app.settings.UserSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,6 +110,16 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     }
                 )
             }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            )
         }
     }
 }
