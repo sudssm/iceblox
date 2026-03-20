@@ -17,7 +17,7 @@ private struct SessionSummaryCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Plates seen: \(platesSeen)")
                 if iceVehicles > 0 {
-                    Text("ICE Vehicles Scanned: \(iceVehicles)")
+                    Text("ICE Vehicles Seen: \(iceVehicles)")
                         .foregroundStyle(.orange)
                 }
                 Text("Duration: \(durationText)")

@@ -439,7 +439,7 @@ fun SessionSummaryOverlay(summary: SessionSummary, onDone: () -> Unit, modifier:
                 )
                 if (summary.iceVehicles > 0) {
                     Text(
-                        "ICE Vehicles Scanned: ${summary.iceVehicles}",
+                        "ICE Vehicles Seen: ${summary.iceVehicles}",
                         color = Color(0xFFFF9800),
                         fontFamily = FontFamily.Monospace
                     )
