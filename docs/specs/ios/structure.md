@@ -19,6 +19,7 @@ ios/
 │   │   ├── AccentColor.colorset/
 │   │   └── Contents.json
 │   ├── PrivacyInfo.xcprivacy      # App privacy manifest (required by Apple)
+│   ├── GoogleService-Info.plist   # Firebase configuration (download from Firebase Console)
 │   ├── StatusBarView.swift             # Top status bar (connectivity, GPS warning, nearby sightings, last detected)
 │   ├── Views/
 │   │   ├── DebugOverlayView.swift     # Bounding boxes, plate text, hash, FPS (debug builds)
@@ -179,3 +180,4 @@ Apple frameworks:
 
 External:
 - `onnxruntime-swift-package-manager` (1.20.0) — ONNX Runtime for CCT-XS OCR inference
+- `firebase-ios-sdk` (11.0.0+) — Firebase Analytics for app quality monitoring

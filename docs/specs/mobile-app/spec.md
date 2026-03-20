@@ -610,9 +610,13 @@ The HMAC pepper is sourced from the root `.env` file and injected at build time:
 - **Android**: `build.gradle.kts` reads `../.env` and injects the pepper as `BuildConfig.PEPPER`. `PlateHasher` reads from `BuildConfig`.
 - The pepper appears as a string literal in the compiled binary. The threat model accepts that a determined attacker with the binary can extract the pepper — obfuscation was previously used (XOR split) but was removed in favor of a single-source-of-truth `.env` approach that simplifies pepper rotation across all components.
 
-#### REQ-M-43: No Third-Party Analytics
+#### REQ-M-43: Analytics Constraints
 
-The app MUST NOT include third-party analytics SDKs (e.g., Firebase Analytics, Amplitude). Diagnostic data (crash logs, performance metrics) MUST be collected only via platform-native mechanisms (Xcode Organizer / Play Console) and MUST NOT contain plate data.
+The app MAY include Google Analytics for Firebase for app quality monitoring (crash-free rates, screen views, session duration). Analytics events MUST NOT contain plate data, images, or precise location. No advertising or ad-targeting SDKs are permitted.
+
+Firebase MUST be initialized conditionally — if the `GoogleService-Info.plist` (iOS) or `google-services.json` (Android) contains a placeholder or is absent, Firebase MUST NOT be configured, so that development and test builds run without a real Firebase project.
+
+The iOS `PrivacyInfo.xcprivacy` MUST declare `NSPrivacyCollectedDataTypeProductInteraction` for analytics purpose. Android ProGuard rules MUST keep `com.google.firebase.analytics.**`.
 
 ### Reliability
 
@@ -855,7 +859,7 @@ See [`ios/structure.md`](../ios/structure.md) for the full iOS project layout.
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Bounding boxes, text, hash, FPS, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | ProcessInfo.thermalState observer, reduce FPS when throttled |
 | 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Enforce foreground-only capture on iOS, flush queue on background, resume preview on foreground, auto-rebind camera on recovery |
-| 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, no analytics SDKs, no image export |
+| 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no plaintext leaks in logs, analytics events contain no plate/image/location data, no image export |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | UNUserNotificationCenter permission, APNs token registration, notification handling |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.swift: POST /api/v1/subscribe, 10-min timer, GPS truncation to 2 decimal places |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |
@@ -920,7 +924,7 @@ See [`android/structure.md`](../android/structure.md) for the full Android proje
 | 14 | Debug overlay | REQ-M-18, REQ-M-19, REQ-M-20 | Canvas overlay on preview, debug image capture |
 | 15 | Thermal mgmt | REQ-M-32 | PowerManager thermal status listener, reduce analysis FPS |
 | 16 | Background/crash | REQ-M-50, REQ-M-51, REQ-M-51a | Start camera foreground service on background, keep analysis/upload running, reattach preview on foreground, auto-rebind camera on recovery |
-| 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, no analytics SDKs, ProGuard/R8 rules |
+| 17 | Privacy audit | REQ-M-40, REQ-M-41, REQ-M-43 | Verify no leaks, analytics events contain no plate/image/location data, ProGuard/R8 rules |
 | 18 | Push notifications | REQ-M-60, REQ-M-61, REQ-M-62, REQ-M-63 | Firebase setup, FCM service, token registration, notification channel, POST_NOTIFICATIONS permission |
 | 19 | Alert client | REQ-M-64, REQ-M-65, REQ-M-66 | AlertClient.kt: POST /api/v1/subscribe, coroutine timer (600s delay), GPS truncation |
 | 20 | Sightings handling | REQ-M-67 | Parse recent_sightings response, log to DebugLog, increment counter |

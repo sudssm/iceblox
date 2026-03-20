@@ -48,8 +48,9 @@
 # --- Room ---
 -keep class com.iceblox.app.persistence.** { *; }
 
-# --- Firebase Messaging ---
+# --- Firebase Messaging & Analytics ---
 -keep class com.google.firebase.messaging.** { *; }
+-keep class com.google.firebase.analytics.** { *; }
 
 # --- Google Maps ---
 -keep class com.google.android.gms.maps.** { *; }
