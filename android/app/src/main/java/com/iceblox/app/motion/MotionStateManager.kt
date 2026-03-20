@@ -55,7 +55,9 @@ class MotionStateManager(private val context: Context, private val scope: Corout
     }
 
     private val pendingIntent: PendingIntent by lazy {
-        val intent = Intent(ACTION_ACTIVITY_TRANSITION)
+        val intent = Intent(ACTION_ACTIVITY_TRANSITION).apply {
+            setPackage(context.packageName)
+        }
         PendingIntent.getBroadcast(
             context,
             0,
