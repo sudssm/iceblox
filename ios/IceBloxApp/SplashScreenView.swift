@@ -83,9 +83,8 @@ struct SplashScreenView: View {
                     Spacer()
 
                     Button { activeSheet = .help } label: {
-                        Text("?")
+                        Image(systemName: "questionmark.circle.fill")
                             .font(.title2)
-                            .fontWeight(.bold)
                             .foregroundStyle(.yellow)
                     }
                     .accessibilityLabel("Help")
