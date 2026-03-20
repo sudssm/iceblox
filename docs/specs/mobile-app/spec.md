@@ -242,7 +242,7 @@ After hashing, the app MUST immediately discard the plaintext plate text from me
 - Stored in any cache other than the session-scoped deduplication set (REQ-M-8)
 - Transmitted over the network
 
-**Exception:** In debug builds only, the `DebugLog` ring buffer (REQ-M-19, DBG-2) MAY retain normalized plate text in memory for display in the debug overlay detection feed. This buffer is capped at 50 entries and exists only in the app process — it is never persisted to disk or transmitted. Release builds MUST NOT include this buffer.
+**Exception:** The `DebugLog` ring buffer (REQ-M-19, DBG-2) MAY retain normalized plate text in memory for display in the debug overlay detection feed. This buffer is capped at 50 entries and exists only in the app process — it is never persisted to disk or transmitted.
 
 **Exception:** In user debug mode (REQ-M-18), the app MAY display normalized plate text and truncated hash on bounding boxes overlaid on the camera preview. This text is rendered on-screen only and is never persisted to disk, logged, or transmitted. The detection feed and log panel are not shown in user debug mode.
 
@@ -463,14 +463,14 @@ When the app enters background, it MUST perform a final subscribe call to refres
 
 The app has two debug modes that share the same overlay UI but expose different levels of detail:
 
-1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in debug builds only. Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG]` toggle button. The `[DEBUG]` button allows minimizing the overlay (hides the log panel) while keeping bounding boxes, the FPS/queue/connectivity header, and the detection feed visible.
+1. **Developer debug mode** — toggled via a hidden gesture (triple-tap on the camera preview). Available in all builds (including production). Shows the full debug overlay: bounding boxes, detection feed, log panel, FPS/queue/connectivity header, and `[DEBUG]` toggle button. The `[DEBUG]` button allows minimizing the overlay (hides the log panel) while keeping bounding boxes, the FPS/queue/connectivity header, and the detection feed visible.
 2. **User debug mode** — toggled via a "Debug Mode" switch in the Settings screen. Available in all builds (including production). Shows bounding boxes only (raw detection boxes in yellow, OCR'd plate boxes in green with plate text and hash). Does NOT show the detection feed, log panel, FPS/queue header, or `[DEBUG]` toggle button.
 
 The overlay is visible when either mode is active. When both are active, the full developer overlay is shown.
 
 #### REQ-M-18: Debug Mode Toggle
 
-The app MUST include a developer debug mode, toggled via a hidden gesture (e.g., triple-tap on the camera preview). Developer debug mode MUST NOT be accessible in production builds distributed via app stores.
+The app MUST include a developer debug mode, toggled via a hidden gesture (e.g., triple-tap on the camera preview). Developer debug mode MUST be accessible in all builds, including production builds distributed via app stores.
 
 The app MUST also include a user debug mode, toggled via a persistent setting in the Settings screen (REQ-M-70). User debug mode is available in all builds and shows only bounding boxes on the camera preview.
 
@@ -595,7 +595,7 @@ If the device reaches thermal throttling state, the app MUST reduce frame proces
 
 #### REQ-M-40: No Plaintext Exfiltration
 
-Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted in debug builds only. The user debug mode exception in REQ-M-13 also applies — on-screen bounding box labels showing plate text and hash are permitted when the user explicitly enables debug mode via Settings.
+Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted when developer debug mode is active. The user debug mode exception in REQ-M-13 also applies — on-screen bounding box labels showing plate text and hash are permitted when the user explicitly enables debug mode via Settings.
 
 #### REQ-M-41: No Image Exfiltration
 
@@ -693,7 +693,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - "Stop Recording" button, always visible during an active session
   - Tapping ends the current session and opens the session summary
 - **Upload queue banner** (debug mode only, below stop button):
-  - Shown only in debug builds with debug mode active, when the offline queue is non-empty (`queueDepth > 0`)
+  - Shown only when developer debug mode is active, when the offline queue is non-empty (`queueDepth > 0`)
   - Displays `"N uploads queued"` in amber/yellow monospace text on a semi-transparent black pill-shaped background
   - Includes a dismiss button (✕) that clears the entire offline queue
 - Camera preview fills the entire screen
