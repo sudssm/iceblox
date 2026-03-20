@@ -154,6 +154,7 @@ final class CameraManager: NSObject, ObservableObject {
         }
 
         let output = AVCaptureVideoDataOutput()
+        output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         output.setSampleBufferDelegate(self, queue: frameQueue)
         output.alwaysDiscardsLateVideoFrames = true
 

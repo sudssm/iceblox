@@ -314,7 +314,7 @@ struct ContentView: View {
             if !showingSummary {
                 resumeActiveSession()
             }
-            motionStateManager.startMonitoring()
+            motionStateManager.startMonitoring(locationManager: locationManager)
             if AppConfig.requestLocationPermission {
                 locationManager.requestPermission()
             }

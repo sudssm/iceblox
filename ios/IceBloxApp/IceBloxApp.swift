@@ -33,12 +33,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             requestNotificationPermission(application: application)
         }
         #if DEBUG
-        // Connectivity probe at launch (synchronous for console capture)
+        // Connectivity probe at launch (async to avoid blocking main thread)
         let baseURL = AppConfig.serverBaseURL
         NSLog("[Probe] Server URL: %@", baseURL.absoluteString)
         let healthURL = baseURL.appendingPathComponent("/healthz")
         NSLog("[Probe] Testing: %@", healthURL.absoluteString)
-        let sem = DispatchSemaphore(value: 0)
         var probeRequest = URLRequest(url: healthURL)
         probeRequest.timeoutInterval = 5
         URLSession.shared.dataTask(with: probeRequest) { _, response, error in
@@ -49,10 +48,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             } else {
                 NSLog("[Probe] No HTTP response")
             }
-            sem.signal()
+            NSLog("[Probe] Done")
         }.resume()
-        _ = sem.wait(timeout: .now() + 6)
-        NSLog("[Probe] Done")
         #endif
         return true
     }

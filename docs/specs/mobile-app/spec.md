@@ -104,7 +104,7 @@ The first frame after startup or reset MUST always be processed. The debug overl
 
 #### REQ-M-4c: Motion-Aware Scanning Pause
 
-The app MUST monitor device motion state using platform activity recognition APIs. If the device remains stationary for a configurable duration (default: 15 minutes), the app MUST automatically pause the scanning pipeline:
+The app MUST monitor device motion state to detect when stationary. If the device remains stationary for a configurable duration (default: 15 minutes), the app MUST automatically pause the scanning pipeline:
 
 - Stop camera capture and frame processing
 - Stop location updates
@@ -113,11 +113,11 @@ The app MUST monitor device motion state using platform activity recognition API
 - Display a full-screen "Scanning Paused" overlay with a "Resume Now" button
 - Post a local notification informing the user that scanning has paused
 
-When the device begins moving again (detected via activity recognition), the app MUST automatically resume scanning. The user MAY also manually resume by tapping the "Resume Now" button, which clears the paused state and restarts the pipeline.
+When the device begins moving again, the app MUST automatically resume scanning. The user MAY also manually resume by tapping the "Resume Now" button, which clears the paused state and restarts the pipeline.
 
 When the app is motion-paused on Android, the background capture service MUST NOT be started on activity pause.
 
-- **iOS**: `MotionStateManager` uses `CMMotionActivityManager` for activity updates; requires `NSMotionUsageDescription` in `Info.plist`
+- **iOS**: `MotionStateManager` subscribes to GPS speed updates from `LocationManager` (`CLLocation.speed`); no additional permissions required beyond location. Speed below 0.5 m/s is treated as stationary.
 - **Android**: `MotionStateManager` uses the Activity Recognition Transition API via Google Play Services; requires `ACTIVITY_RECOGNITION` permission (API 29+)
 
 #### REQ-M-4d: Location Distance Filter

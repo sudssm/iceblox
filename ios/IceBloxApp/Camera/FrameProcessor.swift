@@ -111,6 +111,10 @@ final class FrameProcessor: ObservableObject {
             return
         }
 
+        if frameCount % 30 == 0 {
+            DebugLog.shared.d("FrameProcessor", "Heartbeat frame=\(frameCount) skippedByDiff=\(framesSkippedByDiff) fps=\(String(format: "%.1f", fps))")
+        }
+
         let detection = detectAndProcess(pixelBuffer: pixelBuffer)
 
         if !detection.failedDetections.isEmpty {
