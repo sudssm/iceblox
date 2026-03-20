@@ -20,13 +20,13 @@ All camera and plate processing happens entirely on your device:
 | **Device identifier** | Automatically | Rate limiting and push notification deduplication |
 | **Push notification token** | If you allow notifications | Delivering match alerts via APNs (iOS) or FCM (Android) |
 | **Reports** (photo, description, location, optional plate) | Only when you explicitly submit a report | Forwarded to StopICE for community tracking |
+| **App usage analytics** | Automatically via Google Analytics for Firebase | App quality monitoring: crash-free rates, screen views, session duration. No plate data, images, or location are included in analytics events. |
 
 ## Data We Do Not Collect
 
 - Plaintext license plate numbers (only cryptographic hashes are transmitted)
 - Video or camera images
 - Personal identity information (no accounts, no names, no emails)
-- Analytics or tracking data (no third-party analytics SDKs)
 
 ## How Matching Works
 
@@ -63,7 +63,7 @@ IceBlox communicates only with:
 - **Apple Push Notification Service (APNs)** and **Firebase Cloud Messaging (FCM)** for delivering push notifications, subject to Apple's and Google's respective privacy policies
 - **StopICE** for submitting user-initiated reports
 
-No third-party analytics, advertising, or tracking services are used.
+**Google Analytics for Firebase** is used for app quality monitoring (crash-free rates, screen views, session duration). Analytics data is anonymous and does not include plate data, images, or precise location. No advertising or ad-targeting services are used. See [Google's privacy policy](https://policies.google.com/privacy) for how Google handles analytics data.
 
 ## Your Controls
 

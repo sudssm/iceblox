@@ -245,6 +245,7 @@ Core dependencies (managed via version catalog in `gradle/libs.versions.toml`):
 - `com.google.android.gms:play-services-location` (21.3.0) — Fused location provider
 - `com.google.firebase:firebase-bom` (33.7.0) — Firebase Bill of Materials
 - `com.google.firebase:firebase-messaging` — Firebase Cloud Messaging for push notifications
+- `com.google.firebase:firebase-analytics` — Firebase Analytics for app quality monitoring
 - `com.google.maps.android:maps-compose` (6.2.1) — Google Maps Compose integration for report location picker
 
 Build plugins:
