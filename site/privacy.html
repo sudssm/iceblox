@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — IceBlox</title>
+  <link rel="icon" href="img/app-icon.png" type="image/png">
+  <link rel="stylesheet" href="css/style-dark.css">
+  <style>
+    .privacy {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 2rem 4rem;
+    }
+    .privacy h1 {
+      color: #fff;
+      font-size: 2rem;
+      margin-bottom: 0.25rem;
+    }
+    .privacy .updated {
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 2rem;
+    }
+    .privacy h2 {
+      color: var(--heading);
+      font-size: 1.25rem;
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+    }
+    .privacy p, .privacy li {
+      color: var(--text);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 0.5rem;
+    }
+    .privacy ul {
+      padding-left: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .privacy table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .privacy th, .privacy td {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+    .privacy th {
+      color: var(--heading);
+      font-weight: 600;
+    }
+    .privacy td {
+      color: var(--text);
+    }
+    .privacy a {
+      color: var(--heading);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="index.html" class="nav-brand">
+      <img src="img/app-icon.png" alt="IceBlox icon">
+      IceBlox
+    </a>
+    <a href="index.html" class="nav-link">Back to Home</a>
+  </nav>
+
+  <article class="privacy">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: March 13, 2026</p>
+
+    <p>IceBlox is a community safety app that detects license plates and checks them against a public list of known ICE vehicles. This policy explains what data we collect, how we handle it, and the privacy protections built into the system.</p>
+
+    <h2>On-Device Processing</h2>
+    <p>All camera and plate processing happens entirely on your device:</p>
+    <ul>
+      <li><strong>Video frames</strong> are processed in memory by on-device ML models and are <strong>never saved, uploaded, or transmitted</strong>.</li>
+      <li><strong>Detected plate text</strong> is immediately hashed using HMAC-SHA256 and then discarded. Plaintext plate text never leaves your device and is never written to disk.</li>
+    </ul>
+
+    <h2>Data We Collect</h2>
+    <table>
+      <tr><th>Data</th><th>When</th><th>Purpose</th></tr>
+      <tr><td>Hashed plate text</td><td>Automatically during scanning</td><td>Compared against known target hashes on the server</td></tr>
+      <tr><td>Device location</td><td>If you grant permission</td><td>Proximity-based alerts; truncated to ~1 km precision</td></tr>
+      <tr><td>Device identifier</td><td>Automatically</td><td>Rate limiting and push notification deduplication</td></tr>
+      <tr><td>Push notification token</td><td>If you allow notifications</td><td>Delivering match alerts via APNs (iOS) or FCM (Android)</td></tr>
+      <tr><td>Reports (photo, description, location)</td><td>Only when you explicitly submit</td><td>Forwarded to StopICE for community tracking</td></tr>
+    </table>
+
+    <h2>Data We Do Not Collect</h2>
+    <ul>
+      <li>Plaintext license plate numbers (only cryptographic hashes are transmitted)</li>
+      <li>Video or camera images</li>
+      <li>Personal identity information (no accounts, no names, no emails)</li>
+      <li>Analytics or tracking data (no third-party analytics SDKs)</li>
+    </ul>
+
+    <h2>How Matching Works</h2>
+    <p>IceBlox uses an asymmetric knowledge model:</p>
+    <ul>
+      <li><strong>Your device</strong> sends only hashed plates to the server and receives back a match/no-match result. Your device never sees the target plate list.</li>
+      <li><strong>The server</strong> compares hashes and returns results. It never sees the plaintext of non-target plates.</li>
+      <li><strong>Non-matching hashes are discarded immediately</strong> by the server and are never written to disk or logged.</li>
+      <li><strong>Matched sightings</strong> (hash, location, timestamp, device ID) are recorded for alert delivery.</li>
+    </ul>
+
+    <h2>Push Notifications</h2>
+    <p>Match alerts contain only a generic message (e.g., "Potential ICE Activity Reported"). No plate numbers, hashes, or identifying details are included in notification payloads. Notifications are filtered by proximity and deduplicated per device.</p>
+
+    <h2>Offline Queue</h2>
+    <p>When your device is offline, hashes are queued locally in an on-device database. Only hashes, timestamps, and location are stored — never plaintext plates or images. Stale entries older than 10 minutes are automatically pruned, and the queue is capped at 1,000 entries.</p>
+
+    <h2>Data Retention</h2>
+    <table>
+      <tr><th>Data</th><th>Retention</th></tr>
+      <tr><td>Non-matching hashes</td><td>Immediately discarded, never stored</td></tr>
+      <tr><td>Subscriber location (Redis)</td><td>1-hour expiry</td></tr>
+      <tr><td>Push notification history</td><td>30-minute cleanup cycle</td></tr>
+      <tr><td>Matched sightings</td><td>Stored until administrative deletion</td></tr>
+      <tr><td>User-submitted reports</td><td>Stored until administrative deletion</td></tr>
+    </table>
+
+    <h2>Third-Party Services</h2>
+    <p>IceBlox communicates only with:</p>
+    <ul>
+      <li><strong>Our server</strong> for plate hash comparison and alert delivery</li>
+      <li><strong>Apple Push Notification Service (APNs)</strong> and <strong>Firebase Cloud Messaging (FCM)</strong> for delivering push notifications</li>
+      <li><strong>StopICE</strong> for submitting user-initiated reports</li>
+    </ul>
+    <p>No third-party analytics, advertising, or tracking services are used.</p>
+
+    <h2>Your Controls</h2>
+    <ul>
+      <li><strong>Location permission</strong>: You can deny GPS access; the app still functions but cannot provide proximity alerts.</li>
+      <li><strong>Push notifications</strong>: Can be toggled on or off at any time.</li>
+      <li><strong>Reports</strong>: Submitted only by your explicit action.</li>
+    </ul>
+
+    <h2>Security Considerations</h2>
+    <ul>
+      <li>All network communication uses HTTPS encryption.</li>
+      <li>The HMAC key (pepper) is embedded in the app binary at build time. While this prevents casual observation of plate text, a determined attacker who extracts the key could theoretically brute-force hashes due to the limited keyspace of license plates. Privacy against the server relies on operational controls.</li>
+      <li>There are no user accounts or passwords — no credentials to compromise.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>For privacy questions or concerns, email <a href="mailto:hello@chesstris.io">hello@chesstris.io</a> or open an issue on <a href="https://github.com/sudssm/iceblox" target="_blank" rel="noopener">GitHub</a>.</p>
+  </article>
+
+</body>
+</html>
