@@ -15,12 +15,14 @@ Requires:
   - PEPPER in .env
 """
 
+from __future__ import annotations
+
 import argparse
 import glob
-import json
 import os
 import subprocess
 import sys
+from typing import Any
 
 import requests
 from google.auth.transport.requests import Request as AuthRequest
@@ -36,7 +38,7 @@ DEFAULT_KEY_FILE = os.path.join(SCRIPT_DIR, "play-store-key.json")
 AAB_GLOB = os.path.join(SCRIPT_DIR, "app/build/outputs/bundle/release/*.aab")
 
 
-def get_key_file():
+def get_key_file() -> str:
     env_key = os.environ.get("PLAY_STORE_JSON_KEY")
     if env_key:
         # If it looks like JSON content (from a CI secret), write it to a temp file
@@ -49,7 +51,7 @@ def get_key_file():
     return DEFAULT_KEY_FILE
 
 
-def get_credentials():
+def get_credentials() -> service_account.Credentials:
     key_file = get_key_file()
     if not os.path.exists(key_file):
         print(f"ERROR: Service account key not found at {key_file}")
@@ -60,14 +62,14 @@ def get_credentials():
     return creds
 
 
-def api_headers(creds):
+def api_headers(creds: service_account.Credentials) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {creds.token}",
         "Content-Type": "application/json",
     }
 
 
-def create_edit(headers):
+def create_edit(headers: dict[str, str]) -> str:
     resp = requests.post(f"{BASE_URL}/edits", headers=headers, json={})
     resp.raise_for_status()
     edit = resp.json()
@@ -75,7 +77,7 @@ def create_edit(headers):
     return edit["id"]
 
 
-def list_tracks(headers, edit_id):
+def list_tracks(headers: dict[str, str], edit_id: str) -> list[dict[str, Any]]:
     resp = requests.get(f"{BASE_URL}/edits/{edit_id}/tracks", headers=headers)
     resp.raise_for_status()
     tracks = resp.json().get("tracks", [])
@@ -91,7 +93,7 @@ def list_tracks(headers, edit_id):
     return tracks
 
 
-def upload_aab(headers, edit_id, aab_path):
+def upload_aab(headers: dict[str, str], edit_id: str, aab_path: str) -> int:
     """Upload an AAB to the edit."""
     print(f"Uploading AAB: {aab_path}")
     upload_url = f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{PACKAGE_NAME}/edits/{edit_id}/bundles"
@@ -114,7 +116,13 @@ def upload_aab(headers, edit_id, aab_path):
     return vc
 
 
-def set_track(headers, edit_id, track, version_codes, status="completed"):
+def set_track(
+    headers: dict[str, str],
+    edit_id: str,
+    track: str,
+    version_codes: list[int],
+    status: str = "completed",
+) -> tuple[dict[str, Any] | None, requests.Response]:
     release = {
         "status": status,
         "versionCodes": [str(vc) for vc in version_codes],
@@ -130,7 +138,7 @@ def set_track(headers, edit_id, track, version_codes, status="completed"):
     return resp.json(), resp
 
 
-def commit_edit(headers, edit_id):
+def commit_edit(headers: dict[str, str], edit_id: str) -> dict[str, Any]:
     resp = requests.post(f"{BASE_URL}/edits/{edit_id}:commit", headers=headers)
     if not resp.ok:
         print(f"Commit failed: {resp.status_code}")
@@ -140,18 +148,18 @@ def commit_edit(headers, edit_id):
     return resp.json()
 
 
-def delete_edit(headers, edit_id):
+def delete_edit(headers: dict[str, str], edit_id: str) -> None:
     requests.delete(f"{BASE_URL}/edits/{edit_id}", headers=headers)
 
 
-def find_aab():
+def find_aab() -> str | None:
     matches = sorted(glob.glob(AAB_GLOB))
     if not matches:
         return None
     return matches[-1]
 
 
-def build_aab():
+def build_aab() -> str:
     """Build the release AAB using Gradle."""
     print("\n=== Building release AAB ===")
     root_dir = os.path.dirname(SCRIPT_DIR)
@@ -172,7 +180,7 @@ def build_aab():
     return aab
 
 
-def cmd_list():
+def cmd_list() -> None:
     creds = get_credentials()
     headers = api_headers(creds)
     edit_id = create_edit(headers)
@@ -181,7 +189,7 @@ def cmd_list():
     delete_edit(headers, edit_id)
 
 
-def cmd_publish(skip_build=False, target_track=None):
+def cmd_publish(skip_build: bool = False, target_track: str | None = None) -> None:
     """Build, upload, and release to the highest available track."""
 
     # 1. Build
@@ -237,7 +245,7 @@ def cmd_publish(skip_build=False, target_track=None):
         raise
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Build and publish Android app to Google Play")
     parser.add_argument("--list", action="store_true", help="List current releases")
     parser.add_argument("--skip-build", action="store_true", help="Skip building, use existing AAB")
