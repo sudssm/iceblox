@@ -26,6 +26,16 @@ struct SettingsView: View {
                     .listRowBackground(Color.white.opacity(0.1))
                 }
                 .scrollContentBackground(.hidden)
+
+                VStack {
+                    Spacer()
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+                    Text("Version \(version) (\(build))")
+                        .font(.footnote)
+                        .foregroundStyle(.gray)
+                        .padding(.bottom, 16)
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
