@@ -29,7 +29,9 @@ struct SettingsView: View {
 
                 VStack {
                     Spacer()
-                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+                    Text("Version \(version) (\(build))")
                         .font(.footnote)
                         .foregroundStyle(.gray)
                         .padding(.bottom, 16)
