@@ -317,7 +317,6 @@ fun ReportICEScreen(
                     )
                 }
             }
-
         }
     }
 }
