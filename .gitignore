@@ -13,6 +13,9 @@ android/local.properties
 android/**/release.keystore
 *.apk
 *.aab
+android/fastlane/report.xml
+android/fastlane/README.md
+android/vendor/
 
 # iOS
 ios/build/
@@ -27,6 +30,8 @@ server/data/
 server/server
 *.p8
 *.jsonl
+android/play-store-key.json
+android/play_store_release.py
 
 # IDE
 .idea/

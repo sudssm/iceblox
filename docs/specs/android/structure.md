@@ -189,21 +189,26 @@ Release builds enable R8 minification and resource shrinking. ProGuard rules for
 
 ### CI Release
 
-A GitHub Actions workflow (`.github/workflows/release.yml`) automates the release AAB build. It triggers on version tags (`v*`) and `workflow_dispatch`.
+A GitHub Actions workflow (`.github/workflows/release.yml`) automates the release build and Play Store upload. It triggers on version tags (`android-v*`) and `workflow_dispatch`.
 
-**Steps:**
-1. Set up JDK 17 (Temurin), Android SDK, and Gradle
+**Tag-triggered release (`android-v*`):**
+1. Set up JDK 17 (Temurin), Android SDK, Gradle, and Python 3.12
 2. Decode the release keystore from `RELEASE_KEYSTORE_BASE64` secret
 3. Create `.env` (pepper, maps API key) and `local.properties` (signing credentials) from secrets
 4. Run unit tests (`make android-unit-test`)
-5. Build release AAB (`make android-release-bundle`)
+5. Build release AAB, upload to Google Play, and release to the highest available track via `android/publish.py`
 6. Upload the AAB as a build artifact
 
-**Required GitHub Secrets:** `RELEASE_KEYSTORE_BASE64`, `PEPPER`, `ANDROID_MAPS_API_KEY`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
+**Manual dispatch (`workflow_dispatch`):**
+Steps 1–4 as above, then build-only (`make android-release-bundle`) without Play Store upload.
+
+**Required GitHub Secrets:** `RELEASE_KEYSTORE_BASE64`, `PEPPER`, `ANDROID_MAPS_API_KEY`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, `PLAY_STORE_JSON_KEY`.
 
 The `make android-release-bundle` target runs `./gradlew bundleRelease` from the `android/` directory.
 
-**`make publish-android`** — Build a signed release AAB and print the path for manual upload to Google Play Console. Depends on `android-release-bundle`.
+**`make publish-android`** — Build a signed release AAB, upload it to Google Play, and release to the highest available track (production > beta > alpha > internal) via `android/publish.py`. Requires `google-auth` and `requests` Python packages (installed automatically) and a service account key at `android/play-store-key.json`.
+
+**`android/publish.py`** — Python script that authenticates with the Google Play Android Publisher API using a service account, creates an edit, uploads the AAB, assigns it to the highest available track with `completed` status, and commits the edit. Supports `--list` (show current releases), `--skip-build` (use existing AAB), and `--track <name>` (target a specific track). In CI, the `PLAY_STORE_JSON_KEY` environment variable provides the service account credentials as inline JSON.
 
 ### Play Store
 

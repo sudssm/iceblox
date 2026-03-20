@@ -218,13 +218,10 @@ unit-test: server-test android-unit-test ios-unit-test
 android-release-bundle: .env
 	cd android && ./gradlew bundleRelease
 
-## publish-android: Build a signed release AAB for Play Store upload
-publish-android: android-release-bundle
-	@AAB=$$(find android/app/build/outputs/bundle/release -name '*.aab' 2>/dev/null | head -1); \
-	if [ -z "$$AAB" ]; then echo "ERROR: No AAB found"; exit 1; fi; \
-	echo ""; \
-	echo "Release AAB ready at: $$AAB"; \
-	echo "Upload to Google Play Console to publish."
+## publish-android: Build, upload to Google Play, and release to highest available track
+publish-android: .env
+	pip3 install --quiet google-auth requests
+	source ~/.zshrc && python3 android/publish.py
 
 ## android-unit-test: Run Android unit tests (generates .env first)
 android-unit-test: .env
