@@ -55,7 +55,8 @@ final class PlateDetector {
 
         if !observations.isEmpty {
             let confs = observations.map { String(format: "%.3f", $0.confidence) }.joined(separator: ", ")
-            DebugLog.shared.d("PlateDetector", "Raw detections: \(observations.count) confs=[\(confs)] threshold=\(AppConfig.detectionConfidenceThreshold)")
+            DebugLog.shared.d("PlateDetector",
+                "Raw detections: \(observations.count) confs=[\(confs)] threshold=\(AppConfig.detectionConfidenceThreshold)")
         }
 
         for observation in observations {
