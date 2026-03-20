@@ -50,7 +50,7 @@ Spec: [`specs/testing.md`](specs/testing.md) → E2E Testing, [`specs/mobile-app
 ## Client UI
 
 - [ ] **Vehicle trajectory tracking** *(stretch)* — Track vehicle movement across multiple reports and render the trajectory on the client map view.
-- [ ] **Splash page** — Build a marketing/landing splash page for the project.
+- [x] **Splash page** — Build a marketing/landing splash page for the project. (Landing page at site/iceblox/ — d47cf10, f8fb1da, 2b0afaa)
 - [ ] **Cluster overlapping map pins** — Merge multiple plates at same location into single high-confidence pin.
 - [x] **Add instructions to app** — In-app onboarding or help content explaining how to use the app. (Help screen + Contact form — REQ-M-71, REQ-M-72)
 
