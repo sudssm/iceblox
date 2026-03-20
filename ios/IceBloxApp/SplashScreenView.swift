@@ -2,14 +2,15 @@ import SwiftUI
 
 struct SplashScreenView: View {
     let onStartCamera: () -> Void
-    @State private var showReportSheet = false
-    @State private var showMapSheet = false
-    @State private var showSettingsSheet = false
-    @State private var showHelpSheet = false
-    @State private var showContactSheet = false
+    @State private var activeSheet: SheetType?
     @State private var e2eTriggerTask: Task<Void, Never>?
     @State private var offlineQueue = OfflineQueue()
     @State private var drainClient: APIClient?
+
+    private enum SheetType: Identifiable {
+        case report, map, settings, help, contact
+        var id: Self { self }
+    }
 
     var body: some View {
         ZStack {
@@ -40,7 +41,7 @@ struct SplashScreenView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
-                Button { showMapSheet = true } label: {
+                Button { activeSheet = .map } label: {
                     HStack {
                         Image(systemName: "map.fill")
                             .font(.title2)
@@ -58,7 +59,7 @@ struct SplashScreenView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
-                Button { showReportSheet = true } label: {
+                Button { activeSheet = .report } label: {
                     HStack {
                         Image(systemName: "megaphone.fill")
                             .font(.title2)
@@ -81,7 +82,7 @@ struct SplashScreenView: View {
                 HStack(spacing: 16) {
                     Spacer()
 
-                    Button { showHelpSheet = true } label: {
+                    Button { activeSheet = .help } label: {
                         Text("?")
                             .font(.title2)
                             .fontWeight(.bold)
@@ -89,14 +90,14 @@ struct SplashScreenView: View {
                     }
                     .accessibilityLabel("Help")
 
-                    Button { showContactSheet = true } label: {
+                    Button { activeSheet = .contact } label: {
                         Image(systemName: "bubble.left.fill")
                             .font(.title2)
                             .foregroundStyle(.green)
                     }
                     .accessibilityLabel("Contact")
 
-                    Button { showSettingsSheet = true } label: {
+                    Button { activeSheet = .settings } label: {
                         Image(systemName: "gearshape.fill")
                             .font(.title2)
                             .foregroundStyle(.white)
@@ -116,13 +117,13 @@ struct SplashScreenView: View {
                 drainClient = client
             }
             if AppConfig.autoShowReport {
-                showReportSheet = true
+                activeSheet = .report
             }
             if AppConfig.autoShowSettings {
-                showSettingsSheet = true
+                activeSheet = .settings
             }
             if AppConfig.autoShowMap {
-                showMapSheet = true
+                activeSheet = .map
             }
             guard AppConfig.useSplashTrigger else { return }
 
@@ -148,20 +149,19 @@ struct SplashScreenView: View {
             e2eTriggerTask?.cancel()
             e2eTriggerTask = nil
         }
-        .sheet(isPresented: $showReportSheet) {
-            ReportICEView()
-        }
-        .sheet(isPresented: $showMapSheet) {
-            MapView()
-        }
-        .sheet(isPresented: $showSettingsSheet) {
-            SettingsView()
-        }
-        .sheet(isPresented: $showHelpSheet) {
-            HelpView()
-        }
-        .sheet(isPresented: $showContactSheet) {
-            ContactView()
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .report:
+                ReportICEView()
+            case .map:
+                MapView()
+            case .settings:
+                SettingsView()
+            case .help:
+                HelpView()
+            case .contact:
+                ContactView()
+            }
         }
     }
 }
