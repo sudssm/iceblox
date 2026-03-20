@@ -10,16 +10,14 @@ Before starting, confirm these exist:
 
 Check for each file. If any are missing, STOP and tell the user which files are missing and what they need to contain. Do NOT proceed without all prerequisites.
 
-## Step 1: Ensure clean main branch
+## Step 1: Fetch latest main
 
-Run these checks and STOP if any fail:
+Run:
 ```
-git fetch origin
+git fetch origin main
 ```
 
-1. Verify you're on `main`: `git branch --show-current` must output `main`. If not, ask the user to switch.
-2. Verify working tree is clean: `git status --porcelain` must be empty. If not, ask the user to commit or stash.
-3. Verify in sync with origin: `git rev-parse HEAD` must equal `git rev-parse origin/main`. If behind, ask the user to pull. If ahead, ask the user to push first.
+This ensures we have the latest `origin/main` ref. You do NOT need to be on the `main` branch — the tag will be placed on `origin/main`'s HEAD.
 
 ## Step 2: Bump version
 
@@ -31,19 +29,22 @@ After the user confirms, update both values in `build.gradle.kts`.
 
 ## Step 3: Commit and push the version bump
 
-Stage and commit the version change, then push to main:
+Stage and commit the version change, then push to the current branch:
 ```
 git add android/app/build.gradle.kts
 git commit -m "Bump Android version to <versionName> (code <versionCode>)"
-git push origin main
+git push
 ```
+
+Tell the user they need to merge this version bump commit to `main` before Step 4 (e.g., via PR or direct push). STOP and wait for confirmation that it's on main.
 
 ## Step 4: Tag and push
 
-Create an `android-vXXX` tag on the current SHA and push it. This triggers the CI release workflow.
+Create an `android-vXXX` tag on the latest `origin/main` commit and push it. This triggers the CI release workflow.
 
 ```
-git tag android-v<versionCode>
+git fetch origin main
+git tag android-v<versionCode> origin/main
 git push origin android-v<versionCode>
 ```
 
@@ -53,11 +54,20 @@ The tag push triggers `.github/workflows/release.yml`, which will:
 3. Upload to Google Play
 4. Create a release on the highest available track
 
-## Step 5: Report
+## Step 5: Monitor CI
 
-Tell the user:
-- The version that will be uploaded (versionName + versionCode)
-- The tag that was created and pushed (`android-v<versionCode>`)
-- That CI will build, upload, and release automatically
-- They can monitor the workflow run on GitHub Actions
-- The release will go to the highest available track (production > beta > alpha > internal)
+After pushing the tag, watch the workflow run until it completes:
+
+```
+gh run list --workflow=release.yml --limit=1
+```
+
+Find the run triggered by the tag push, then watch it:
+
+```
+gh run watch <run-id>
+```
+
+When the run completes:
+- If **successful**: tell the user the release succeeded, including the version (versionName + versionCode), the tag (`android-v<versionCode>`), and which track it was released to.
+- If **failed**: run `gh run view <run-id> --log-failed` to get the failure logs. Show the user the relevant error output and suggest next steps to fix it.
