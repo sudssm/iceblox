@@ -39,6 +39,8 @@
 		A1B2C3D4E5F60001000042 /* PushNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000042 /* PushNotificationTests.swift */; };
 		A1B2C3D4E5F60001000043 /* plate_ocr.onnx in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000043 /* plate_ocr.onnx */; };
 		A1B2C3D4E5F60001000044 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6000D000002 /* onnxruntime */; };
+		A1B2C3D4E5F60001000120 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6000D000004 /* FirebaseAnalytics */; };
+		A1B2C3D4E5F60001000121 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000120 /* GoogleService-Info.plist */; };
 		A1B2C3D4E5F60001000045 /* Pepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000045 /* Pepper.swift */; };
 		A1B2C3D4E5F60001000050 /* LookalikeExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000050 /* LookalikeExpander.swift */; };
 		A1B2C3D4E5F60001000051 /* LookalikeExpanderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000051 /* LookalikeExpanderTests.swift */; };
@@ -127,6 +129,7 @@
 		A1B2C3D4E5F60002000110 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000111 /* ContactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000112 /* ContactClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactClient.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000120 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A1B2C3D4E5F60006000001 /* IceBloxApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IceBloxApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60006000002 /* IceBloxAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IceBloxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -137,6 +140,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F60001000044 /* onnxruntime in Frameworks */,
+				A1B2C3D4E5F60001000120 /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,6 +171,7 @@
 				A1B2C3D4E5F60002000038 /* SplashScreenView.swift */,
 				A1B2C3D4E5F60002000012 /* StatusBarView.swift */,
 				A1B2C3D4E5F60002000034 /* PrivacyInfo.xcprivacy */,
+				A1B2C3D4E5F60002000120 /* GoogleService-Info.plist */,
 				A1B2C3D4E5F60002000003 /* Assets.xcassets */,
 				A1B2C3D4E5F60008000010 /* Camera */,
 				A1B2C3D4E5F60008000011 /* Config */,
@@ -350,6 +355,7 @@
 			name = IceBloxApp;
 			packageProductDependencies = (
 				A1B2C3D4E5F6000D000002 /* onnxruntime */,
+				A1B2C3D4E5F6000D000004 /* FirebaseAnalytics */,
 			);
 			productName = IceBloxApp;
 			productReference = A1B2C3D4E5F60006000001 /* IceBloxApp.app */;
@@ -402,6 +408,7 @@
 			mainGroup = A1B2C3D4E5F60008000001;
 			packageReferences = (
 				A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+				A1B2C3D4E5F6000D000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = A1B2C3D4E5F60008000004 /* Products */;
 			projectDirPath = "";
@@ -421,6 +428,7 @@
 				A1B2C3D4E5F60001000003 /* Assets.xcassets in Resources */,
 				A1B2C3D4E5F60001000034 /* PrivacyInfo.xcprivacy in Resources */,
 				A1B2C3D4E5F60001000043 /* plate_ocr.onnx in Resources */,
+				A1B2C3D4E5F60001000121 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -785,6 +793,14 @@
 				minimumVersion = 1.20.0;
 			};
 		};
+		A1B2C3D4E5F6000D000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -792,6 +808,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D4E5F6000D000001 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
 			productName = onnxruntime;
+		};
+		A1B2C3D4E5F6000D000004 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F6000D000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

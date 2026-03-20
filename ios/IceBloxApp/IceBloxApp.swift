@@ -1,4 +1,5 @@
 import Combine
+import FirebaseCore
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -21,6 +22,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let googleAppId = plist["GOOGLE_APP_ID"] as? String,
+           googleAppId != "PLACEHOLDER" {
+            FirebaseApp.configure()
+        }
         UNUserNotificationCenter.current().delegate = self
         if !AppConfig.skipNotificationRequest && UserSettings.shared.pushNotificationsEnabled {
             requestNotificationPermission(application: application)
