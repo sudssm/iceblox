@@ -84,7 +84,6 @@ fun ReportICEScreen(
     var plateNumber by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var didSubmit by remember { mutableStateOf(false) }
     var hasMovedToLocation by remember { mutableStateOf(false) }
 
     val initialPosition = LatLng(latitude, longitude)
@@ -291,7 +290,7 @@ fun ReportICEScreen(
                         longitude = markerState.position.longitude
                     ) { result ->
                         isSubmitting = false
-                        result.onSuccess { didSubmit = true }
+                        result.onSuccess { onBack() }
                         result.onFailure { e -> errorMessage = e.message }
                     }
                 },
@@ -317,16 +316,6 @@ fun ReportICEScreen(
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
-            }
-
-            if (didSubmit) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Report submitted. Thank you!",
-                    color = Color.Green,
-                    fontSize = 14.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
             }
         }
     }

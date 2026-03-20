@@ -11,7 +11,6 @@ struct ReportICEView: View {
     @State private var plateNumber = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String?
-    @State private var didSubmit = false
     @State private var pinLatitude: Double?
     @State private var pinLongitude: Double?
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -169,11 +168,6 @@ struct ReportICEView: View {
             .sheet(isPresented: $showCamera) {
                 CameraPickerView(image: $capturedImage)
             }
-            .alert("Report Submitted", isPresented: $didSubmit) {
-                Button("OK") { dismiss() }
-            } message: {
-                Text("Your report has been submitted. Thank you.")
-            }
             .onAppear {
                 locationManager.requestPermission()
             }
@@ -205,7 +199,7 @@ struct ReportICEView: View {
                 isSubmitting = false
                 switch result {
                 case .success:
-                    didSubmit = true
+                    dismiss()
                 case .failure(let error):
                     errorMessage = error.localizedDescription
                 }
