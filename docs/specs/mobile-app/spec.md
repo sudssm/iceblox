@@ -595,7 +595,7 @@ If the device reaches thermal throttling state, the app MUST reduce frame proces
 
 #### REQ-M-40: No Plaintext Exfiltration
 
-Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted in debug builds only. The user debug mode exception in REQ-M-13 also applies — on-screen bounding box labels showing plate text and hash are permitted when the user explicitly enables debug mode via Settings.
+Plaintext plate text MUST never leave the device via any channel: network, logs, crash reports, analytics, clipboard, or inter-process communication. The debug ring buffer exception in REQ-M-13 applies — in-process debug display is permitted when developer debug mode is active. The user debug mode exception in REQ-M-13 also applies — on-screen bounding box labels showing plate text and hash are permitted when the user explicitly enables debug mode via Settings.
 
 #### REQ-M-41: No Image Exfiltration
 
@@ -693,7 +693,7 @@ The form MUST include a "Submit Report" button that is disabled until both a pho
   - "Stop Recording" button, always visible during an active session
   - Tapping ends the current session and opens the session summary
 - **Upload queue banner** (debug mode only, below stop button):
-  - Shown only in debug builds with debug mode active, when the offline queue is non-empty (`queueDepth > 0`)
+  - Shown only when developer debug mode is active, when the offline queue is non-empty (`queueDepth > 0`)
   - Displays `"N uploads queued"` in amber/yellow monospace text on a semi-transparent black pill-shaped background
   - Includes a dismiss button (✕) that clears the entire offline queue
 - Camera preview fills the entire screen
