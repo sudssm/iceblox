@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'android-v*'
   workflow_dispatch:
 
 concurrency:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   android-release:
-    name: Android Release AAB
+    name: Android Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,9 +26,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install google-auth requests
+
       - name: Decode release keystore
-        run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
 
       - name: Create .env file
         run: |
@@ -49,7 +55,14 @@ jobs:
       - name: Run unit tests
         run: make android-unit-test
 
-      - name: Build release AAB
+      - name: Build, upload, and release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: python3 android/publish.py
+        env:
+          PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+
+      - name: Build only (manual dispatch)
+        if: ${{ !startsWith(github.ref, 'refs/tags/android-v') }}
         run: make android-release-bundle
 
       - name: Upload AAB artifact
