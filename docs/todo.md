@@ -23,7 +23,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Debug & Release
 - [ ] **Debug image capture** — Save to sandbox, delete on toggle off (REQ-M-20)
 - [ ] **Memory audit** — Verify < 200 MB RAM, buffer reuse (REQ-M-31)
-- [ ] **Privacy audit** — Verify no plaintext in logs, no analytics SDKs, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
+- [ ] **Privacy audit** — Verify no plaintext in logs, analytics events contain no plate/image/location data, no image export in production (REQ-M-40, REQ-M-41, REQ-M-43)
 - [ ] **App Store Connect listing** — Screenshots, description, privacy policy URL, category, age rating
 
 ---
@@ -35,7 +35,7 @@ Spec: [`specs/mobile-app/spec.md`](specs/mobile-app/spec.md) → Implementation 
 ### Debug & Release
 - [ ] **Debug image capture** — Save to app-internal storage, delete on toggle off (REQ-M-20)
 - [ ] **Memory audit** — Verify < 200 MB, bitmap recycling (REQ-M-31)
-- [ ] **Privacy audit** — No plaintext leaks, no analytics, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
+- [ ] **Privacy audit** — No plaintext leaks, analytics events contain no plate/image/location data, ProGuard rules (REQ-M-40, REQ-M-41, REQ-M-43)
 
 ---
 
