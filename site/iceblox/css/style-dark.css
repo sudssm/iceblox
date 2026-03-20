@@ -192,11 +192,42 @@ section {
   -webkit-overflow-scrolling: touch;
 }
 
-.screenshots img {
-  height: 420px;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+.screenshot-wrap {
+  position: relative;
   flex-shrink: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  cursor: default;
+}
+
+.screenshot-wrap img {
+  height: 420px;
+  display: block;
+}
+
+.screenshot-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.screenshot-wrap:hover .screenshot-overlay {
+  opacity: 1;
+}
+
+.screenshot-overlay span {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 1.5rem;
+  line-height: 1.5;
 }
 
 /* FAQ */
@@ -302,7 +333,7 @@ details p {
     font-size: 1rem;
   }
 
-  .screenshots img {
+  .screenshot-wrap img {
     height: 300px;
   }
 
@@ -327,7 +358,7 @@ details p {
     gap: 1rem;
   }
 
-  .screenshots img {
+  .screenshot-wrap img {
     height: 240px;
   }
 }
