@@ -7,7 +7,7 @@ struct SplashScreenView: View {
     @State private var offlineQueue = OfflineQueue()
     @State private var drainClient: APIClient?
 
-    enum SheetType: Identifiable {
+    private enum SheetType: Identifiable {
         case report, map, settings, help, contact
         var id: Self { self }
     }
