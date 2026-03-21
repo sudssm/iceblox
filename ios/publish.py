@@ -273,13 +273,6 @@ def find_pending_version(versions: list[dict]) -> dict | None:
     return None
 
 
-def find_live_version(versions: list[dict]) -> dict | None:
-    for v in versions:
-        if v["attributes"].get("appStoreState") == "READY_FOR_DISTRIBUTION":
-            return v
-    return None
-
-
 def version_in_review_duration(version: dict) -> float | None:
     """Return hours since the version entered review, or None if not in review."""
     state = version["attributes"].get("appStoreState", "")
@@ -423,8 +416,7 @@ def cmd_publish(skip_build: bool = False, skip_upload: bool = False,
 
     # Read build number from the archive if not provided
     if not build_number:
-        import subprocess as sp
-        result = sp.run(
+        result = subprocess.run(
             ["plutil", "-extract", "CFBundleVersion", "raw",
              os.path.join(ROOT_DIR, "ios", "build", "IceBloxApp.xcarchive",
                           "Products", "Applications", "IceBloxApp.app", "Info.plist")],
