@@ -145,17 +145,28 @@ The root `Makefile` provides two targets for App Store distribution:
 - Requires `APPLE_TEAM_ID` (set in `.env` or as an env var)
 - Generates an `ExportOptions.plist` with `app-store-connect` method and automatic signing
 - Passes `OTHER_SWIFT_FLAGS="-DPRODUCTION_SERVER"` to bake in the production server URL at compile time
-- After archiving, patches embedded framework `Info.plist` `MinimumOSVersion` values to match the app's (fixes Apple error 90208)
+- After archiving, patches embedded framework `Info.plist` `MinimumOSVersion` values to match the app's (fixes Apple error 90208), and also patches Mach-O binary `minos` values via `xcrun vtool` for frameworks whose `minos` exceeds the app's minimum (fixes `ITMS-90906` and related binary-level version mismatches)
 - Runs `xcodebuild archive`, patches frameworks, then `xcodebuild -exportArchive`
 - Output: `ios/build/export/IceBloxApp.ipa`
 
-**`make publish-ios`** — Upload the `.ipa` to App Store Connect via `xcrun altool`.
+**`make publish-ios`** — Build, upload to App Store Connect, and submit for review via `ios/publish.py`.
 
 - Requires `APP_STORE_KEY_ID`, `APP_STORE_ISSUER_ID`, and `APP_STORE_KEY_P8` (set in `.env` or as env vars)
-- Writes the `.p8` key to `~/.appstoreconnect/private_keys/` for `altool` authentication
-- Requires a prior `make package-ios` run (checks for the `.ipa` file)
+- Installs Python dependencies (`PyJWT`, `cryptography`, `requests`) and runs `ios/publish.py`
+- The script builds the IPA (via `make package-ios`), uploads via `xcrun altool`, waits for build processing, attaches the build to a pending or new App Store version, and submits for App Review
+- Supports `--list` (show versions/builds), `--skip-build`, `--build-only`, `--no-submit` modes
 
-All credentials are read from the root `.env` file or environment variables — none are committed to the repository.
+### CI Release Pipeline
+
+The `.github/workflows/release.yml` workflow includes an **iOS Release** job:
+
+- Triggered by pushing a tag matching `ios-v*`
+- Runs on `macos-latest` with Xcode
+- Resolves SPM dependencies, runs unit tests (`make ios-unit-test`), then runs `ios/publish.py` to build, upload, and submit for review
+- Uploads the `.ipa` as a GitHub Actions artifact
+- CI secrets provide `APPLE_TEAM_ID`, `APP_STORE_KEY_ID`, `APP_STORE_ISSUER_ID`, and `APP_STORE_KEY_P8`
+
+All credentials are read from the root `.env` file or environment variables (locally) or GitHub Actions secrets (in CI) — none are committed to the repository.
 
 ## Build Learnings
 
