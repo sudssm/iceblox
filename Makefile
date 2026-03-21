@@ -134,12 +134,21 @@ package-ios:
 		DEVELOPMENT_TEAM=$(APPLE_TEAM_ID) \
 		OTHER_SWIFT_FLAGS="-DPRODUCTION_SERVER" \
 		-quiet
-	@echo "Patching embedded framework MinimumOSVersion..."
+	@echo "Patching embedded frameworks..."
 	@APP_MINOS=$$(plutil -extract MinimumOSVersion raw $(IOS_ARCHIVE)/Products/Applications/IceBloxApp.app/Info.plist); \
+	SDK_VER=$$(xcrun --sdk iphoneos --show-sdk-version); \
 	for fw in $(IOS_ARCHIVE)/Products/Applications/IceBloxApp.app/Frameworks/*.framework; do \
 		if [ -f "$$fw/Info.plist" ]; then \
 			plutil -replace MinimumOSVersion -string "$$APP_MINOS" "$$fw/Info.plist"; \
-			echo "  Set $$(basename $$fw) MinimumOSVersion to $$APP_MINOS"; \
+			echo "  Set $$(basename $$fw) Info.plist MinimumOSVersion to $$APP_MINOS"; \
+		fi; \
+		binary="$$fw/$$(basename $$fw .framework)"; \
+		if [ -f "$$binary" ]; then \
+			fw_minos=$$(xcrun vtool -show-build "$$binary" 2>/dev/null | grep -m1 'minos' | awk '{print $$2}'); \
+			if [ "$$(echo "$$fw_minos > 18" | bc 2>/dev/null)" = "1" ] 2>/dev/null; then \
+				echo "  Fixing $$(basename $$fw) Mach-O minos $$fw_minos → $$APP_MINOS"; \
+				xcrun vtool -set-build-version ios "$$APP_MINOS" "$$SDK_VER" -replace -output "$$binary" "$$binary"; \
+			fi; \
 		fi; \
 	done
 	xcodebuild -exportArchive \
@@ -152,19 +161,10 @@ package-ios:
 	@echo "IPA ready at: $(IOS_EXPORT_DIR)/IceBloxApp.ipa"
 	@echo "Upload with: make publish-ios"
 
-## publish-ios: Upload the .ipa to App Store Connect via altool
+## publish-ios: Build, upload to App Store Connect, and submit for review
 publish-ios:
-	@if [ -z "$(APP_STORE_KEY_ID)" ]; then echo "ERROR: APP_STORE_KEY_ID not set. Add APP_STORE_KEY_ID=<your-key-id> to .env or pass it as an env var."; exit 1; fi
-	@if [ -z "$(APP_STORE_ISSUER_ID)" ]; then echo "ERROR: APP_STORE_ISSUER_ID not set. Add APP_STORE_ISSUER_ID=<your-issuer-id> to .env or pass it as an env var."; exit 1; fi
-	@if [ -z "$(APP_STORE_KEY_P8)" ]; then echo "ERROR: APP_STORE_KEY_P8 not set. Add APP_STORE_KEY_P8=\"<pem-contents>\" to .env or pass it as an env var."; exit 1; fi
-	@if [ ! -f "$(IOS_EXPORT_DIR)/IceBloxApp.ipa" ]; then echo "ERROR: IPA not found at $(IOS_EXPORT_DIR)/IceBloxApp.ipa. Run 'make package-ios' first."; exit 1; fi
-	@mkdir -p $(ALTOOL_KEY_DIR)
-	@printf '%b\n' "$(APP_STORE_KEY_P8)" > $(ALTOOL_KEY_DIR)/AuthKey_$(APP_STORE_KEY_ID).p8
-	xcrun altool --upload-app \
-		-f $(IOS_EXPORT_DIR)/IceBloxApp.ipa \
-		-t ios \
-		--apiKey $(APP_STORE_KEY_ID) \
-		--apiIssuer $(APP_STORE_ISSUER_ID)
+	pip3 install --quiet PyJWT cryptography requests
+	python3 ios/publish.py
 
 ## run-android: Build, install, and launch the Android app on an emulator
 run-android: .env

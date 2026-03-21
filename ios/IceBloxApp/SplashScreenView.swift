@@ -148,6 +148,22 @@ struct SplashScreenView: View {
             e2eTriggerTask?.cancel()
             e2eTriggerTask = nil
         }
+        #if APPSTORE_SCREENSHOTS
+        .fullScreenCover(item: $activeSheet) { sheet in
+            switch sheet {
+            case .report:
+                ReportICEView()
+            case .map:
+                MapView()
+            case .settings:
+                SettingsView()
+            case .help:
+                HelpView()
+            case .contact:
+                ContactView()
+            }
+        }
+        #else
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .report:
@@ -162,5 +178,6 @@ struct SplashScreenView: View {
                 ContactView()
             }
         }
+        #endif
     }
 }
